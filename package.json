@@ -1,0 +1,13 @@
+{
+  "name": "clanki",
+  "private": true,
+  "workspaces": ["worker", "frontend"],
+  "scripts": {
+    "dev:worker": "bun run --filter worker dev",
+    "dev:frontend": "bun run --filter frontend dev",
+    "dev": "bun run dev:worker & bun run dev:frontend",
+    "build:worker": "bun run --filter worker build",
+    "build:frontend": "bun run --filter frontend build",
+    "build": "bun run build:worker && bun run build:frontend"
+  }
+}
