@@ -1,0 +1,7 @@
+name = "clanki-worker"
+main = "worker/src/index.ts"
+compatibility_date = "2025-01-29"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "frontend/dist"
