@@ -1,17 +1,31 @@
 {
   "name": "clanki",
   "private": true,
-  "workspaces": ["worker", "frontend"],
+  "type": "module",
   "scripts": {
-    "dev:worker": "bun run --filter worker dev",
-    "dev:frontend": "bun run --filter frontend dev",
+    "dev:worker": "wrangler dev",
+    "dev:frontend": "vite",
     "dev": "bun run dev:worker & bun run dev:frontend",
-    "build:worker": "bun run --filter worker build",
-    "build:frontend": "bun run --filter frontend build",
-    "build": "bun run build:worker && bun run build:frontend"
+    "build:worker": "tsc --noEmit -p tsconfig.worker.json",
+    "build:frontend": "tsc --noEmit -p tsconfig.frontend.json && vite build",
+    "build": "bun run build:worker && bun run build:frontend",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "hono": "^4.7.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250121.0",
     "@commitlint/cli": "^20.3.1",
-    "@commitlint/config-conventional": "^20.3.1"
+    "@commitlint/config-conventional": "^20.3.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0",
+    "wrangler": "^3.105.0"
   }
 }

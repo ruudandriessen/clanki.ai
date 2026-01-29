@@ -1,4 +1,0 @@
-name = "clanki-worker"
-main = "src/index.ts"
-compatibility_date = "2025-01-29"
-compatibility_flags = ["nodejs_compat"]
