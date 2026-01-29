@@ -9,5 +9,9 @@
     "build:worker": "bun run --filter worker build",
     "build:frontend": "bun run --filter frontend build",
     "build": "bun run build:worker && bun run build:frontend"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.3.1",
+    "@commitlint/config-conventional": "^20.3.1"
   }
 }
