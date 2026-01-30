@@ -1,8 +1,4 @@
-import {
-  createRouter,
-  createRoute,
-  createRootRoute,
-} from "@tanstack/react-router";
+import { createRouter, createRoute, createRootRoute } from "@tanstack/react-router";
 import { Layout } from "./components/layout";
 import { GraphPage } from "./pages/graph-page";
 import { GroupDetailPage } from "./pages/group-page";

@@ -15,9 +15,7 @@ export function GraphPage() {
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 md:px-6 py-3 md:py-4 border-b border-border shrink-0">
-        <h2 className="text-base md:text-lg font-semibold">
-          Architecture Graph
-        </h2>
+        <h2 className="text-base md:text-lg font-semibold">Architecture Graph</h2>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs md:text-sm text-muted-foreground mt-0.5">
           <span>{data.groups.length} groups</span>
           <span>&middot;</span>

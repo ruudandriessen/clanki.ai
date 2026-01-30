@@ -10,8 +10,7 @@ export interface GroupNodeData {
 }
 
 export function GroupNode({ data }: NodeProps) {
-  const { label, fileCount, color, description } =
-    data as unknown as GroupNodeData;
+  const { label, fileCount, color, description } = data as unknown as GroupNodeData;
 
   return (
     <div

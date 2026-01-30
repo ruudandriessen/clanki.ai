@@ -25,210 +25,142 @@
     {
       "from": "frontend/src/components/layout.tsx",
       "to": "frontend/src/lib/graph-data.ts",
-      "symbols": [
-        "loadGraphData",
-        "GraphDataContext",
-        "useGraphData"
-      ]
+      "symbols": ["loadGraphData", "GraphDataContext", "useGraphData"]
     },
     {
       "from": "frontend/src/components/layout.tsx",
       "to": "frontend/src/lib/graph-data.ts",
-      "symbols": [
-        "GraphData"
-      ]
+      "symbols": ["GraphData"]
     },
     {
       "from": "frontend/src/components/graph-view.tsx",
       "to": "frontend/src/components/group-node.tsx",
-      "symbols": [
-        "GroupNode"
-      ]
+      "symbols": ["GroupNode"]
     },
     {
       "from": "frontend/src/components/graph-view.tsx",
       "to": "frontend/src/lib/graph-data.ts",
-      "symbols": [
-        "GraphData"
-      ]
+      "symbols": ["GraphData"]
     },
     {
       "from": "frontend/src/pages/graph-page.tsx",
       "to": "frontend/src/lib/graph-data.ts",
-      "symbols": [
-        "useGraphData"
-      ]
+      "symbols": ["useGraphData"]
     },
     {
       "from": "frontend/src/pages/graph-page.tsx",
       "to": "frontend/src/components/graph-view.tsx",
-      "symbols": [
-        "GraphView"
-      ]
+      "symbols": ["GraphView"]
     },
     {
       "from": "frontend/src/pages/group-page.tsx",
       "to": "frontend/src/lib/graph-data.ts",
-      "symbols": [
-        "useGraphData"
-      ]
+      "symbols": ["useGraphData"]
     },
     {
       "from": "frontend/src/router.tsx",
       "to": "frontend/src/components/layout.tsx",
-      "symbols": [
-        "Layout"
-      ]
+      "symbols": ["Layout"]
     },
     {
       "from": "frontend/src/router.tsx",
       "to": "frontend/src/pages/graph-page.tsx",
-      "symbols": [
-        "GraphPage"
-      ]
+      "symbols": ["GraphPage"]
     },
     {
       "from": "frontend/src/router.tsx",
       "to": "frontend/src/pages/group-page.tsx",
-      "symbols": [
-        "GroupDetailPage"
-      ]
+      "symbols": ["GroupDetailPage"]
     },
     {
       "from": "frontend/src/main.tsx",
       "to": "frontend/src/router.tsx",
-      "symbols": [
-        "router"
-      ]
+      "symbols": ["router"]
     },
     {
       "from": "graph/src/heuristics.ts",
       "to": "graph/src/types.ts",
-      "symbols": [
-        "GroupDefinition"
-      ]
+      "symbols": ["GroupDefinition"]
     },
     {
       "from": "graph/src/classify.ts",
       "to": "graph/src/types.ts",
-      "symbols": [
-        "GroupConfig",
-        "FileClassification",
-        "ClassificationResult"
-      ]
+      "symbols": ["GroupConfig", "FileClassification", "ClassificationResult"]
     },
     {
       "from": "graph/src/classify.ts",
       "to": "graph/src/heuristics.ts",
-      "symbols": [
-        "bestGroup"
-      ]
+      "symbols": ["bestGroup"]
     },
     {
       "from": "graph/src/extract.ts",
       "to": "graph/src/types.ts",
-      "symbols": [
-        "FileEdge"
-      ]
+      "symbols": ["FileEdge"]
     },
     {
       "from": "graph/src/cli.ts",
       "to": "graph/src/extract.ts",
-      "symbols": [
-        "extractFileGraph"
-      ]
+      "symbols": ["extractFileGraph"]
     },
     {
       "from": "graph/src/config.ts",
       "to": "graph/src/types.ts",
-      "symbols": [
-        "GroupConfig",
-        "GroupDefinition",
-        "GroupOverride"
-      ]
+      "symbols": ["GroupConfig", "GroupDefinition", "GroupOverride"]
     },
     {
       "from": "graph/src/group-graph.ts",
       "to": "graph/src/types.ts",
-      "symbols": [
-        "FileEdge",
-        "ClassificationResult",
-        "GroupEdge"
-      ]
+      "symbols": ["FileEdge", "ClassificationResult", "GroupEdge"]
     },
     {
       "from": "graph/src/generate-data.ts",
       "to": "graph/src/extract.ts",
-      "symbols": [
-        "extractFileGraph"
-      ]
+      "symbols": ["extractFileGraph"]
     },
     {
       "from": "graph/src/generate-data.ts",
       "to": "graph/src/config.ts",
-      "symbols": [
-        "loadGroupConfig"
-      ]
+      "symbols": ["loadGroupConfig"]
     },
     {
       "from": "graph/src/generate-data.ts",
       "to": "graph/src/classify.ts",
-      "symbols": [
-        "classifyFiles"
-      ]
+      "symbols": ["classifyFiles"]
     },
     {
       "from": "graph/src/generate-data.ts",
       "to": "graph/src/group-graph.ts",
-      "symbols": [
-        "buildGroupGraph"
-      ]
+      "symbols": ["buildGroupGraph"]
     },
     {
       "from": "graph/src/index.ts",
       "to": "graph/src/extract.ts",
-      "symbols": [
-        "extractFileGraph"
-      ]
+      "symbols": ["extractFileGraph"]
     },
     {
       "from": "graph/src/index.ts",
       "to": "graph/src/config.ts",
-      "symbols": [
-        "loadGroupConfig",
-        "parseGroupConfig"
-      ]
+      "symbols": ["loadGroupConfig", "parseGroupConfig"]
     },
     {
       "from": "graph/src/index.ts",
       "to": "graph/src/classify.ts",
-      "symbols": [
-        "classifyFiles"
-      ]
+      "symbols": ["classifyFiles"]
     },
     {
       "from": "graph/src/index.ts",
       "to": "graph/src/classify.ts",
-      "symbols": [
-        "ClassifyOptions"
-      ]
+      "symbols": ["ClassifyOptions"]
     },
     {
       "from": "graph/src/index.ts",
       "to": "graph/src/heuristics.ts",
-      "symbols": [
-        "tagsForFile",
-        "tagsForGroup",
-        "scoreMatch",
-        "bestGroup"
-      ]
+      "symbols": ["tagsForFile", "tagsForGroup", "scoreMatch", "bestGroup"]
     },
     {
       "from": "graph/src/index.ts",
       "to": "graph/src/group-graph.ts",
-      "symbols": [
-        "buildGroupGraph"
-      ]
+      "symbols": ["buildGroupGraph"]
     },
     {
       "from": "graph/src/index.ts",

@@ -2,11 +2,7 @@ import { useState, useEffect } from "react";
 import { Outlet, Link, useRouterState } from "@tanstack/react-router";
 import { LayoutDashboard, GitBranch, Menu, X } from "lucide-react";
 import { cn } from "../lib/utils";
-import {
-  loadGraphData,
-  GraphDataContext,
-  useGraphData,
-} from "../lib/graph-data";
+import { loadGraphData, GraphDataContext, useGraphData } from "../lib/graph-data";
 import type { GraphData } from "../lib/graph-data";
 
 const GROUP_COLORS: Record<string, string> = {
@@ -24,12 +20,8 @@ function Sidebar({ onClose }: { onClose: () => void }) {
     <div className="flex flex-col h-full">
       <div className="p-6 border-b border-border flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold text-foreground tracking-tight">
-            Clanki
-          </h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Architecture Explorer
-          </p>
+          <h1 className="text-lg font-bold text-foreground tracking-tight">Clanki</h1>
+          <p className="text-xs text-muted-foreground mt-1">Architecture Explorer</p>
         </div>
         <button
           className="md:hidden p-1 rounded-md hover:bg-accent text-muted-foreground"
@@ -45,8 +37,7 @@ function Sidebar({ onClose }: { onClose: () => void }) {
           activeOptions={{ exact: true }}
           activeProps={{ className: "bg-accent text-accent-foreground" }}
           inactiveProps={{
-            className:
-              "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+            className: "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
           }}
           className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors"
         >
@@ -66,8 +57,7 @@ function Sidebar({ onClose }: { onClose: () => void }) {
                 params={{ name: g.name }}
                 activeProps={{ className: "bg-accent text-accent-foreground" }}
                 inactiveProps={{
-                  className:
-                    "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                  className: "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                 }}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors"
               >
@@ -115,9 +105,7 @@ export function Layout() {
         <div
           className={cn(
             "fixed inset-0 bg-black/50 z-40 transition-opacity md:hidden",
-            sidebarOpen
-              ? "opacity-100"
-              : "opacity-0 pointer-events-none",
+            sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none",
           )}
           onClick={() => setSidebarOpen(false)}
         />

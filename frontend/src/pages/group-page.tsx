@@ -17,35 +17,32 @@ export function GroupDetailPage() {
   const { name } = route.useParams();
   const data = useGraphData();
 
-  const { group, files, outgoing, incoming, fileEdgesOut, fileEdgesIn } =
-    useMemo(() => {
-      if (!data)
-        return {
-          group: null,
-          files: [],
-          outgoing: [],
-          incoming: [],
-          fileEdgesOut: [],
-          fileEdgesIn: [],
-        };
+  const { group, files, outgoing, incoming, fileEdgesOut, fileEdgesIn } = useMemo(() => {
+    if (!data)
+      return {
+        group: null,
+        files: [],
+        outgoing: [],
+        incoming: [],
+        fileEdgesOut: [],
+        fileEdgesIn: [],
+      };
 
-      const group = data.groups.find((g) => g.name === name) || null;
-      const files = data.classifications.filter((c) => c.group === name);
-      const outgoing = data.groupEdges.filter((e) => e.from === name);
-      const incoming = data.groupEdges.filter((e) => e.to === name);
+    const group = data.groups.find((g) => g.name === name) || null;
+    const files = data.classifications.filter((c) => c.group === name);
+    const outgoing = data.groupEdges.filter((e) => e.from === name);
+    const incoming = data.groupEdges.filter((e) => e.to === name);
 
-      const classMap = new Map(
-        data.classifications.map((c) => [c.file, c.group]),
-      );
-      const fileEdgesOut = data.fileEdges.filter(
-        (e) => classMap.get(e.from) === name && classMap.get(e.to) !== name,
-      );
-      const fileEdgesIn = data.fileEdges.filter(
-        (e) => classMap.get(e.to) === name && classMap.get(e.from) !== name,
-      );
+    const classMap = new Map(data.classifications.map((c) => [c.file, c.group]));
+    const fileEdgesOut = data.fileEdges.filter(
+      (e) => classMap.get(e.from) === name && classMap.get(e.to) !== name,
+    );
+    const fileEdgesIn = data.fileEdges.filter(
+      (e) => classMap.get(e.to) === name && classMap.get(e.from) !== name,
+    );
 
-      return { group, files, outgoing, incoming, fileEdgesOut, fileEdgesIn };
-    }, [data, name]);
+    return { group, files, outgoing, incoming, fileEdgesOut, fileEdgesIn };
+  }, [data, name]);
 
   if (!data) {
     return (
@@ -70,15 +67,10 @@ export function GroupDetailPage() {
       {/* Header */}
       <div className="px-4 md:px-6 py-4 md:py-5 border-b border-border">
         <div className="flex items-center gap-3">
-          <span
-            className="w-3 h-3 rounded-full shrink-0"
-            style={{ backgroundColor: color }}
-          />
+          <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
           <h2 className="text-lg md:text-xl font-semibold">{name}</h2>
         </div>
-        <p className="text-sm text-muted-foreground mt-1 ml-6">
-          {group.description}
-        </p>
+        <p className="text-sm text-muted-foreground mt-1 ml-6">{group.description}</p>
       </div>
 
       <div className="p-4 md:p-6 space-y-6 md:space-y-8">
@@ -94,9 +86,7 @@ export function GroupDetailPage() {
                 className={`flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 text-sm min-w-0 ${i > 0 ? "border-t border-border" : ""}`}
               >
                 <FileCode2 className="w-4 h-4 text-muted-foreground shrink-0 hidden sm:block" />
-                <span className="font-mono text-xs truncate min-w-0">
-                  {f.file}
-                </span>
+                <span className="font-mono text-xs truncate min-w-0">{f.file}</span>
                 <span
                   className="ml-auto text-[10px] px-2 py-0.5 rounded-full uppercase font-medium shrink-0"
                   style={{ backgroundColor: color + "15", color }}
@@ -117,10 +107,7 @@ export function GroupDetailPage() {
             </h3>
             <div className="space-y-3">
               {outgoing.map((e) => (
-                <div
-                  key={e.to}
-                  className="rounded-lg border border-border p-3 md:p-4"
-                >
+                <div key={e.to} className="rounded-lg border border-border p-3 md:p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Link
                       to="/group/$name"
@@ -130,9 +117,7 @@ export function GroupDetailPage() {
                     >
                       {e.to}
                     </Link>
-                    <span className="text-xs text-muted-foreground">
-                      {e.weight} edges
-                    </span>
+                    <span className="text-xs text-muted-foreground">{e.weight} edges</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {e.symbols.map((s) => (
@@ -159,10 +144,7 @@ export function GroupDetailPage() {
             </h3>
             <div className="space-y-3">
               {incoming.map((e) => (
-                <div
-                  key={e.from}
-                  className="rounded-lg border border-border p-3 md:p-4"
-                >
+                <div key={e.from} className="rounded-lg border border-border p-3 md:p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Link
                       to="/group/$name"
@@ -172,9 +154,7 @@ export function GroupDetailPage() {
                     >
                       {e.from}
                     </Link>
-                    <span className="text-xs text-muted-foreground">
-                      {e.weight} edges
-                    </span>
+                    <span className="text-xs text-muted-foreground">{e.weight} edges</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {e.symbols.map((s) => (
@@ -205,17 +185,11 @@ export function GroupDetailPage() {
                   className={`px-3 md:px-4 py-2 md:py-2.5 text-xs font-mono ${i > 0 ? "border-t border-border" : ""}`}
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-foreground truncate min-w-0">
-                      {e.from}
-                    </span>
+                    <span className="text-foreground truncate min-w-0">{e.from}</span>
                     <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="text-muted-foreground truncate min-w-0">
-                      {e.to}
-                    </span>
+                    <span className="text-muted-foreground truncate min-w-0">{e.to}</span>
                   </div>
-                  <div className="text-muted-foreground mt-1 truncate">
-                    {e.symbols.join(", ")}
-                  </div>
+                  <div className="text-muted-foreground mt-1 truncate">{e.symbols.join(", ")}</div>
                 </div>
               ))}
               {fileEdgesIn.map((e, i) => (
@@ -224,17 +198,11 @@ export function GroupDetailPage() {
                   className={`px-3 md:px-4 py-2 md:py-2.5 text-xs font-mono ${fileEdgesOut.length > 0 || i > 0 ? "border-t border-border" : ""}`}
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-muted-foreground truncate min-w-0">
-                      {e.from}
-                    </span>
+                    <span className="text-muted-foreground truncate min-w-0">{e.from}</span>
                     <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="text-foreground truncate min-w-0">
-                      {e.to}
-                    </span>
+                    <span className="text-foreground truncate min-w-0">{e.to}</span>
                   </div>
-                  <div className="text-muted-foreground mt-1 truncate">
-                    {e.symbols.join(", ")}
-                  </div>
+                  <div className="text-muted-foreground mt-1 truncate">{e.symbols.join(", ")}</div>
                 </div>
               ))}
             </div>
