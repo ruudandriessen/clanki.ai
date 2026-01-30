@@ -12,6 +12,8 @@
     "build": "bun run build:worker && bun run build:frontend && bun run build:graph",
     "graph": "bun graph/src/cli.ts",
     "graph:data": "bun graph/src/generate-data.ts",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
     "test": "bun test",
     "deploy": "wrangler deploy"
   },
