@@ -1,0 +1,380 @@
+{
+  "groups": [
+    {
+      "name": "UI",
+      "description": "React frontend components and pages"
+    },
+    {
+      "name": "API",
+      "description": "HTTP API handlers and worker middleware"
+    },
+    {
+      "name": "Graph Extraction",
+      "description": "TypeScript import graph parsing and group dependency analysis"
+    },
+    {
+      "name": "Classification",
+      "description": "File classification, heuristics, and group configuration"
+    },
+    {
+      "name": "Types",
+      "description": "Shared type definitions and interfaces"
+    }
+  ],
+  "fileEdges": [
+    {
+      "from": "frontend/src/components/layout.tsx",
+      "to": "frontend/src/lib/graph-data.ts",
+      "symbols": [
+        "loadGraphData",
+        "GraphDataContext",
+        "useGraphData"
+      ]
+    },
+    {
+      "from": "frontend/src/components/layout.tsx",
+      "to": "frontend/src/lib/graph-data.ts",
+      "symbols": [
+        "GraphData"
+      ]
+    },
+    {
+      "from": "frontend/src/components/graph-view.tsx",
+      "to": "frontend/src/components/group-node.tsx",
+      "symbols": [
+        "GroupNode"
+      ]
+    },
+    {
+      "from": "frontend/src/components/graph-view.tsx",
+      "to": "frontend/src/lib/graph-data.ts",
+      "symbols": [
+        "GraphData"
+      ]
+    },
+    {
+      "from": "frontend/src/pages/graph-page.tsx",
+      "to": "frontend/src/lib/graph-data.ts",
+      "symbols": [
+        "useGraphData"
+      ]
+    },
+    {
+      "from": "frontend/src/pages/graph-page.tsx",
+      "to": "frontend/src/components/graph-view.tsx",
+      "symbols": [
+        "GraphView"
+      ]
+    },
+    {
+      "from": "frontend/src/pages/group-page.tsx",
+      "to": "frontend/src/lib/graph-data.ts",
+      "symbols": [
+        "useGraphData"
+      ]
+    },
+    {
+      "from": "frontend/src/router.tsx",
+      "to": "frontend/src/components/layout.tsx",
+      "symbols": [
+        "Layout"
+      ]
+    },
+    {
+      "from": "frontend/src/router.tsx",
+      "to": "frontend/src/pages/graph-page.tsx",
+      "symbols": [
+        "GraphPage"
+      ]
+    },
+    {
+      "from": "frontend/src/router.tsx",
+      "to": "frontend/src/pages/group-page.tsx",
+      "symbols": [
+        "GroupDetailPage"
+      ]
+    },
+    {
+      "from": "frontend/src/main.tsx",
+      "to": "frontend/src/router.tsx",
+      "symbols": [
+        "router"
+      ]
+    },
+    {
+      "from": "graph/src/heuristics.ts",
+      "to": "graph/src/types.ts",
+      "symbols": [
+        "GroupDefinition"
+      ]
+    },
+    {
+      "from": "graph/src/classify.ts",
+      "to": "graph/src/types.ts",
+      "symbols": [
+        "GroupConfig",
+        "FileClassification",
+        "ClassificationResult"
+      ]
+    },
+    {
+      "from": "graph/src/classify.ts",
+      "to": "graph/src/heuristics.ts",
+      "symbols": [
+        "bestGroup"
+      ]
+    },
+    {
+      "from": "graph/src/extract.ts",
+      "to": "graph/src/types.ts",
+      "symbols": [
+        "FileEdge"
+      ]
+    },
+    {
+      "from": "graph/src/cli.ts",
+      "to": "graph/src/extract.ts",
+      "symbols": [
+        "extractFileGraph"
+      ]
+    },
+    {
+      "from": "graph/src/config.ts",
+      "to": "graph/src/types.ts",
+      "symbols": [
+        "GroupConfig",
+        "GroupDefinition",
+        "GroupOverride"
+      ]
+    },
+    {
+      "from": "graph/src/group-graph.ts",
+      "to": "graph/src/types.ts",
+      "symbols": [
+        "FileEdge",
+        "ClassificationResult",
+        "GroupEdge"
+      ]
+    },
+    {
+      "from": "graph/src/generate-data.ts",
+      "to": "graph/src/extract.ts",
+      "symbols": [
+        "extractFileGraph"
+      ]
+    },
+    {
+      "from": "graph/src/generate-data.ts",
+      "to": "graph/src/config.ts",
+      "symbols": [
+        "loadGroupConfig"
+      ]
+    },
+    {
+      "from": "graph/src/generate-data.ts",
+      "to": "graph/src/classify.ts",
+      "symbols": [
+        "classifyFiles"
+      ]
+    },
+    {
+      "from": "graph/src/generate-data.ts",
+      "to": "graph/src/group-graph.ts",
+      "symbols": [
+        "buildGroupGraph"
+      ]
+    },
+    {
+      "from": "graph/src/index.ts",
+      "to": "graph/src/extract.ts",
+      "symbols": [
+        "extractFileGraph"
+      ]
+    },
+    {
+      "from": "graph/src/index.ts",
+      "to": "graph/src/config.ts",
+      "symbols": [
+        "loadGroupConfig",
+        "parseGroupConfig"
+      ]
+    },
+    {
+      "from": "graph/src/index.ts",
+      "to": "graph/src/classify.ts",
+      "symbols": [
+        "classifyFiles"
+      ]
+    },
+    {
+      "from": "graph/src/index.ts",
+      "to": "graph/src/classify.ts",
+      "symbols": [
+        "ClassifyOptions"
+      ]
+    },
+    {
+      "from": "graph/src/index.ts",
+      "to": "graph/src/heuristics.ts",
+      "symbols": [
+        "tagsForFile",
+        "tagsForGroup",
+        "scoreMatch",
+        "bestGroup"
+      ]
+    },
+    {
+      "from": "graph/src/index.ts",
+      "to": "graph/src/group-graph.ts",
+      "symbols": [
+        "buildGroupGraph"
+      ]
+    },
+    {
+      "from": "graph/src/index.ts",
+      "to": "graph/src/types.ts",
+      "symbols": [
+        "FileEdge",
+        "GroupDefinition",
+        "GroupOverride",
+        "GroupConfig",
+        "ClassificationStrategy",
+        "FileClassification",
+        "ClassificationResult",
+        "GroupEdge"
+      ]
+    }
+  ],
+  "classifications": [
+    {
+      "file": "frontend/src/components/layout.tsx",
+      "group": "UI",
+      "strategy": "override"
+    },
+    {
+      "file": "frontend/src/lib/graph-data.ts",
+      "group": "UI",
+      "strategy": "override"
+    },
+    {
+      "file": "frontend/src/components/graph-view.tsx",
+      "group": "UI",
+      "strategy": "override"
+    },
+    {
+      "file": "frontend/src/components/group-node.tsx",
+      "group": "UI",
+      "strategy": "override"
+    },
+    {
+      "file": "frontend/src/pages/graph-page.tsx",
+      "group": "UI",
+      "strategy": "override"
+    },
+    {
+      "file": "frontend/src/pages/group-page.tsx",
+      "group": "UI",
+      "strategy": "override"
+    },
+    {
+      "file": "frontend/src/router.tsx",
+      "group": "UI",
+      "strategy": "override"
+    },
+    {
+      "file": "frontend/src/main.tsx",
+      "group": "UI",
+      "strategy": "override"
+    },
+    {
+      "file": "graph/src/heuristics.ts",
+      "group": "Classification",
+      "strategy": "override"
+    },
+    {
+      "file": "graph/src/types.ts",
+      "group": "Types",
+      "strategy": "override"
+    },
+    {
+      "file": "graph/src/classify.ts",
+      "group": "Classification",
+      "strategy": "override"
+    },
+    {
+      "file": "graph/src/extract.ts",
+      "group": "Graph Extraction",
+      "strategy": "override"
+    },
+    {
+      "file": "graph/src/cli.ts",
+      "group": "Graph Extraction",
+      "strategy": "override"
+    },
+    {
+      "file": "graph/src/config.ts",
+      "group": "Classification",
+      "strategy": "override"
+    },
+    {
+      "file": "graph/src/group-graph.ts",
+      "group": "Graph Extraction",
+      "strategy": "override"
+    },
+    {
+      "file": "graph/src/generate-data.ts",
+      "group": "Graph Extraction",
+      "strategy": "override"
+    },
+    {
+      "file": "graph/src/index.ts",
+      "group": "Graph Extraction",
+      "strategy": "override"
+    }
+  ],
+  "unclassified": [],
+  "groupEdges": [
+    {
+      "from": "Classification",
+      "to": "Types",
+      "weight": 3,
+      "symbols": [
+        "ClassificationResult",
+        "FileClassification",
+        "GroupConfig",
+        "GroupDefinition",
+        "GroupOverride"
+      ]
+    },
+    {
+      "from": "Graph Extraction",
+      "to": "Classification",
+      "weight": 6,
+      "symbols": [
+        "ClassifyOptions",
+        "bestGroup",
+        "classifyFiles",
+        "loadGroupConfig",
+        "parseGroupConfig",
+        "scoreMatch",
+        "tagsForFile",
+        "tagsForGroup"
+      ]
+    },
+    {
+      "from": "Graph Extraction",
+      "to": "Types",
+      "weight": 3,
+      "symbols": [
+        "ClassificationResult",
+        "ClassificationStrategy",
+        "FileClassification",
+        "FileEdge",
+        "GroupConfig",
+        "GroupDefinition",
+        "GroupEdge",
+        "GroupOverride"
+      ]
+    }
+  ]
+}
