@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Outlet, Link } from "@tanstack/react-router";
-import { LayoutDashboard, GitBranch } from "lucide-react";
+import { Outlet, Link, useRouterState } from "@tanstack/react-router";
+import { LayoutDashboard, GitBranch, Menu, X } from "lucide-react";
+import { cn } from "../lib/utils";
 import {
   loadGraphData,
   GraphDataContext,
@@ -16,18 +17,26 @@ const GROUP_COLORS: Record<string, string> = {
   Types: "#ec4899",
 };
 
-function Sidebar() {
+function Sidebar({ onClose }: { onClose: () => void }) {
   const data = useGraphData();
 
   return (
-    <aside className="w-64 border-r border-border bg-card flex flex-col shrink-0">
-      <div className="p-6 border-b border-border">
-        <h1 className="text-lg font-bold text-foreground tracking-tight">
-          Clanki
-        </h1>
-        <p className="text-xs text-muted-foreground mt-1">
-          Architecture Explorer
-        </p>
+    <div className="flex flex-col h-full">
+      <div className="p-6 border-b border-border flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-bold text-foreground tracking-tight">
+            Clanki
+          </h1>
+          <p className="text-xs text-muted-foreground mt-1">
+            Architecture Explorer
+          </p>
+        </div>
+        <button
+          className="md:hidden p-1 rounded-md hover:bg-accent text-muted-foreground"
+          onClick={onClose}
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
@@ -81,24 +90,66 @@ function Sidebar() {
           {data.classifications.length} files · {data.groupEdges.length} deps
         </div>
       )}
-    </aside>
+    </div>
   );
 }
 
 export function Layout() {
   const [data, setData] = useState<GraphData | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   useEffect(() => {
     loadGraphData().then(setData);
   }, []);
 
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
   return (
     <GraphDataContext.Provider value={data}>
       <div className="flex h-screen bg-background text-foreground">
-        <Sidebar />
-        <main className="flex-1 overflow-hidden">
-          <Outlet />
-        </main>
+        {/* Mobile backdrop */}
+        <div
+          className={cn(
+            "fixed inset-0 bg-black/50 z-40 transition-opacity md:hidden",
+            sidebarOpen
+              ? "opacity-100"
+              : "opacity-0 pointer-events-none",
+          )}
+          onClick={() => setSidebarOpen(false)}
+        />
+
+        {/* Sidebar */}
+        <div
+          className={cn(
+            "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transition-transform duration-200 ease-in-out",
+            "md:relative md:translate-x-0",
+            sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          )}
+        >
+          <Sidebar onClose={() => setSidebarOpen(false)} />
+        </div>
+
+        {/* Main content */}
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          {/* Mobile header */}
+          <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
+            <button
+              className="p-1 rounded-md hover:bg-accent text-muted-foreground"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <span className="font-semibold text-sm">Clanki</span>
+          </div>
+
+          <main className="flex-1 overflow-hidden">
+            <Outlet />
+          </main>
+        </div>
       </div>
     </GraphDataContext.Provider>
   );

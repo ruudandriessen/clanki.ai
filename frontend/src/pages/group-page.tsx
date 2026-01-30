@@ -68,20 +68,20 @@ export function GroupDetailPage() {
   return (
     <div className="h-full overflow-y-auto">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-border">
+      <div className="px-4 md:px-6 py-4 md:py-5 border-b border-border">
         <div className="flex items-center gap-3">
           <span
-            className="w-3 h-3 rounded-full"
+            className="w-3 h-3 rounded-full shrink-0"
             style={{ backgroundColor: color }}
           />
-          <h2 className="text-xl font-semibold">{name}</h2>
+          <h2 className="text-lg md:text-xl font-semibold">{name}</h2>
         </div>
         <p className="text-sm text-muted-foreground mt-1 ml-6">
           {group.description}
         </p>
       </div>
 
-      <div className="p-6 space-y-8">
+      <div className="p-4 md:p-6 space-y-6 md:space-y-8">
         {/* Files */}
         <section>
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
@@ -91,10 +91,12 @@ export function GroupDetailPage() {
             {files.map((f, i) => (
               <div
                 key={f.file}
-                className={`flex items-center gap-3 px-4 py-2.5 text-sm ${i > 0 ? "border-t border-border" : ""}`}
+                className={`flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 text-sm min-w-0 ${i > 0 ? "border-t border-border" : ""}`}
               >
-                <FileCode2 className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span className="font-mono text-xs">{f.file}</span>
+                <FileCode2 className="w-4 h-4 text-muted-foreground shrink-0 hidden sm:block" />
+                <span className="font-mono text-xs truncate min-w-0">
+                  {f.file}
+                </span>
                 <span
                   className="ml-auto text-[10px] px-2 py-0.5 rounded-full uppercase font-medium shrink-0"
                   style={{ backgroundColor: color + "15", color }}
@@ -117,7 +119,7 @@ export function GroupDetailPage() {
               {outgoing.map((e) => (
                 <div
                   key={e.to}
-                  className="rounded-lg border border-border p-4"
+                  className="rounded-lg border border-border p-3 md:p-4"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Link
@@ -159,7 +161,7 @@ export function GroupDetailPage() {
               {incoming.map((e) => (
                 <div
                   key={e.from}
-                  className="rounded-lg border border-border p-4"
+                  className="rounded-lg border border-border p-3 md:p-4"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Link
@@ -200,31 +202,39 @@ export function GroupDetailPage() {
               {fileEdgesOut.map((e, i) => (
                 <div
                   key={`out-${i}`}
-                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-mono ${i > 0 ? "border-t border-border" : ""}`}
+                  className={`px-3 md:px-4 py-2 md:py-2.5 text-xs font-mono ${i > 0 ? "border-t border-border" : ""}`}
                 >
-                  <span className="text-foreground truncate">{e.from}</span>
-                  <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
-                  <span className="text-muted-foreground truncate">
-                    {e.to}
-                  </span>
-                  <span className="ml-auto text-muted-foreground shrink-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-foreground truncate min-w-0">
+                      {e.from}
+                    </span>
+                    <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground truncate min-w-0">
+                      {e.to}
+                    </span>
+                  </div>
+                  <div className="text-muted-foreground mt-1 truncate">
                     {e.symbols.join(", ")}
-                  </span>
+                  </div>
                 </div>
               ))}
               {fileEdgesIn.map((e, i) => (
                 <div
                   key={`in-${i}`}
-                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-mono ${fileEdgesOut.length > 0 || i > 0 ? "border-t border-border" : ""}`}
+                  className={`px-3 md:px-4 py-2 md:py-2.5 text-xs font-mono ${fileEdgesOut.length > 0 || i > 0 ? "border-t border-border" : ""}`}
                 >
-                  <span className="text-muted-foreground truncate">
-                    {e.from}
-                  </span>
-                  <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
-                  <span className="text-foreground truncate">{e.to}</span>
-                  <span className="ml-auto text-muted-foreground shrink-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-muted-foreground truncate min-w-0">
+                      {e.from}
+                    </span>
+                    <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <span className="text-foreground truncate min-w-0">
+                      {e.to}
+                    </span>
+                  </div>
+                  <div className="text-muted-foreground mt-1 truncate">
                     {e.symbols.join(", ")}
-                  </span>
+                  </div>
                 </div>
               ))}
             </div>
