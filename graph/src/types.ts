@@ -73,3 +73,24 @@ export interface ClassificationResult {
   /** Absolute paths of files that no heuristic could confidently classify. */
   unclassified: string[];
 }
+
+// ---------------------------------------------------------------------------
+// Phase 3: Group-Level Dependency Graph
+// ---------------------------------------------------------------------------
+
+/**
+ * A directed edge between two groups in the collapsed dependency graph.
+ *
+ * Created by aggregating file-level edges: for each {@link FileEdge} where
+ * `group(from) ≠ group(to)`, the corresponding group edge is incremented.
+ */
+export interface GroupEdge {
+  /** Name of the group that contains the importing file. */
+  from: string;
+  /** Name of the group that contains the imported file. */
+  to: string;
+  /** Number of file-level edges contributing to this group edge. */
+  weight: number;
+  /** Deduplicated symbols crossing this group boundary. */
+  symbols: string[];
+}
