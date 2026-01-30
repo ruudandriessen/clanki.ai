@@ -12,11 +12,7 @@ const projectRoot = path.resolve(import.meta.dir, "../..");
 const config = loadGroupConfig(path.join(projectRoot, "groups.yml"));
 
 // Extract file edges from all tsconfigs
-const tsconfigs = [
-  "tsconfig.frontend.json",
-  "tsconfig.worker.json",
-  "tsconfig.graph.json",
-];
+const tsconfigs = ["tsconfig.frontend.json", "tsconfig.worker.json", "tsconfig.graph.json"];
 
 const allEdges = [];
 for (const tsconfig of tsconfigs) {
@@ -63,10 +59,7 @@ const output = {
 // Write to frontend public dir
 const outputDir = path.join(projectRoot, "frontend", "public");
 fs.mkdirSync(outputDir, { recursive: true });
-fs.writeFileSync(
-  path.join(outputDir, "graph-data.json"),
-  JSON.stringify(output, null, 2),
-);
+fs.writeFileSync(path.join(outputDir, "graph-data.json"), JSON.stringify(output, null, 2));
 
 console.log(`\nGenerated frontend/public/graph-data.json`);
 console.log(`  ${output.fileEdges.length} file edges`);

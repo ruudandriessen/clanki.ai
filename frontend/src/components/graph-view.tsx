@@ -1,12 +1,5 @@
 import { useCallback, useMemo } from "react";
-import {
-  ReactFlow,
-  Background,
-  Controls,
-  MarkerType,
-  type Node,
-  type Edge,
-} from "@xyflow/react";
+import { ReactFlow, Background, Controls, MarkerType, type Node, type Edge } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useNavigate } from "@tanstack/react-router";
 import { GroupNode } from "./group-node";
