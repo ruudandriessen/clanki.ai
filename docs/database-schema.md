@@ -6,11 +6,11 @@ Storage layer for persisting graph extraction results using Cloudflare D1 (SQLit
 
 ## Technology Choice
 
-| | Choice | Rationale |
-|---|---|---|
-| **Database** | Cloudflare D1 | SQLite at the edge, zero-config, native Workers binding |
-| **ORM** | Drizzle | Lightweight, first-class D1 support, typed queries, generates migrations |
-| **IDs** | Text (nanoid) | URL-friendly, no enumeration, portable across environments |
+|              | Choice        | Rationale                                                                |
+| ------------ | ------------- | ------------------------------------------------------------------------ |
+| **Database** | Cloudflare D1 | SQLite at the edge, zero-config, native Workers binding                  |
+| **ORM**      | Drizzle       | Lightweight, first-class D1 support, typed queries, generates migrations |
+| **IDs**      | Text (nanoid) | URL-friendly, no enumeration, portable across environments               |
 
 ---
 
@@ -20,13 +20,13 @@ Storage layer for persisting graph extraction results using Cloudflare D1 (SQLit
 
 A repository or codebase being analysed.
 
-| Column | Type | Constraints | Notes |
-|---|---|---|---|
-| `id` | TEXT | PRIMARY KEY | nanoid |
-| `name` | TEXT | NOT NULL | Display name |
-| `repo_url` | TEXT | | Optional remote URL |
-| `created_at` | INTEGER | NOT NULL | Unix timestamp (ms) |
-| `updated_at` | INTEGER | NOT NULL | Unix timestamp (ms) |
+| Column       | Type    | Constraints | Notes               |
+| ------------ | ------- | ----------- | ------------------- |
+| `id`         | TEXT    | PRIMARY KEY | nanoid              |
+| `name`       | TEXT    | NOT NULL    | Display name        |
+| `repo_url`   | TEXT    |             | Optional remote URL |
+| `created_at` | INTEGER | NOT NULL    | Unix timestamp (ms) |
+| `updated_at` | INTEGER | NOT NULL    | Unix timestamp (ms) |
 
 ---
 
@@ -34,12 +34,12 @@ A repository or codebase being analysed.
 
 User-defined semantic groups for a project. Project-level config — not tied to individual snapshots.
 
-| Column | Type | Constraints | Notes |
-|---|---|---|---|
-| `id` | TEXT | PRIMARY KEY | nanoid |
-| `project_id` | TEXT | NOT NULL, FK → projects(id) ON DELETE CASCADE | |
-| `name` | TEXT | NOT NULL | e.g. "UI Components" |
-| `description` | TEXT | NOT NULL | Used by heuristics and LLM |
+| Column        | Type | Constraints                                   | Notes                      |
+| ------------- | ---- | --------------------------------------------- | -------------------------- |
+| `id`          | TEXT | PRIMARY KEY                                   | nanoid                     |
+| `project_id`  | TEXT | NOT NULL, FK → projects(id) ON DELETE CASCADE |                            |
+| `name`        | TEXT | NOT NULL                                      | e.g. "UI Components"       |
+| `description` | TEXT | NOT NULL                                      | Used by heuristics and LLM |
 
 **Unique:** `(project_id, name)`
 
@@ -49,13 +49,13 @@ User-defined semantic groups for a project. Project-level config — not tied to
 
 Glob patterns pinned to specific groups. Take priority over heuristic and LLM classification.
 
-| Column | Type | Constraints | Notes |
-|---|---|---|---|
-| `id` | TEXT | PRIMARY KEY | nanoid |
-| `project_id` | TEXT | NOT NULL, FK → projects(id) ON DELETE CASCADE | |
-| `pattern` | TEXT | NOT NULL | Glob relative to project root |
-| `group_name` | TEXT | NOT NULL | Must reference a defined group |
-| `priority` | INTEGER | NOT NULL, DEFAULT 0 | Higher = matched first |
+| Column       | Type    | Constraints                                   | Notes                          |
+| ------------ | ------- | --------------------------------------------- | ------------------------------ |
+| `id`         | TEXT    | PRIMARY KEY                                   | nanoid                         |
+| `project_id` | TEXT    | NOT NULL, FK → projects(id) ON DELETE CASCADE |                                |
+| `pattern`    | TEXT    | NOT NULL                                      | Glob relative to project root  |
+| `group_name` | TEXT    | NOT NULL                                      | Must reference a defined group |
+| `priority`   | INTEGER | NOT NULL, DEFAULT 0                           | Higher = matched first         |
 
 ---
 
@@ -63,13 +63,13 @@ Glob patterns pinned to specific groups. Take priority over heuristic and LLM cl
 
 A point-in-time analysis run. Each time the graph extraction pipeline runs for a project, it creates a snapshot. Comparing snapshots enables Phase 6 diff analysis.
 
-| Column | Type | Constraints | Notes |
-|---|---|---|---|
-| `id` | TEXT | PRIMARY KEY | nanoid |
-| `project_id` | TEXT | NOT NULL, FK → projects(id) ON DELETE CASCADE | |
-| `commit_sha` | TEXT | | Git commit hash, nullable |
-| `status` | TEXT | NOT NULL, DEFAULT 'pending' | `pending` · `running` · `completed` · `failed` |
-| `created_at` | INTEGER | NOT NULL | Unix timestamp (ms) |
+| Column       | Type    | Constraints                                   | Notes                                          |
+| ------------ | ------- | --------------------------------------------- | ---------------------------------------------- |
+| `id`         | TEXT    | PRIMARY KEY                                   | nanoid                                         |
+| `project_id` | TEXT    | NOT NULL, FK → projects(id) ON DELETE CASCADE |                                                |
+| `commit_sha` | TEXT    |                                               | Git commit hash, nullable                      |
+| `status`     | TEXT    | NOT NULL, DEFAULT 'pending'                   | `pending` · `running` · `completed` · `failed` |
+| `created_at` | INTEGER | NOT NULL                                      | Unix timestamp (ms)                            |
 
 ---
 
@@ -77,13 +77,13 @@ A point-in-time analysis run. Each time the graph extraction pipeline runs for a
 
 Maps each source file to a group within a snapshot.
 
-| Column | Type | Constraints | Notes |
-|---|---|---|---|
-| `id` | TEXT | PRIMARY KEY | nanoid |
-| `snapshot_id` | TEXT | NOT NULL, FK → snapshots(id) ON DELETE CASCADE | |
-| `file_path` | TEXT | NOT NULL | Relative to project root |
-| `group_name` | TEXT | NOT NULL | Assigned group |
-| `strategy` | TEXT | NOT NULL | `override` · `heuristic` · `llm` · `default` |
+| Column        | Type | Constraints                                    | Notes                                        |
+| ------------- | ---- | ---------------------------------------------- | -------------------------------------------- |
+| `id`          | TEXT | PRIMARY KEY                                    | nanoid                                       |
+| `snapshot_id` | TEXT | NOT NULL, FK → snapshots(id) ON DELETE CASCADE |                                              |
+| `file_path`   | TEXT | NOT NULL                                       | Relative to project root                     |
+| `group_name`  | TEXT | NOT NULL                                       | Assigned group                               |
+| `strategy`    | TEXT | NOT NULL                                       | `override` · `heuristic` · `llm` · `default` |
 
 **Unique:** `(snapshot_id, file_path)`
 
@@ -95,13 +95,13 @@ Maps directly to `FileClassification` in `graph/src/types.ts`. Paths stored rela
 
 Import relationships between source files within a snapshot.
 
-| Column | Type | Constraints | Notes |
-|---|---|---|---|
-| `id` | TEXT | PRIMARY KEY | nanoid |
-| `snapshot_id` | TEXT | NOT NULL, FK → snapshots(id) ON DELETE CASCADE | |
-| `from_file` | TEXT | NOT NULL | Relative path of importing file |
-| `to_file` | TEXT | NOT NULL | Relative path of imported file |
-| `symbols` | TEXT | NOT NULL, DEFAULT '[]' | JSON array of symbol names |
+| Column        | Type | Constraints                                    | Notes                           |
+| ------------- | ---- | ---------------------------------------------- | ------------------------------- |
+| `id`          | TEXT | PRIMARY KEY                                    | nanoid                          |
+| `snapshot_id` | TEXT | NOT NULL, FK → snapshots(id) ON DELETE CASCADE |                                 |
+| `from_file`   | TEXT | NOT NULL                                       | Relative path of importing file |
+| `to_file`     | TEXT | NOT NULL                                       | Relative path of imported file  |
+| `symbols`     | TEXT | NOT NULL, DEFAULT '[]'                         | JSON array of symbol names      |
 
 **Unique:** `(snapshot_id, from_file, to_file)`
 
@@ -113,14 +113,14 @@ Symbols stored as a JSON text column. This is a pragmatic choice — symbol list
 
 Collapsed group-level dependency edges within a snapshot.
 
-| Column | Type | Constraints | Notes |
-|---|---|---|---|
-| `id` | TEXT | PRIMARY KEY | nanoid |
-| `snapshot_id` | TEXT | NOT NULL, FK → snapshots(id) ON DELETE CASCADE | |
-| `from_group` | TEXT | NOT NULL | Source group name |
-| `to_group` | TEXT | NOT NULL | Target group name |
-| `weight` | INTEGER | NOT NULL | Count of contributing file edges |
-| `symbols` | TEXT | NOT NULL, DEFAULT '[]' | JSON array of deduplicated symbols |
+| Column        | Type    | Constraints                                    | Notes                              |
+| ------------- | ------- | ---------------------------------------------- | ---------------------------------- |
+| `id`          | TEXT    | PRIMARY KEY                                    | nanoid                             |
+| `snapshot_id` | TEXT    | NOT NULL, FK → snapshots(id) ON DELETE CASCADE |                                    |
+| `from_group`  | TEXT    | NOT NULL                                       | Source group name                  |
+| `to_group`    | TEXT    | NOT NULL                                       | Target group name                  |
+| `weight`      | INTEGER | NOT NULL                                       | Count of contributing file edges   |
+| `symbols`     | TEXT    | NOT NULL, DEFAULT '[]'                         | JSON array of deduplicated symbols |
 
 **Unique:** `(snapshot_id, from_group, to_group)`
 
@@ -132,13 +132,13 @@ Maps to `GroupEdge` in `graph/src/types.ts`. Like file edges, symbols are stored
 
 LLM-generated architecture descriptions for a snapshot (Phase 7).
 
-| Column | Type | Constraints | Notes |
-|---|---|---|---|
-| `id` | TEXT | PRIMARY KEY | nanoid |
-| `snapshot_id` | TEXT | NOT NULL, FK → snapshots(id) ON DELETE CASCADE | |
-| `kind` | TEXT | NOT NULL | `summary` · `data_flow` |
-| `content` | TEXT | NOT NULL | Markdown text |
-| `created_at` | INTEGER | NOT NULL | Unix timestamp (ms) |
+| Column        | Type    | Constraints                                    | Notes                   |
+| ------------- | ------- | ---------------------------------------------- | ----------------------- |
+| `id`          | TEXT    | PRIMARY KEY                                    | nanoid                  |
+| `snapshot_id` | TEXT    | NOT NULL, FK → snapshots(id) ON DELETE CASCADE |                         |
+| `kind`        | TEXT    | NOT NULL                                       | `summary` · `data_flow` |
+| `content`     | TEXT    | NOT NULL                                       | Markdown text           |
+| `created_at`  | INTEGER | NOT NULL                                       | Unix timestamp (ms)     |
 
 **Unique:** `(snapshot_id, kind)`
 
@@ -205,12 +205,12 @@ The `strategy` column on file_classifications accepts `llm` in addition to the e
 
 Beyond the primary keys and unique constraints (which SQLite indexes automatically):
 
-| Table | Index | Purpose |
-|---|---|---|
-| `snapshots` | `(project_id, created_at DESC)` | List snapshots for a project, newest first |
-| `file_classifications` | `(snapshot_id, group_name)` | List files in a group (for drill-down) |
-| `file_edges` | `(snapshot_id, from_file)` | Find all imports from a file |
-| `file_edges` | `(snapshot_id, to_file)` | Find all importers of a file |
+| Table                  | Index                           | Purpose                                    |
+| ---------------------- | ------------------------------- | ------------------------------------------ |
+| `snapshots`            | `(project_id, created_at DESC)` | List snapshots for a project, newest first |
+| `file_classifications` | `(snapshot_id, group_name)`     | List files in a group (for drill-down)     |
+| `file_edges`           | `(snapshot_id, from_file)`      | Find all imports from a file               |
+| `file_edges`           | `(snapshot_id, to_file)`        | Find all importers of a file               |
 
 ---
 
@@ -220,12 +220,12 @@ When Phase 5 lands, `group_edges.symbols` (JSON column) gets replaced by a junct
 
 ### `group_edge_symbols`
 
-| Column | Type | Constraints | Notes |
-|---|---|---|---|
-| `edge_id` | TEXT | NOT NULL, FK → group_edges(id) ON DELETE CASCADE | |
-| `symbol` | TEXT | NOT NULL | Symbol name |
-| `kind` | TEXT | | `type` · `function` · `class` · `constant` · `component` |
-| `call_direction` | TEXT | | `calls` · `provides_callback` |
+| Column           | Type | Constraints                                      | Notes                                                    |
+| ---------------- | ---- | ------------------------------------------------ | -------------------------------------------------------- |
+| `edge_id`        | TEXT | NOT NULL, FK → group_edges(id) ON DELETE CASCADE |                                                          |
+| `symbol`         | TEXT | NOT NULL                                         | Symbol name                                              |
+| `kind`           | TEXT |                                                  | `type` · `function` · `class` · `constant` · `component` |
+| `call_direction` | TEXT |                                                  | `calls` · `provides_callback`                            |
 
 **Primary key:** `(edge_id, symbol)`
 
@@ -277,13 +277,13 @@ type Bindings = {
 
 Common queries the API layer will need:
 
-| Query | Tables | Notes |
-|---|---|---|
-| List projects | `projects` | Simple select, ordered by `updated_at` |
-| Get project with config | `projects` + `group_definitions` + `group_overrides` | Join or two queries |
-| List snapshots | `snapshots` | Filter by `project_id`, order by `created_at DESC` |
-| Get group graph | `group_edges` | Filter by `snapshot_id` |
-| Get file graph | `file_edges` | Filter by `snapshot_id` |
-| Get classifications | `file_classifications` | Filter by `snapshot_id`, optionally by `group_name` |
-| Drill into group edge | `file_edges` + `file_classifications` | Find file edges where `from_file` is in group A and `to_file` is in group B |
-| Compare snapshots | Two `group_edges` queries | Diff computed in application code |
+| Query                   | Tables                                               | Notes                                                                       |
+| ----------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------- |
+| List projects           | `projects`                                           | Simple select, ordered by `updated_at`                                      |
+| Get project with config | `projects` + `group_definitions` + `group_overrides` | Join or two queries                                                         |
+| List snapshots          | `snapshots`                                          | Filter by `project_id`, order by `created_at DESC`                          |
+| Get group graph         | `group_edges`                                        | Filter by `snapshot_id`                                                     |
+| Get file graph          | `file_edges`                                         | Filter by `snapshot_id`                                                     |
+| Get classifications     | `file_classifications`                               | Filter by `snapshot_id`, optionally by `group_name`                         |
+| Drill into group edge   | `file_edges` + `file_classifications`                | Find file edges where `from_file` is in group A and `to_file` is in group B |
+| Compare snapshots       | Two `group_edges` queries                            | Diff computed in application code                                           |

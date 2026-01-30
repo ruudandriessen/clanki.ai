@@ -1,13 +1,25 @@
+import { drizzle, DrizzleD1Database } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import * as schema from "./db/schema";
 
 type Bindings = {
   ASSETS: Fetcher;
+  DB: D1Database;
 };
 
-const app = new Hono<{ Bindings: Bindings }>();
+type Variables = {
+  db: DrizzleD1Database<typeof schema>;
+};
+
+const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 app.use("/*", cors());
+
+app.use("/api/*", async (c, next) => {
+  c.set("db", drizzle(c.env.DB, { schema }));
+  await next();
+});
 
 app.get("/api/health", (c) => {
   return c.json({ status: "ok" });
