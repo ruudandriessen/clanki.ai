@@ -37,9 +37,9 @@ export function GraphView({ data }: { data: GraphData }) {
 
   const nodes: Node[] = useMemo(() => {
     const count = data.groups.length;
-    const centerX = 400;
-    const centerY = 300;
-    const radius = 250;
+    const centerX = 500;
+    const centerY = 400;
+    const radius = 350;
 
     return data.groups.map((g, i) => {
       const angle = (2 * Math.PI * i) / count - Math.PI / 2;
@@ -48,7 +48,7 @@ export function GraphView({ data }: { data: GraphData }) {
         type: "group",
         position: {
           x: centerX + radius * Math.cos(angle) - 90,
-          y: centerY + radius * Math.sin(angle) - 40,
+          y: centerY + radius * Math.sin(angle) - 50,
         },
         data: {
           label: g.name,
@@ -56,6 +56,7 @@ export function GraphView({ data }: { data: GraphData }) {
           color: GROUP_COLORS[g.name] || DEFAULT_COLOR,
           description: g.description,
         },
+        style: { background: "transparent", padding: 0, border: "none", boxShadow: "none" },
       };
     });
   }, [data, fileCounts]);

@@ -15,21 +15,19 @@ export function GroupNode({ data }: NodeProps) {
 
   return (
     <div
-      className="bg-card rounded-lg px-5 py-4 min-w-[180px] border-2 shadow-lg cursor-pointer transition-shadow hover:shadow-xl"
+      className="bg-card rounded-lg px-5 py-4 min-w-[160px] max-w-[200px] border-2 cursor-pointer transition-shadow hover:shadow-xl"
       style={{ borderColor: color }}
     >
-      <Handle type="target" position={Position.Top} className="!bg-border" />
+      <Handle type="target" position={Position.Top} className="!opacity-0" />
       <div className="font-semibold text-sm text-card-foreground">{label}</div>
-      <div className="text-xs text-muted-foreground mt-1 max-w-[200px]">
-        {description}
-      </div>
+      <div className="text-xs text-muted-foreground mt-1">{description}</div>
       <div
         className="text-xs font-medium mt-2 px-2 py-0.5 rounded-full inline-block"
         style={{ backgroundColor: color + "20", color }}
       >
         {fileCount} {fileCount === 1 ? "file" : "files"}
       </div>
-      <Handle type="source" position={Position.Bottom} className="!bg-border" />
+      <Handle type="source" position={Position.Bottom} className="!opacity-0" />
     </div>
   );
 }
