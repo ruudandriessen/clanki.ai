@@ -1,26 +1,21 @@
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@import "tailwindcss";
+
+@theme {
+  --color-background: #0a0a0a;
+  --color-foreground: #ededed;
+  --color-card: #141414;
+  --color-card-foreground: #ededed;
+  --color-border: #262626;
+  --color-primary: #3b82f6;
+  --color-primary-foreground: #ffffff;
+  --color-muted: #1c1c1c;
+  --color-muted-foreground: #a1a1aa;
+  --color-accent: #1f1f1f;
+  --color-accent-foreground: #ededed;
 }
 
 body {
   font-family: system-ui, -apple-system, sans-serif;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #0a0a0a;
-  color: #ededed;
-}
-
-.app {
-  text-align: center;
-}
-
-h1 {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+  background: var(--color-background);
+  color: var(--color-foreground);
 }

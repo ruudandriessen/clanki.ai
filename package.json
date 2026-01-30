@@ -11,13 +11,21 @@
     "build:graph": "tsc --noEmit -p tsconfig.graph.json",
     "build": "bun run build:worker && bun run build:frontend && bun run build:graph",
     "graph": "bun graph/src/cli.ts",
+    "graph:data": "bun graph/src/generate-data.ts",
     "test": "bun test",
     "deploy": "wrangler deploy"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/react-router": "^1.157.16",
+    "@xyflow/react": "^12.10.0",
+    "clsx": "^2.1.1",
     "hono": "^4.7.0",
+    "lucide-react": "^0.563.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss": "^4.1.18",
     "yaml": "^2.8.2"
   },
   "devDependencies": {
