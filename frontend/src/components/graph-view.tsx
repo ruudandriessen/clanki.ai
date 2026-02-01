@@ -4,6 +4,7 @@ import "@xyflow/react/dist/style.css";
 import { useNavigate } from "@tanstack/react-router";
 import { GroupNode } from "./group-node";
 import type { GraphData } from "../lib/graph-data";
+import * as dagre from '@dagrejs/dagre';
 
 const GROUP_COLORS: Record<string, string> = {
   UI: "#3b82f6",
@@ -14,6 +15,9 @@ const GROUP_COLORS: Record<string, string> = {
 };
 
 const DEFAULT_COLOR = "#6b7280";
+
+const NODE_WIDTH = 180;
+const NODE_HEIGHT = 100;
 
 const nodeTypes = { group: GroupNode };
 
@@ -29,25 +33,32 @@ export function GraphView({ data }: { data: GraphData }) {
   }, [data]);
 
   const nodes: Node[] = useMemo(() => {
-    const count = data.groups.length;
-    const centerX = 500;
-    const centerY = 400;
-    const radius = 350;
+    const g = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+    g.setGraph({ rankdir: "TB", nodesep: 80, ranksep: 120 });
 
-    return data.groups.map((g, i) => {
-      const angle = (2 * Math.PI * i) / count - Math.PI / 2;
+    for (const group of data.groups) {
+      g.setNode(group.name, { width: NODE_WIDTH, height: NODE_HEIGHT });
+    }
+    for (const edge of data.groupEdges) {
+      g.setEdge(edge.from, edge.to);
+    }
+
+    dagre.layout(g);
+
+    return data.groups.map((group) => {
+      const node = g.node(group.name);
       return {
-        id: g.name,
+        id: group.name,
         type: "group",
         position: {
-          x: centerX + radius * Math.cos(angle) - 90,
-          y: centerY + radius * Math.sin(angle) - 50,
+          x: node.x - NODE_WIDTH / 2,
+          y: node.y - NODE_HEIGHT / 2,
         },
         data: {
-          label: g.name,
-          fileCount: fileCounts[g.name] || 0,
-          color: GROUP_COLORS[g.name] || DEFAULT_COLOR,
-          description: g.description,
+          label: group.name,
+          fileCount: fileCounts[group.name] || 0,
+          color: GROUP_COLORS[group.name] || DEFAULT_COLOR,
+          description: group.description,
         },
         style: { background: "transparent", padding: 0, border: "none", boxShadow: "none" },
       };

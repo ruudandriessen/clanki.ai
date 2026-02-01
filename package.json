@@ -20,6 +20,7 @@
     "wrangler": "wrangler"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^2.0.3",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-router": "^1.157.16",
     "@xyflow/react": "^12.10.0",
