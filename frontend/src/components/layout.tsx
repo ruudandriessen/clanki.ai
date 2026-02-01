@@ -1,6 +1,14 @@
 import { useState, useEffect } from "react";
 import { Outlet, Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, GitBranch, Menu, X } from "lucide-react";
+import {
+  LayoutDashboard,
+  GitBranch,
+  Menu,
+  X,
+  ChevronDown,
+  BookMarked,
+  Settings,
+} from "lucide-react";
 import { cn } from "../lib/utils";
 import { loadGraphData, GraphDataContext, useGraphData } from "../lib/graph-data";
 import type { GraphData } from "../lib/graph-data";
@@ -12,6 +20,40 @@ const GROUP_COLORS: Record<string, string> = {
   Classification: "#f59e0b",
   Types: "#ec4899",
 };
+
+function RepoSelector() {
+  return (
+    <div className="px-3 py-3 border-b border-border space-y-1.5">
+      <button className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm text-foreground hover:bg-accent transition-colors group">
+        <BookMarked className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+        <span className="truncate font-medium">clanki-ai/clanki</span>
+        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground ml-auto shrink-0 group-hover:text-foreground transition-colors" />
+      </button>
+      <button className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors group">
+        <GitBranch className="w-3.5 h-3.5 shrink-0" />
+        <span className="truncate">main</span>
+        <ChevronDown className="w-3.5 h-3.5 ml-auto shrink-0 group-hover:text-foreground transition-colors" />
+      </button>
+    </div>
+  );
+}
+
+function UserProfile() {
+  return (
+    <div className="p-3 border-t border-border">
+      <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-accent transition-colors cursor-pointer group">
+        <div className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
+          JD
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground truncate">Jane Doe</p>
+          <p className="text-[11px] text-muted-foreground truncate">jane@example.com</p>
+        </div>
+        <Settings className="w-3.5 h-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+    </div>
+  );
+}
 
 function Sidebar({ onClose }: { onClose: () => void }) {
   const data = useGraphData();
@@ -30,6 +72,8 @@ function Sidebar({ onClose }: { onClose: () => void }) {
           <X className="w-5 h-5" />
         </button>
       </div>
+
+      <RepoSelector />
 
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         <Link
@@ -74,8 +118,10 @@ function Sidebar({ onClose }: { onClose: () => void }) {
         )}
       </nav>
 
+      <UserProfile />
+
       {data && (
-        <div className="p-4 border-t border-border flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="px-4 py-3 border-t border-border flex items-center gap-2 text-xs text-muted-foreground">
           <GitBranch className="w-3.5 h-3.5" />
           {data.classifications.length} files · {data.groupEdges.length} deps
         </div>
