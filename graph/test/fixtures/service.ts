@@ -12,6 +12,6 @@ export function createUser(name: string): User {
 }
 
 export function getOrders(): Order[] {
-  const valid = Utils.validateEmail("test@test.com");
+  const _valid = Utils.validateEmail("test@test.com");
   return [];
 }

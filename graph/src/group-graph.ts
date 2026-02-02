@@ -56,7 +56,7 @@ export function buildGroupGraph(
       from,
       to,
       weight: entry.weight,
-      symbols: [...entry.symbols].sort(),
+      symbols: [...entry.symbols].toSorted(),
     });
   }
 
