@@ -3,7 +3,7 @@ import { getRouteApi, Link } from "@tanstack/react-router";
 import { ArrowRight, ArrowLeft, FileCode2 } from "lucide-react";
 import { useGraphData } from "../lib/graph-data";
 
-const route = getRouteApi("/group/$name");
+const route = getRouteApi("/layout/group/$name");
 
 const GROUP_COLORS: Record<string, string> = {
   UI: "#3b82f6",

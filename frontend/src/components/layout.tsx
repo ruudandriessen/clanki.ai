@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Outlet, Link, useRouterState } from "@tanstack/react-router";
+import { Outlet, Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   GitBranch,
@@ -7,11 +7,13 @@ import {
   X,
   ChevronDown,
   BookMarked,
-  Settings,
+  LogOut,
+  Loader2,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { loadGraphData, GraphDataContext, useGraphData } from "../lib/graph-data";
 import type { GraphData } from "../lib/graph-data";
+import { useSession, signOut } from "../lib/auth-client";
 
 const GROUP_COLORS: Record<string, string> = {
   UI: "#3b82f6",
@@ -39,17 +41,41 @@ function RepoSelector() {
 }
 
 function UserProfile() {
+  const { data: session } = useSession();
+  const navigate = useNavigate();
+
+  if (!session) return null;
+
+  const { user } = session;
+  const initials = user.name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <div className="p-3 border-t border-border">
-      <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-accent transition-colors cursor-pointer group">
-        <div className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
-          JD
-        </div>
+      <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-md group">
+        {user.image ? (
+          <img src={user.image} alt={user.name} className="w-7 h-7 rounded-full shrink-0" />
+        ) : (
+          <div className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
+            {initials}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-foreground truncate">Jane Doe</p>
-          <p className="text-[11px] text-muted-foreground truncate">jane@example.com</p>
+          <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+          <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
         </div>
-        <Settings className="w-3.5 h-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <button
+          type="button"
+          onClick={() => signOut({ fetchOptions: { onSuccess: () => navigate({ to: "/login" }) } })}
+          className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+          title="Sign out"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+        </button>
       </div>
     </div>
   );
@@ -131,9 +157,17 @@ function Sidebar({ onClose }: { onClose: () => void }) {
 }
 
 export function Layout() {
+  const { data: session, isPending } = useSession();
+  const navigate = useNavigate();
   const [data, setData] = useState<GraphData | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  useEffect(() => {
+    if (!isPending && !session) {
+      navigate({ to: "/login" });
+    }
+  }, [isPending, session, navigate]);
 
   useEffect(() => {
     loadGraphData().then(setData);
@@ -143,6 +177,16 @@ export function Layout() {
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
+
+  if (isPending) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!session) return null;
 
   return (
     <GraphDataContext.Provider value={data}>

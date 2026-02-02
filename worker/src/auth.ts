@@ -7,6 +7,8 @@ type AuthEnv = {
   DB: D1Database;
   BETTER_AUTH_SECRET: string;
   BETTER_AUTH_URL: string;
+  GITHUB_CLIENT_ID: string;
+  GITHUB_CLIENT_SECRET: string;
 };
 
 export function createAuth(env: AuthEnv) {
@@ -18,8 +20,11 @@ export function createAuth(env: AuthEnv) {
     }),
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
-    emailAndPassword: {
-      enabled: true,
+    socialProviders: {
+      github: {
+        clientId: env.GITHUB_CLIENT_ID,
+        clientSecret: env.GITHUB_CLIENT_SECRET,
+      },
     },
     trustedOrigins: ["http://localhost:5173"],
   });
