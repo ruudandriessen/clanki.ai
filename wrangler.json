@@ -9,7 +9,7 @@
   },
   "d1_databases": [
     {
-      "binding": "clanki_db",
+      "binding": "DB",
       "database_name": "clanki-db",
       "database_id": "202e7e1a-b025-4cc3-977e-e7dfa7ef794c",
       "remote": true

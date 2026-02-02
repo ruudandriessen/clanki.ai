@@ -8,6 +8,13 @@
       "when": 1769803148547,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1770025932080,
+      "tag": "0001_nervous_mother_askani",
+      "breakpoints": true
     }
   ]
 }
