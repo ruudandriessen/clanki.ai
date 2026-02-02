@@ -8,7 +8,6 @@ type Bindings = {
   ASSETS: Fetcher;
   DB: D1Database;
   BETTER_AUTH_SECRET: string;
-  BETTER_AUTH_URL: string;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
 };
@@ -22,7 +21,7 @@ const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 app.use(
   "/api/auth/*",
   cors({
-    origin: "http://localhost:5173",
+    origin: (origin) => origin,
     allowHeaders: ["Content-Type", "Authorization"],
     allowMethods: ["POST", "GET", "OPTIONS"],
     credentials: true,
@@ -38,7 +37,7 @@ app.use("/api/*", async (c, next) => {
 });
 
 app.on(["POST", "GET"], "/api/auth/*", (c) => {
-  const auth = createAuth(c.env);
+  const auth = createAuth(c.env, c.req.raw);
   return auth.handler(c.req.raw);
 });
 
