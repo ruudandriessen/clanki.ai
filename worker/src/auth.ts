@@ -6,12 +6,12 @@ import * as schema from "./db/schema";
 type AuthEnv = {
   DB: D1Database;
   BETTER_AUTH_SECRET: string;
-  BETTER_AUTH_URL: string;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
 };
 
-export function createAuth(env: AuthEnv) {
+export function createAuth(env: AuthEnv, request: Request) {
+  const origin = new URL(request.url).origin;
   const db = drizzle(env.DB, { schema });
   return betterAuth({
     database: drizzleAdapter(db, {
@@ -19,13 +19,13 @@ export function createAuth(env: AuthEnv) {
       schema,
     }),
     secret: env.BETTER_AUTH_SECRET,
-    baseURL: env.BETTER_AUTH_URL,
+    baseURL: origin,
     socialProviders: {
       github: {
         clientId: env.GITHUB_CLIENT_ID,
         clientSecret: env.GITHUB_CLIENT_SECRET,
       },
     },
-    trustedOrigins: ["http://localhost:5173"],
+    trustedOrigins: [origin, "http://localhost:5173"],
   });
 }
