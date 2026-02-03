@@ -1,5 +1,5 @@
 {
-  "name": "clanki-worker",
+  "name": "clanki",
   "main": "worker/src/index.ts",
   "compatibility_date": "2025-01-29",
   "compatibility_flags": ["nodejs_compat"],
@@ -12,7 +12,7 @@
       "binding": "DB",
       "database_name": "clanki-db",
       "database_id": "202e7e1a-b025-4cc3-977e-e7dfa7ef794c",
-      "remote": true,
+      "remote": false,
       "migrations_dir": "worker/migrations"
     }
   ]
