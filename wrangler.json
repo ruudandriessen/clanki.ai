@@ -16,6 +16,12 @@
       "migrations_dir": "worker/migrations"
     }
   ],
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  },
   "queues": {
     "producers": [
       {
