@@ -43,12 +43,33 @@ function RepoSelector() {
   );
 }
 
-function OrgSwitcher() {
+function useOrganization() {
   const activeOrg = authClient.useActiveOrganization();
   const orgs = authClient.useListOrganizations();
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const { data: session } = useSession();
+  const creatingRef = useRef(false);
+
+  // Auto-create org for existing users who don't have one yet
+  useEffect(() => {
+    if (
+      !orgs.isPending &&
+      orgs.data &&
+      orgs.data.length === 0 &&
+      session?.user &&
+      !creatingRef.current
+    ) {
+      creatingRef.current = true;
+      const user = session.user;
+      const slug = user.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+      authClient.organization.create({
+        name: `${user.name}'s Organization`,
+        slug: `${slug}-${user.id.slice(0, 8)}`,
+      });
+    }
+  }, [orgs.isPending, orgs.data, session]);
 
   // Auto-set active org if none is set but user has orgs
   useEffect(() => {
@@ -56,6 +77,15 @@ function OrgSwitcher() {
       authClient.organization.setActive({ organizationId: orgs.data[0].id });
     }
   }, [activeOrg.isPending, activeOrg.data, orgs.data]);
+
+  return activeOrg;
+}
+
+function OrgSwitcher() {
+  const activeOrg = useOrganization();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -119,7 +149,7 @@ function OrgSwitcher() {
       >
         <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
         <span className="truncate font-medium">{org.name}</span>
-        <Pencil className="w-3 h-3 text-muted-foreground ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <Pencil className="w-3 h-3 text-muted-foreground ml-auto shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity" />
       </button>
     </div>
   );
@@ -162,6 +192,23 @@ function UserProfile() {
           <LogOut className="w-3.5 h-3.5" />
         </button>
       </div>
+    </div>
+  );
+}
+
+function MobileHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
+  const activeOrg = authClient.useActiveOrganization();
+  const orgName = activeOrg.data?.name;
+
+  return (
+    <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
+      <button
+        className="p-1 rounded-md hover:bg-accent text-muted-foreground"
+        onClick={onOpenSidebar}
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+      <span className="font-semibold text-sm truncate">{orgName ?? "Clanki"}</span>
     </div>
   );
 }
@@ -301,15 +348,7 @@ export function Layout() {
         {/* Main content */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           {/* Mobile header */}
-          <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
-            <button
-              className="p-1 rounded-md hover:bg-accent text-muted-foreground"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <span className="font-semibold text-sm">Clanki</span>
-          </div>
+          <MobileHeader onOpenSidebar={() => setSidebarOpen(true)} />
 
           <main className="flex-1 overflow-hidden">
             <Outlet />
