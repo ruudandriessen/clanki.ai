@@ -16,6 +16,9 @@
       "migrations_dir": "worker/migrations"
     }
   ],
+  "vars": {
+    "PRODUCTION_URL": "https://clanki.ai"
+  },
   "queues": {
     "producers": [
       {
