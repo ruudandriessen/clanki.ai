@@ -4,7 +4,7 @@ import { oAuthProxy } from "better-auth/plugins/oauth-proxy";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./db/schema";
 
-const PRODUCTION_URL = "https://clanki.ai";
+const PRODUCTION_URL = "https://clanki.ruud-andriessen.workers.dev";
 
 type AuthEnv = {
   DB: D1Database;
