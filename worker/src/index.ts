@@ -6,6 +6,7 @@ import { createAuth } from "./auth";
 import type { QueueMessage } from "./queue/message";
 import { processQueueMessage } from "./queue/processMessage";
 import { handleGitHubWebhook } from "./webhook/github";
+import { handleAnalysisResults } from "./api/snapshot-results";
 
 type Bindings = {
   ASSETS: Fetcher;
@@ -54,6 +55,8 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => {
 app.get("/api/health", (c) => {
   return c.json({ status: "ok" });
 });
+
+app.post("/api/analysis/results", (c) => handleAnalysisResults(c));
 
 app.post("/webhook", (c) => handleGitHubWebhook(c));
 

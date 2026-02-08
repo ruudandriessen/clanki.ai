@@ -1,0 +1,13 @@
+name: Analyze (Caller)
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  analyze:
+    uses: ./.github/workflows/analyze.yml
+    with:
+      repository: ${{ github.repository }}

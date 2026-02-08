@@ -1,0 +1,43 @@
+name: Analyze Dependencies
+
+on:
+  workflow_call:
+    inputs:
+      repository:
+        description: "Repository name (owner/repo)"
+        required: true
+        type: string
+
+env:
+  CALLBACK_URL: https://clanki.ruud-andriessen.workers.dev/api/analysis/results
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Run analysis
+        run: bun graph/src/analyze-for-ci.ts --project-root . > analysis-results.json
+
+      - name: Post results
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ inputs.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          PAYLOAD=$(jq --arg repo "$REPOSITORY" --arg sha "$COMMIT_SHA" \
+            '. + {repository: $repo, commitSha: $sha}' analysis-results.json)
+
+          curl -sf -X POST "${CALLBACK_URL}" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -d "${PAYLOAD}"
