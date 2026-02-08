@@ -162,7 +162,7 @@ function UserProfile() {
         <button
           type="button"
           onClick={() => signOut({ fetchOptions: { onSuccess: () => navigate({ to: "/login" }) } })}
-          className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+          className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors shrink-0"
           title="Sign out"
         >
           <LogOut className="w-3.5 h-3.5" />
