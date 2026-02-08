@@ -1,9 +1,9 @@
 import { useMemo } from "react";
-import { getRouteApi, Link } from "@tanstack/react-router";
-import { ArrowRight, ArrowLeft, FileCode2 } from "lucide-react";
-import { useGraphData } from "../lib/graph-data";
-
-const route = getRouteApi("/layout/group/$name");
+import { useParams, Link } from "@tanstack/react-router";
+import { useLiveQuery } from "@tanstack/react-db";
+import { ArrowRight, ArrowLeft, FileCode2, Loader2 } from "lucide-react";
+import { useActiveProject } from "../lib/project-context";
+import { getGraphCollections } from "../lib/collections";
 
 const GROUP_COLORS: Record<string, string> = {
   UI: "#3b82f6",
@@ -14,11 +14,33 @@ const GROUP_COLORS: Record<string, string> = {
 };
 
 export function GroupDetailPage() {
-  const { name } = route.useParams();
-  const data = useGraphData();
+  const { name } = useParams({ strict: false }) as { name: string };
+  const ctx = useActiveProject();
+
+  const graphCollections = ctx ? getGraphCollections(ctx.projectId, ctx.snapshotId) : null;
+
+  const { data: groups } = useLiveQuery(
+    (q) => (graphCollections ? q.from({ g: graphCollections.groups }) : null),
+    [ctx?.projectId, ctx?.snapshotId],
+  );
+
+  const { data: classifications } = useLiveQuery(
+    (q) => (graphCollections ? q.from({ c: graphCollections.classifications }) : null),
+    [ctx?.projectId, ctx?.snapshotId],
+  );
+
+  const { data: groupEdges } = useLiveQuery(
+    (q) => (graphCollections ? q.from({ ge: graphCollections.groupEdges }) : null),
+    [ctx?.projectId, ctx?.snapshotId],
+  );
+
+  const { data: fileEdgesAll } = useLiveQuery(
+    (q) => (graphCollections ? q.from({ fe: graphCollections.fileEdges }) : null),
+    [ctx?.projectId, ctx?.snapshotId],
+  );
 
   const { group, files, outgoing, incoming, fileEdgesOut, fileEdgesIn } = useMemo(() => {
-    if (!data)
+    if (!groups || !classifications || !groupEdges || !fileEdgesAll)
       return {
         group: null,
         files: [],
@@ -28,25 +50,34 @@ export function GroupDetailPage() {
         fileEdgesIn: [],
       };
 
-    const group = data.groups.find((g) => g.name === name) ?? null;
-    const files = data.classifications.filter((c) => c.group === name);
-    const outgoing = data.groupEdges.filter((e) => e.from === name);
-    const incoming = data.groupEdges.filter((e) => e.to === name);
+    const group = groups.find((g) => g.name === name) ?? null;
+    const files = classifications.filter((c) => c.group === name);
+    const outgoing = groupEdges.filter((e) => e.from === name);
+    const incoming = groupEdges.filter((e) => e.to === name);
 
-    const classMap = new Map(data.classifications.map((c) => [c.file, c.group]));
-    const fileEdgesOut = data.fileEdges.filter(
+    const classMap = new Map(classifications.map((c) => [c.file, c.group]));
+    const fileEdgesOut = fileEdgesAll.filter(
       (e) => classMap.get(e.from) === name && classMap.get(e.to) !== name,
     );
-    const fileEdgesIn = data.fileEdges.filter(
+    const fileEdgesIn = fileEdgesAll.filter(
       (e) => classMap.get(e.to) === name && classMap.get(e.from) !== name,
     );
 
     return { group, files, outgoing, incoming, fileEdgesOut, fileEdgesIn };
-  }, [data, name]);
+  }, [groups, classifications, groupEdges, fileEdgesAll, name]);
 
-  if (!data) {
+  if (!ctx) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
+        No project selected
+      </div>
+    );
+  }
+
+  if (!groups || !classifications) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin mr-2" />
         Loading...
       </div>
     );
@@ -61,6 +92,7 @@ export function GroupDetailPage() {
   }
 
   const color = GROUP_COLORS[name] ?? "#6b7280";
+  const projectId = ctx.projectId;
 
   return (
     <div className="h-full overflow-y-auto">
@@ -110,8 +142,8 @@ export function GroupDetailPage() {
                 <div key={e.to} className="rounded-lg border border-border p-3 md:p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Link
-                      to="/group/$name"
-                      params={{ name: e.to }}
+                      to="/projects/$projectId/groups/$name"
+                      params={{ projectId, name: e.to }}
                       className="font-medium text-sm hover:underline"
                       style={{ color: GROUP_COLORS[e.to] ?? "#6b7280" }}
                     >
@@ -147,8 +179,8 @@ export function GroupDetailPage() {
                 <div key={e.from} className="rounded-lg border border-border p-3 md:p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Link
-                      to="/group/$name"
-                      params={{ name: e.from }}
+                      to="/projects/$projectId/groups/$name"
+                      params={{ projectId, name: e.from }}
                       className="font-medium text-sm hover:underline"
                       style={{ color: GROUP_COLORS[e.from] ?? "#6b7280" }}
                     >

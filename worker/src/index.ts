@@ -3,6 +3,9 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import * as schema from "./db/schema";
 import { createAuth } from "./auth";
+import { requireAuth } from "./middleware/requireAuth";
+import { projects } from "./routes/projects";
+import { snapshots } from "./routes/snapshots";
 import type { QueueMessage } from "./queue/message";
 import { processQueueMessage } from "./queue/processMessage";
 import { handleGitHubWebhook } from "./webhook/github";
@@ -57,6 +60,13 @@ app.get("/api/health", (c) => {
 });
 
 app.post("/api/analysis/results", (c) => handleAnalysisResults(c));
+
+// Auth guard for data API routes
+app.use("/api/projects/*", requireAuth);
+
+// Data API routes
+app.route("/api/projects", projects);
+app.route("/api/projects/:projectId/snapshots", snapshots);
 
 app.post("/webhook", (c) => handleGitHubWebhook(c));
 

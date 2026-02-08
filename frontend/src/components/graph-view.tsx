@@ -3,7 +3,7 @@ import { ReactFlow, Background, Controls, MarkerType, type Node, type Edge } fro
 import "@xyflow/react/dist/style.css";
 import { useNavigate } from "@tanstack/react-router";
 import { GroupNode } from "./group-node";
-import type { GraphData } from "../lib/graph-data";
+import type { GraphData } from "../lib/api";
 
 const GROUP_COLORS: Record<string, string> = {
   UI: "#3b82f6",
@@ -17,7 +17,7 @@ const DEFAULT_COLOR = "#6b7280";
 
 const nodeTypes = { group: GroupNode };
 
-export function GraphView({ data }: { data: GraphData }) {
+export function GraphView({ data, projectId }: { data: GraphData; projectId: string }) {
   const navigate = useNavigate();
 
   const fileCounts = useMemo(() => {
@@ -80,9 +80,12 @@ export function GraphView({ data }: { data: GraphData }) {
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
-      navigate({ to: "/group/$name", params: { name: node.id } });
+      navigate({
+        to: "/projects/$projectId/groups/$name",
+        params: { projectId, name: node.id },
+      });
     },
-    [navigate],
+    [navigate, projectId],
   );
 
   return (
