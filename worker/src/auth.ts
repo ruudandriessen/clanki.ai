@@ -4,12 +4,13 @@ import { oAuthProxy } from "better-auth/plugins/oauth-proxy";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./db/schema";
 
+const PRODUCTION_URL = "https://clanki.ai";
+
 type AuthEnv = {
   DB: D1Database;
   BETTER_AUTH_SECRET: string;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
-  PRODUCTION_URL: string;
 };
 
 export function createAuth(env: AuthEnv, request: Request) {
@@ -26,12 +27,12 @@ export function createAuth(env: AuthEnv, request: Request) {
       github: {
         clientId: env.GITHUB_CLIENT_ID,
         clientSecret: env.GITHUB_CLIENT_SECRET,
-        redirectURI: `${env.PRODUCTION_URL}/api/auth/callback/github`,
+        redirectURI: `${PRODUCTION_URL}/api/auth/callback/github`,
       },
     },
     plugins: [
       oAuthProxy({
-        productionURL: env.PRODUCTION_URL,
+        productionURL: PRODUCTION_URL,
       }),
     ],
     trustedOrigins: [origin, "http://localhost:5173"],
