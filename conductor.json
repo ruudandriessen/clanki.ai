@@ -1,0 +1,5 @@
+{
+  "setup": "bun i && cd frontend && mkdir dist && cd .. && cp $CONDUCTOR_ROOT_PATH/.dev.vars .dev.vars",
+  "run": "bun run dev",
+  "archive": "rm -rf ./node_modules"
+}
