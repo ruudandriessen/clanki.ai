@@ -22,6 +22,12 @@
       "invocation_logs": true
     }
   },
+  "routes": [
+    {
+      "pattern": "clanki.ai",
+      "custom_domain": true
+    }
+  ],
   "queues": {
     "producers": [
       {
