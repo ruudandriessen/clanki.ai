@@ -23,7 +23,7 @@ export function GraphView({ data }: { data: GraphData }) {
   const fileCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const c of data.classifications) {
-      counts[c.group] = (counts[c.group] || 0) + 1;
+      counts[c.group] = (counts[c.group] ?? 0) + 1;
     }
     return counts;
   }, [data]);
@@ -45,8 +45,8 @@ export function GraphView({ data }: { data: GraphData }) {
         },
         data: {
           label: g.name,
-          fileCount: fileCounts[g.name] || 0,
-          color: GROUP_COLORS[g.name] || DEFAULT_COLOR,
+          fileCount: fileCounts[g.name] ?? 0,
+          color: GROUP_COLORS[g.name] ?? DEFAULT_COLOR,
           description: g.description,
         },
         style: { background: "transparent", padding: 0, border: "none", boxShadow: "none" },
@@ -66,12 +66,12 @@ export function GraphView({ data }: { data: GraphData }) {
         labelBgPadding: [8, 4] as [number, number],
         labelBgBorderRadius: 4,
         style: {
-          stroke: GROUP_COLORS[e.from] || DEFAULT_COLOR,
+          stroke: GROUP_COLORS[e.from] ?? DEFAULT_COLOR,
           strokeWidth: Math.max(1.5, Math.min(e.weight, 6)),
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: GROUP_COLORS[e.from] || DEFAULT_COLOR,
+          color: GROUP_COLORS[e.from] ?? DEFAULT_COLOR,
         },
         animated: true,
       })),

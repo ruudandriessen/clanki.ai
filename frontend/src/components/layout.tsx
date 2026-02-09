@@ -244,7 +244,7 @@ function Sidebar({ onClose }: { onClose: () => void }) {
                 <span
                   className="w-2.5 h-2.5 rounded-full shrink-0"
                   style={{
-                    backgroundColor: GROUP_COLORS[g.name] || "#6b7280",
+                    backgroundColor: GROUP_COLORS[g.name] ?? "#6b7280",
                   }}
                 />
                 {g.name}

@@ -28,7 +28,7 @@ export function GroupDetailPage() {
         fileEdgesIn: [],
       };
 
-    const group = data.groups.find((g) => g.name === name) || null;
+    const group = data.groups.find((g) => g.name === name) ?? null;
     const files = data.classifications.filter((c) => c.group === name);
     const outgoing = data.groupEdges.filter((e) => e.from === name);
     const incoming = data.groupEdges.filter((e) => e.to === name);
@@ -60,7 +60,7 @@ export function GroupDetailPage() {
     );
   }
 
-  const color = GROUP_COLORS[name] || "#6b7280";
+  const color = GROUP_COLORS[name] ?? "#6b7280";
 
   return (
     <div className="h-full overflow-y-auto">
@@ -113,7 +113,7 @@ export function GroupDetailPage() {
                       to="/group/$name"
                       params={{ name: e.to }}
                       className="font-medium text-sm hover:underline"
-                      style={{ color: GROUP_COLORS[e.to] || "#6b7280" }}
+                      style={{ color: GROUP_COLORS[e.to] ?? "#6b7280" }}
                     >
                       {e.to}
                     </Link>
@@ -150,7 +150,7 @@ export function GroupDetailPage() {
                       to="/group/$name"
                       params={{ name: e.from }}
                       className="font-medium text-sm hover:underline"
-                      style={{ color: GROUP_COLORS[e.from] || "#6b7280" }}
+                      style={{ color: GROUP_COLORS[e.from] ?? "#6b7280" }}
                     >
                       {e.from}
                     </Link>
