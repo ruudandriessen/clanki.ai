@@ -6,7 +6,7 @@ import { eq, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./db/schema";
 
-const PRODUCTION_URL = "https://clanki.ruud-andriessen.workers.dev";
+const PRODUCTION_URL = "https://clanki.ai";
 
 type AuthEnv = {
   DB: D1Database;
