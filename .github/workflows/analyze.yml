@@ -9,7 +9,7 @@ on:
         type: string
 
 env:
-  CALLBACK_URL: https://clanki.ruud-andriessen.workers.dev/api/analysis/results
+  CALLBACK_URL: https://clanki.ai/api/analysis/results
 
 jobs:
   analyze:
