@@ -31,9 +31,9 @@ async function verifyGitHubToken(token: string, repository: string): Promise<boo
   return data.full_name === repository;
 }
 
-/**
- * Insert rows in batches to stay within D1's 100 bind-parameter limit.
- */
+// D1 rejects queries with >= 100 bind parameters
+const D1_MAX_BIND_PARAMS = 99;
+
 async function batchInsert<T extends Record<string, unknown>>(
   db: DrizzleD1Database<typeof schema>,
   table: Parameters<typeof db.insert>[0],
@@ -41,7 +41,7 @@ async function batchInsert<T extends Record<string, unknown>>(
 ): Promise<void> {
   if (rows.length === 0) return;
   const columnsPerRow = Object.keys(rows[0]).length;
-  const batchSize = Math.max(1, Math.floor(100 / columnsPerRow));
+  const batchSize = Math.max(1, Math.floor(D1_MAX_BIND_PARAMS / columnsPerRow));
   for (let i = 0; i < rows.length; i += batchSize) {
     const batch = rows.slice(i, i + batchSize);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
