@@ -1,6 +1,11 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": ["frontend/src/main.tsx", "frontend/src/lib/auth-client.ts", "graph/src/index.ts"],
-  "project": ["frontend/src/**/*.{ts,tsx}", "worker/src/**/*.ts", "graph/src/**/*.ts"],
+  "project": [
+    "frontend/src/**/*.{ts,tsx}",
+    "!frontend/src/components/ui/**/*.{ts,tsx}",
+    "worker/src/**/*.ts",
+    "graph/src/**/*.ts"
+  ],
   "ignoreDependencies": ["tailwindcss"]
 }
