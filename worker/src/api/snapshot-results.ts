@@ -31,14 +31,16 @@ async function verifyGitHubToken(token: string, repository: string): Promise<boo
 }
 
 /**
- * Insert rows in batches to stay within D1's parameter limits.
+ * Insert rows in batches to stay within D1's 100 bind-parameter limit.
  */
 async function batchInsert<T extends Record<string, unknown>>(
   db: DrizzleD1Database<typeof schema>,
   table: Parameters<typeof db.insert>[0],
   rows: T[],
-  batchSize = 50,
 ): Promise<void> {
+  if (rows.length === 0) return;
+  const columnsPerRow = Object.keys(rows[0]).length;
+  const batchSize = Math.max(1, Math.floor(100 / columnsPerRow));
   for (let i = 0; i < rows.length; i += batchSize) {
     const batch = rows.slice(i, i + batchSize);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
