@@ -102,7 +102,13 @@ function OrgSwitcher() {
   );
 }
 
-function UserMenu() {
+function UserMenu({
+  showIdentity = false,
+  menuDirection = "down",
+}: {
+  showIdentity?: boolean;
+  menuDirection?: "up" | "down";
+}) {
   const { data: session } = useSession();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -128,13 +134,18 @@ function UserMenu() {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+  const menuPlacement = menuDirection === "up" ? "bottom-full mb-1" : "top-full mt-1";
+  const menuWidth = showIdentity ? "w-full" : "w-64";
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className={cn("relative", showIdentity && "w-full")} ref={menuRef}>
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex items-center gap-2 px-2.5 py-2 rounded-md hover:bg-accent transition-colors"
+        className={cn(
+          "flex items-center gap-2 px-2.5 py-2 rounded-md hover:bg-accent transition-colors",
+          showIdentity && "w-full",
+        )}
         aria-expanded={open}
         aria-haspopup="menu"
       >
@@ -145,13 +156,20 @@ function UserMenu() {
             {initials}
           </div>
         )}
+        {showIdentity && <span className="text-sm font-medium truncate">{user.name}</span>}
         <ChevronDown
           className={cn("w-3.5 h-3.5 ml-auto text-muted-foreground", open && "rotate-180")}
         />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-64 rounded-md border border-border bg-card text-card-foreground shadow-md z-10 overflow-hidden">
+        <div
+          className={cn(
+            "absolute right-0 rounded-md border border-border bg-card text-card-foreground shadow-md z-10 overflow-hidden",
+            menuPlacement,
+            menuWidth,
+          )}
+        >
           <div className="px-3 py-2.5 border-b border-border">
             <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
@@ -233,8 +251,8 @@ function Sidebar({ onClose, children }: { onClose: () => void; children?: React.
 
       <div className="flex-1" />
 
-      <div className="border-t border-border p-2 flex justify-end">
-        <UserMenu />
+      <div className="border-t border-border p-2">
+        <UserMenu showIdentity menuDirection="up" />
       </div>
     </div>
   );
