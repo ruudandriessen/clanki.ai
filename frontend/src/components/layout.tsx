@@ -198,7 +198,7 @@ function MobileHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
       >
         <Menu className="w-5 h-5" />
       </button>
-      <span className="font-semibold text-sm truncate">{orgName ?? "Clanki"}</span>
+      <span className="font-semibold text-sm truncate">{orgName ?? "Organization"}</span>
       <div className="ml-auto">
         <UserMenu />
       </div>
@@ -207,17 +207,17 @@ function MobileHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
 }
 
 function Sidebar({ onClose, children }: { onClose: () => void; children?: React.ReactNode }) {
+  const activeOrg = useOrganization();
+  const orgName = activeOrg.data?.name ?? "Organization";
+
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-border flex items-center justify-between gap-3">
         <div className="min-w-0">
           <Link to="/">
-            <h1 className="text-lg font-bold text-foreground tracking-tight">Clanki</h1>
+            <h1 className="text-lg font-bold text-foreground tracking-tight truncate">{orgName}</h1>
           </Link>
-          <p className="text-xs text-muted-foreground mt-1">Architecture Explorer</p>
-        </div>
-        <div className="hidden md:block shrink-0">
-          <UserMenu />
+          <p className="text-xs text-muted-foreground mt-1 truncate">{orgName}</p>
         </div>
         <button
           className="md:hidden p-1 rounded-md hover:bg-accent text-muted-foreground"
@@ -232,6 +232,10 @@ function Sidebar({ onClose, children }: { onClose: () => void; children?: React.
       {children}
 
       <div className="flex-1" />
+
+      <div className="border-t border-border p-2 flex justify-end">
+        <UserMenu />
+      </div>
     </div>
   );
 }
