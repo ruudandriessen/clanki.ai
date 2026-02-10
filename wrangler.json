@@ -22,6 +22,7 @@
       "invocation_logs": true
     }
   },
+  "preview_urls": true,
   "routes": [
     {
       "pattern": "clanki.ai",
