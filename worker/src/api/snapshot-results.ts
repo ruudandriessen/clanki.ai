@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Context } from "hono";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import * as schema from "../db/schema";
@@ -35,18 +35,86 @@ async function verifyGitHubToken(token: string, repository: string): Promise<boo
 const D1_MAX_BIND_PARAMS = 99;
 
 async function batchInsert<T extends Record<string, unknown>>(
-  db: DrizzleD1Database<typeof schema>,
-  table: Parameters<typeof db.insert>[0],
   rows: T[],
+  insert: (batch: T[]) => Promise<void>,
 ): Promise<void> {
   if (rows.length === 0) return;
   const columnsPerRow = Object.keys(rows[0]).length;
   const batchSize = Math.max(1, Math.floor(D1_MAX_BIND_PARAMS / columnsPerRow));
   for (let i = 0; i < rows.length; i += batchSize) {
     const batch = rows.slice(i, i + batchSize);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (db.insert(table) as any).values(batch);
+    await insert(batch);
   }
+}
+
+function uniqueSymbols(symbols: string[]): string[] {
+  return [...new Set(symbols)];
+}
+
+function dedupeFileEdges(fileEdges: AnalysisPayload["fileEdges"]): AnalysisPayload["fileEdges"] {
+  const byEdge = new Map<string, { from: string; to: string; symbols: Set<string> }>();
+  for (const edge of fileEdges) {
+    const key = `${edge.from}\u0000${edge.to}`;
+    const existing = byEdge.get(key);
+    if (!existing) {
+      byEdge.set(key, {
+        from: edge.from,
+        to: edge.to,
+        symbols: new Set(edge.symbols),
+      });
+      continue;
+    }
+    for (const symbol of edge.symbols) {
+      existing.symbols.add(symbol);
+    }
+  }
+  return [...byEdge.values()].map((edge) => ({
+    from: edge.from,
+    to: edge.to,
+    symbols: [...edge.symbols],
+  }));
+}
+
+function dedupeClassifications(
+  classifications: AnalysisPayload["classifications"],
+): AnalysisPayload["classifications"] {
+  const byFile = new Map<string, AnalysisPayload["classifications"][number]>();
+  for (const classification of classifications) {
+    byFile.set(classification.file, classification);
+  }
+  return [...byFile.values()];
+}
+
+function dedupeGroupEdges(
+  groupEdges: AnalysisPayload["groupEdges"],
+): AnalysisPayload["groupEdges"] {
+  const byEdge = new Map<
+    string,
+    { from: string; to: string; weight: number; symbols: Set<string> }
+  >();
+  for (const edge of groupEdges) {
+    const key = `${edge.from}\u0000${edge.to}`;
+    const existing = byEdge.get(key);
+    if (!existing) {
+      byEdge.set(key, {
+        from: edge.from,
+        to: edge.to,
+        weight: edge.weight,
+        symbols: new Set(edge.symbols),
+      });
+      continue;
+    }
+    existing.weight += edge.weight;
+    for (const symbol of edge.symbols) {
+      existing.symbols.add(symbol);
+    }
+  }
+  return [...byEdge.values()].map((edge) => ({
+    from: edge.from,
+    to: edge.to,
+    weight: edge.weight,
+    symbols: [...edge.symbols],
+  }));
 }
 
 export async function handleAnalysisResults(c: Context): Promise<Response> {
@@ -112,41 +180,70 @@ export async function handleAnalysisResults(c: Context): Promise<Response> {
     return c.json({ message: "snapshot already complete" }, 200);
   }
 
+  const fileEdges = dedupeFileEdges(payload.fileEdges);
+  const classifications = dedupeClassifications(payload.classifications);
+  const groupEdges = dedupeGroupEdges(payload.groupEdges);
+
   // Insert file edges
-  if (payload.fileEdges.length > 0) {
-    const rows = payload.fileEdges.map((e) => ({
+  if (fileEdges.length > 0) {
+    const rows = fileEdges.map((e) => ({
       id: crypto.randomUUID(),
       snapshotId: snapshot.id,
       fromFile: e.from,
       toFile: e.to,
-      symbols: JSON.stringify(e.symbols),
+      symbols: JSON.stringify(uniqueSymbols(e.symbols)),
     }));
-    await batchInsert(db, schema.fileEdges, rows);
+    await batchInsert(rows, async (batch) => {
+      await db
+        .insert(schema.fileEdges)
+        .values(batch)
+        .onConflictDoNothing({
+          target: [schema.fileEdges.snapshotId, schema.fileEdges.fromFile, schema.fileEdges.toFile],
+        });
+    });
   }
 
   // Insert classifications
-  if (payload.classifications.length > 0) {
-    const rows = payload.classifications.map((c) => ({
+  if (classifications.length > 0) {
+    const rows = classifications.map((classification) => ({
       id: crypto.randomUUID(),
       snapshotId: snapshot.id,
-      filePath: c.file,
-      groupName: c.group,
-      strategy: c.strategy,
+      filePath: classification.file,
+      groupName: classification.group,
+      strategy: classification.strategy,
     }));
-    await batchInsert(db, schema.fileClassifications, rows);
+    await batchInsert(rows, async (batch) => {
+      await db
+        .insert(schema.fileClassifications)
+        .values(batch)
+        .onConflictDoNothing({
+          target: [schema.fileClassifications.snapshotId, schema.fileClassifications.filePath],
+        });
+    });
   }
 
   // Insert group edges
-  if (payload.groupEdges.length > 0) {
-    const rows = payload.groupEdges.map((e) => ({
+  if (groupEdges.length > 0) {
+    const rows = groupEdges.map((edge) => ({
       id: crypto.randomUUID(),
       snapshotId: snapshot.id,
-      fromGroup: e.from,
-      toGroup: e.to,
-      weight: e.weight,
-      symbols: JSON.stringify(e.symbols),
+      fromGroup: edge.from,
+      toGroup: edge.to,
+      weight: edge.weight,
+      symbols: JSON.stringify(uniqueSymbols(edge.symbols)),
     }));
-    await batchInsert(db, schema.groupEdges, rows);
+    await batchInsert(rows, async (batch) => {
+      await db
+        .insert(schema.groupEdges)
+        .values(batch)
+        .onConflictDoNothing({
+          target: [
+            schema.groupEdges.snapshotId,
+            schema.groupEdges.fromGroup,
+            schema.groupEdges.toGroup,
+          ],
+        });
+    });
   }
 
   // Upsert group definitions
