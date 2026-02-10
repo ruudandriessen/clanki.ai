@@ -216,9 +216,6 @@ function Sidebar({ onClose, children }: { onClose: () => void; children?: React.
           </Link>
           <p className="text-xs text-muted-foreground mt-1">Architecture Explorer</p>
         </div>
-        <div className="hidden md:block shrink-0">
-          <UserMenu />
-        </div>
         <button
           className="md:hidden p-1 rounded-md hover:bg-accent text-muted-foreground"
           onClick={onClose}
@@ -232,6 +229,10 @@ function Sidebar({ onClose, children }: { onClose: () => void; children?: React.
       {children}
 
       <div className="flex-1" />
+
+      <div className="hidden md:block p-3 border-t border-border">
+        <UserMenu />
+      </div>
     </div>
   );
 }
