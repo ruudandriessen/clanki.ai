@@ -6,7 +6,7 @@ import { getTaskMessagesCollection, tasksCollection, queryClient } from "../lib/
 import { createTaskMessage } from "../lib/api";
 
 export function TaskPage() {
-  const { taskId } = useParams({ strict: false }) as { taskId: string };
+  const { taskId } = useParams({ from: "/layout/tasks/$taskId" });
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
