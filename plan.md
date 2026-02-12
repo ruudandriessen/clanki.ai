@@ -324,6 +324,18 @@ User sends message 3 (task T1, after sleep)
 | `frontend/src/lib/api.ts`          | No changes (type exists)                                       |
 | `worker/src/lib/opencode.ts`       | Can be removed once migration is complete                      |
 
+## GitHub App Permissions
+
+Required repository permissions (Settings > GitHub Apps > Permissions & events):
+
+- **Contents** — Read & Write (clone repos, push branches)
+- **Pull requests** — Read & Write (create/update PRs via `gh` CLI)
+
+Event subscriptions (webhooks):
+
+- **Installation** — track installs/uninstalls
+- **Pull request** — track opened/closed/merged PRs
+
 ## New Secrets Required
 
 Set via `wrangler secret put`:

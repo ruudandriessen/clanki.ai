@@ -41,17 +41,25 @@ export async function executeTaskRun(args: {
       .set({ sandboxId, updatedAt: Date.now() })
       .where(eq(schema.taskRuns.id, runId));
 
-    // Clone repo on first use (gitCheckout is a no-op if dir already exists on a warm sandbox)
+    // Generate a fresh installation token (needed for clone, push, and gh CLI)
     const repoDir = "/home/user/repo";
+    let gitToken: string | null = null;
+    if (installationId) {
+      gitToken = await createInstallationToken(env, installationId);
+      // Expose the token so OpenCode can use `gh` CLI for PRs, issues, etc.
+      await sandbox.setEnvVars({ GITHUB_TOKEN: gitToken });
+    }
+
+    // Clone repo on first use (gitCheckout is a no-op if dir already exists on a warm sandbox)
     if (repoUrl) {
       const needsClone = !(await sandbox.exists(repoDir)).exists;
       if (needsClone) {
-        let cloneUrl = repoUrl;
-        if (installationId) {
-          const token = await createInstallationToken(env, installationId);
-          cloneUrl = buildAuthenticatedCloneUrl(repoUrl, token);
-        }
+        const cloneUrl = gitToken ? buildAuthenticatedCloneUrl(repoUrl, gitToken) : repoUrl;
         await sandbox.gitCheckout(cloneUrl, { targetDir: repoDir });
+      } else if (gitToken) {
+        // Update the remote URL with the fresh token so pushes work on warm sandboxes
+        const freshUrl = buildAuthenticatedCloneUrl(repoUrl, gitToken);
+        await sandbox.exec(`git -C ${repoDir} remote set-url origin '${freshUrl}'`);
       }
     }
 
