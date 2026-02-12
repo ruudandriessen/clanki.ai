@@ -47,3 +47,52 @@ const count = counts[key] || 0;
 ```
 
 Keep `||` for boolean logic (e.g., `a > 0 || b > 0`) and sort tiebreakers (e.g., `a.localeCompare(b) || a.x.localeCompare(b.x)`).
+
+### Type-safe route and search params (TanStack Router)
+
+The router is registered in `frontend/src/router.tsx` via `declare module "@tanstack/react-router"`. This gives TanStack Router full type information about every route's path params and search params. Always use this — never bypass it with `strict: false` or type assertions.
+
+**Route params** — use `from` so the types are inferred from the route tree. The `from` value is the **route ID**, which includes ID-route parents (e.g. the `layout` ID route makes the task route ID `/layout/tasks/$taskId`, even though the URL is `/tasks/$taskId`):
+
+```ts
+// Good — fully type-safe, inferred from the registered route tree
+const { taskId } = useParams({ from: "/layout/tasks/$taskId" });
+
+// Bad — opts out of type safety
+const { taskId } = useParams({ strict: false }) as { taskId: string };
+```
+
+**Search params** — define a `validateSearch` on the route so `useSearch` returns typed values:
+
+```ts
+// In the route definition (router.tsx or a route file)
+const myRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: "/my-route",
+  validateSearch: (search: Record<string, unknown>) => ({
+    page: Number(search.page ?? 1),
+    filter: (search.filter as string) ?? "",
+  }),
+  component: MyComponent,
+});
+
+// In the component — fully typed { page: number, filter: string }
+// Note: from uses route ID "/layout/my-route" since parent is the layout ID route
+const { page, filter } = useSearch({ from: "/layout/my-route" });
+```
+
+**Navigate / Link** — `to` uses the **URL path** (not the route ID), so it does not include ID-route prefixes:
+
+```tsx
+navigate({ to: "/tasks/$taskId", params: { taskId: id } });
+<Link to="/tasks/$taskId" params={{ taskId: id }}>
+  Task
+</Link>;
+```
+
+**Rules:**
+
+- Never use `strict: false` on `useParams` or `useSearch` — it returns a union of all routes and defeats type safety.
+- Never use `as` type assertions to cast param/search types.
+- Always pass `from` (the **route ID**) to `useParams` and `useSearch` so types are inferred. Route IDs include ID-route parent prefixes (e.g. `/layout/...`), while `to` uses URL paths.
+- When adding search params to a route, always add `validateSearch` with sensible defaults so malformed URLs don't crash the app.
