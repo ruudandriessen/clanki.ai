@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Outlet, Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { useLiveQuery } from "@tanstack/react-db";
 import {
   Menu,
   X,
@@ -10,9 +11,13 @@ import {
   Check,
   Settings,
   ChevronDown,
+  Plus,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useSession, signOut, authClient } from "../lib/auth-client";
+import { tasksCollection, queryClient } from "../lib/collections";
+import { createTask } from "../lib/api";
 
 function useOrganization() {
   const activeOrg = authClient.useActiveOrganization();
@@ -224,7 +229,81 @@ function MobileHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   );
 }
 
-function Sidebar({ onClose, children }: { onClose: () => void; children?: React.ReactNode }) {
+function TaskList() {
+  const { data: tasks, isLoading } = useLiveQuery((q) => q.from({ t: tasksCollection }));
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [creating, setCreating] = useState(false);
+
+  async function handleNewTask() {
+    if (creating) return;
+    setCreating(true);
+    try {
+      const task = await createTask("New task");
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      navigate({ to: "/tasks/$taskId", params: { taskId: task.id } });
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="px-3 pt-3 pb-1 flex items-center justify-between">
+        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+          Tasks
+        </p>
+        <button
+          type="button"
+          onClick={handleNewTask}
+          disabled={creating}
+          className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+          title="New task"
+        >
+          {creating ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Plus className="w-3.5 h-3.5" />
+          )}
+        </button>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-6 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+        ) : !tasks || tasks.length === 0 ? (
+          <div className="px-2 py-6 text-center">
+            <p className="text-xs text-muted-foreground">No tasks yet</p>
+          </div>
+        ) : (
+          tasks.map((task) => {
+            const isActive = pathname === `/tasks/${task.id}`;
+            return (
+              <Link
+                key={task.id}
+                to="/tasks/$taskId"
+                params={{ taskId: task.id }}
+                className={cn(
+                  "flex items-center gap-2 px-2.5 py-2 rounded-md text-sm transition-colors truncate",
+                  isActive
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                )}
+              >
+                <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{task.title}</span>
+              </Link>
+            );
+          })
+        )}
+      </nav>
+    </div>
+  );
+}
+
+function Sidebar({ onClose }: { onClose: () => void }) {
   const activeOrg = useOrganization();
   const orgName = activeOrg.data?.name ?? "Organization";
 
@@ -235,7 +314,6 @@ function Sidebar({ onClose, children }: { onClose: () => void; children?: React.
           <Link to="/">
             <h1 className="text-lg font-bold text-foreground tracking-tight truncate">{orgName}</h1>
           </Link>
-          <p className="text-xs text-muted-foreground mt-1 truncate">{orgName}</p>
         </div>
         <button
           className="md:hidden p-1 rounded-md hover:bg-accent text-muted-foreground"
@@ -247,9 +325,7 @@ function Sidebar({ onClose, children }: { onClose: () => void; children?: React.
 
       <OrgSwitcher />
 
-      {children}
-
-      <div className="flex-1" />
+      <TaskList />
 
       <div className="border-t border-border p-2">
         <UserMenu showIdentity menuDirection="up" />

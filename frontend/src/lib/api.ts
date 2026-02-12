@@ -32,48 +32,6 @@ export interface Project {
   updatedAt: number;
 }
 
-export interface Snapshot {
-  id: string;
-  projectId: string;
-  pullRequestId: string | null;
-  commitSha: string | null;
-  branch: string | null;
-  status: string;
-  createdAt: number;
-}
-
-export interface GroupDefinition {
-  name: string;
-  description: string;
-  color: string | null;
-}
-
-export interface FileClassification {
-  file: string;
-  group: string;
-  strategy: string;
-}
-
-export interface FileEdge {
-  from: string;
-  to: string;
-  symbols: string[];
-}
-
-export interface GroupEdge {
-  from: string;
-  to: string;
-  weight: number;
-  symbols: string[];
-}
-
-export interface GraphData {
-  groups: GroupDefinition[];
-  classifications: FileClassification[];
-  fileEdges: FileEdge[];
-  groupEdges: GroupEdge[];
-}
-
 export interface Installation {
   installationId: number;
   accountLogin: string;
@@ -97,18 +55,6 @@ export function fetchProjects() {
   return fetchJson<Project[]>("/projects");
 }
 
-export function fetchSnapshots(projectId: string) {
-  return fetchJson<Snapshot[]>(`/projects/${projectId}/snapshots`);
-}
-
-export function fetchLatestSnapshot(projectId: string) {
-  return fetchJson<Snapshot>(`/projects/${projectId}/snapshots/latest`);
-}
-
-export function fetchGraphData(projectId: string, snapshotId: string) {
-  return fetchJson<GraphData>(`/projects/${projectId}/snapshots/${snapshotId}/graph`);
-}
-
 export function fetchInstallations() {
   return fetchJson<Installation[]>("/installations");
 }
@@ -121,4 +67,46 @@ export function createProjects(
   repos: Array<{ name: string; repoUrl: string; installationId: number }>,
 ) {
   return postJson<Project[]>("/projects", { repos });
+}
+
+// ---- Task types ----
+
+export interface Task {
+  id: string;
+  organizationId: string;
+  projectId: string | null;
+  title: string;
+  status: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface TaskMessage {
+  id: string;
+  taskId: string;
+  role: string;
+  content: string;
+  createdAt: number;
+}
+
+// ---- Task fetch functions ----
+
+export function fetchTasks() {
+  return fetchJson<Task[]>("/tasks");
+}
+
+export function fetchTask(taskId: string) {
+  return fetchJson<Task>(`/tasks/${taskId}`);
+}
+
+export function createTask(title: string, projectId?: string) {
+  return postJson<Task>("/tasks", { title, projectId });
+}
+
+export function fetchTaskMessages(taskId: string) {
+  return fetchJson<TaskMessage[]>(`/tasks/${taskId}/messages`);
+}
+
+export function createTaskMessage(taskId: string, role: string, content: string) {
+  return postJson<TaskMessage>(`/tasks/${taskId}/messages`, { role, content });
 }
