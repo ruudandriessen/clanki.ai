@@ -280,3 +280,41 @@ export const narratives = sqliteTable(
   },
   (t) => [uniqueIndex("narrative_snapshot_kind").on(t.snapshotId, t.kind)],
 );
+
+// ---------------------------------------------------------------------------
+// Tasks
+// ---------------------------------------------------------------------------
+
+export const tasks = sqliteTable(
+  "tasks",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    status: text("status").notNull().default("open"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => [index("task_org").on(t.organizationId, t.createdAt)],
+);
+
+// ---------------------------------------------------------------------------
+// Task messages
+// ---------------------------------------------------------------------------
+
+export const taskMessages = sqliteTable(
+  "task_messages",
+  {
+    id: text("id").primaryKey(),
+    taskId: text("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    role: text("role").notNull(),
+    content: text("content").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [index("task_message_task").on(t.taskId, t.createdAt)],
+);

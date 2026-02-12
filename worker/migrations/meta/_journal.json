@@ -43,6 +43,13 @@
       "when": 1770715355082,
       "tag": "0005_aspiring_freak",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1771027200000,
+      "tag": "0006_add_tasks",
+      "breakpoints": true
     }
   ]
 }
