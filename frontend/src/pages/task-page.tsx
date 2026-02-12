@@ -3,14 +3,27 @@ import { useParams } from "@tanstack/react-router";
 import { useLiveQuery } from "@tanstack/react-db";
 import { Loader2, Send } from "lucide-react";
 import { getTaskMessagesCollection, tasksCollection, queryClient } from "../lib/collections";
-import { createTaskMessage } from "../lib/api";
+import {
+  createTaskMessage,
+  createTaskRun,
+  fetchTaskRun,
+  fetchTaskRunEvents,
+  type TaskRunEvent,
+} from "../lib/api";
+
+const RUN_TERMINAL_STATUSES = new Set(["succeeded", "failed"]);
 
 export function TaskPage() {
   const { taskId } = useParams({ strict: false }) as { taskId: string };
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [runStatus, setRunStatus] = useState<string | null>(null);
+  const [runEvents, setRunEvents] = useState<TaskRunEvent[]>([]);
+  const [runError, setRunError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const mountedRef = useRef(true);
 
   const { data: tasks } = useLiveQuery((q) => q.from({ t: tasksCollection }));
   const task = tasks?.find((t) => t.id === taskId);
@@ -21,14 +34,27 @@ export function TaskPage() {
     [taskId],
   );
 
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, runEvents]);
 
   // Focus input on mount
   useEffect(() => {
     inputRef.current?.focus();
+  }, [taskId]);
+
+  useEffect(() => {
+    setActiveRunId(null);
+    setRunStatus(null);
+    setRunEvents([]);
+    setRunError(null);
   }, [taskId]);
 
   async function handleSend() {
@@ -37,13 +63,59 @@ export function TaskPage() {
 
     setSending(true);
     setInput("");
+    setRunError(null);
+    setRunEvents([]);
+    setRunStatus("queued");
+
     try {
-      await createTaskMessage(taskId, "user", content);
+      const userMessage = await createTaskMessage(taskId, "user", content);
       queryClient.invalidateQueries({ queryKey: ["taskMessages", taskId] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+
+      const run = await createTaskRun(taskId, userMessage.id);
+      setActiveRunId(run.id);
+      setRunStatus(run.status);
+
+      await monitorRun(run.id);
+    } catch (error) {
+      setRunStatus("failed");
+      setRunError(error instanceof Error ? error.message : "Failed to run OpenCode");
     } finally {
       setSending(false);
       inputRef.current?.focus();
+    }
+  }
+
+  async function monitorRun(runId: string) {
+    let after: number | undefined;
+
+    while (mountedRef.current) {
+      const [run, events] = await Promise.all([
+        fetchTaskRun(runId),
+        fetchTaskRunEvents(runId, after),
+      ]);
+
+      if (!mountedRef.current) {
+        return;
+      }
+
+      if (events.length > 0) {
+        setRunEvents((prev) => [...prev, ...events]);
+        after = events[events.length - 1]?.createdAt;
+      }
+
+      setRunStatus(run.status);
+
+      if (RUN_TERMINAL_STATUSES.has(run.status)) {
+        if (run.error) {
+          setRunError(run.error);
+        }
+        queryClient.invalidateQueries({ queryKey: ["taskMessages", taskId] });
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        return;
+      }
+
+      await sleep(1000);
     }
   }
 
@@ -78,9 +150,7 @@ export function TaskPage() {
         ) : !messages || messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2 px-4">
             <p className="text-sm">No messages yet</p>
-            <p className="text-xs">
-              Send a message to get started. Chat functionality is coming soon.
-            </p>
+            <p className="text-xs">Send a message to start an OpenCode run.</p>
           </div>
         ) : (
           <div className="max-w-3xl mx-auto px-4 py-4 space-y-4">
@@ -100,6 +170,21 @@ export function TaskPage() {
                 </div>
               </div>
             ))}
+
+            {activeRunId ? (
+              <div className="rounded-lg border border-border bg-muted/50 px-3 py-2 space-y-1">
+                <p className="text-xs font-medium text-foreground">
+                  OpenCode run: {runStatus ?? "queued"}
+                </p>
+                {runEvents.slice(-4).map((event) => (
+                  <p key={event.id} className="text-xs text-muted-foreground whitespace-pre-wrap">
+                    {event.kind}: {event.payload}
+                  </p>
+                ))}
+                {runError ? <p className="text-xs text-red-500">error: {runError}</p> : null}
+              </div>
+            ) : null}
+
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -135,4 +220,10 @@ export function TaskPage() {
       </div>
     </div>
   );
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }

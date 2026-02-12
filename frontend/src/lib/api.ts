@@ -89,6 +89,30 @@ export interface TaskMessage {
   createdAt: number;
 }
 
+export interface TaskRun {
+  id: string;
+  taskId: string;
+  tool: string;
+  status: string;
+  inputMessageId: string | null;
+  outputMessageId: string | null;
+  sandboxId: string | null;
+  sessionId: string | null;
+  error: string | null;
+  startedAt: number | null;
+  finishedAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface TaskRunEvent {
+  id: string;
+  runId: string;
+  kind: string;
+  payload: string;
+  createdAt: number;
+}
+
 // ---- Task fetch functions ----
 
 export function fetchTasks() {
@@ -105,4 +129,21 @@ export function fetchTaskMessages(taskId: string) {
 
 export function createTaskMessage(taskId: string, role: string, content: string) {
   return postJson<TaskMessage>(`/tasks/${taskId}/messages`, { role, content });
+}
+
+export function fetchTaskRuns(taskId: string) {
+  return fetchJson<TaskRun[]>(`/tasks/${taskId}/runs`);
+}
+
+export function createTaskRun(taskId: string, messageId?: string) {
+  return postJson<TaskRun>(`/tasks/${taskId}/runs`, messageId ? { messageId } : {});
+}
+
+export function fetchTaskRun(runId: string) {
+  return fetchJson<TaskRun>(`/tasks/runs/${runId}`);
+}
+
+export function fetchTaskRunEvents(runId: string, after?: number) {
+  const query = after !== undefined ? `?after=${after}` : "";
+  return fetchJson<TaskRunEvent[]>(`/tasks/runs/${runId}/events${query}`);
 }

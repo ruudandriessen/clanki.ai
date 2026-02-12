@@ -7,6 +7,26 @@ import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./db/schema";
 
 const PRODUCTION_URL = "https://clanki.ai";
+const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
+
+function resolveOrigin(request: Request): string {
+  const requestOrigin = new URL(request.url).origin;
+  const originHeader = request.headers.get("origin");
+  if (!originHeader) {
+    return requestOrigin;
+  }
+
+  try {
+    const origin = new URL(originHeader).origin;
+    return isLocalOrigin(origin) ? origin : requestOrigin;
+  } catch {
+    return requestOrigin;
+  }
+}
+
+function isLocalOrigin(origin: string): boolean {
+  return LOCAL_HOSTNAMES.has(new URL(origin).hostname);
+}
 
 type AuthEnv = {
   DB: D1Database;
@@ -16,8 +36,13 @@ type AuthEnv = {
 };
 
 export function createAuth(env: AuthEnv, request: Request) {
-  const origin = new URL(request.url).origin;
+  const origin = resolveOrigin(request);
+  const isLocal = isLocalOrigin(origin);
+  const githubRedirectURI = isLocal
+    ? `${origin}/api/auth/callback/github`
+    : `${PRODUCTION_URL}/api/auth/callback/github`;
   const db = drizzle(env.DB, { schema });
+
   const auth = betterAuth({
     database: drizzleAdapter(db, {
       provider: "sqlite",
@@ -29,16 +54,18 @@ export function createAuth(env: AuthEnv, request: Request) {
       github: {
         clientId: env.GITHUB_CLIENT_ID,
         clientSecret: env.GITHUB_CLIENT_SECRET,
-        redirectURI: `${PRODUCTION_URL}/api/auth/callback/github`,
+        redirectURI: githubRedirectURI,
       },
     },
-    plugins: [
-      oAuthProxy({
-        productionURL: PRODUCTION_URL,
-      }),
-      organization(),
-    ],
-    trustedOrigins: [origin, "http://localhost:5173"],
+    plugins: isLocal
+      ? [organization()]
+      : [
+          oAuthProxy({
+            productionURL: PRODUCTION_URL,
+          }),
+          organization(),
+        ],
+    trustedOrigins: [origin, "http://localhost:5173", "http://127.0.0.1:5173"],
     databaseHooks: {
       session: {
         create: {

@@ -18,6 +18,10 @@ type Bindings = {
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
   GITHUB_WEBHOOK_SECRET: string;
+  OPENCODE_BASE_URL?: string;
+  OPENCODE_SERVER_PASSWORD?: string;
+  OPENCODE_SERVER_USERNAME?: string;
+  OPENCODE_MODEL?: string;
 };
 
 type Variables = {
