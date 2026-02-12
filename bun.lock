@@ -5,7 +5,9 @@
     "": {
       "name": "clanki",
       "dependencies": {
+        "@cloudflare/sandbox": "^0.7.2",
         "@octokit/webhooks": "^14.2.0",
+        "@opencode-ai/sdk": "^1.1.63",
         "@tailwindcss/vite": "^4.1.18",
         "@tanstack/query-core": "^5.90.20",
         "@tanstack/query-db-collection": "^1.0.22",
@@ -88,7 +90,11 @@
 
     "@better-fetch/fetch": ["@better-fetch/fetch@1.1.21", "", {}, "sha512-/ImESw0sskqlVR94jB+5+Pxjf+xBwDZF/N5+y2/q4EqD7IARUTSpPfIo8uf39SYpCxyOCtbyYpUrZ3F/k0zT4A=="],
 
+    "@cloudflare/containers": ["@cloudflare/containers@0.0.30", "", {}, "sha512-i148xBgmyn/pje82ZIyuTr/Ae0BT/YWwa1/GTJcw6DxEjUHAzZLaBCiX446U9OeuJ2rBh/L/9FIzxX5iYNt1AQ=="],
+
     "@cloudflare/kv-asset-handler": ["@cloudflare/kv-asset-handler@0.4.2", "", {}, "sha512-SIOD2DxrRRwQ+jgzlXCqoEFiKOFqaPjhnNTGKXSRLvp1HiOvapLaFG2kEr9dYQTYe8rKrd9uvDUzmAITeNyaHQ=="],
+
+    "@cloudflare/sandbox": ["@cloudflare/sandbox@0.7.2", "", { "dependencies": { "@cloudflare/containers": "^0.0.30" }, "peerDependencies": { "@openai/agents": "^0.3.3", "@opencode-ai/sdk": "^1.0.137", "@xterm/xterm": ">=5.0.0" }, "optionalPeers": ["@openai/agents", "@opencode-ai/sdk", "@xterm/xterm"] }, "sha512-q0dn6RUBLZ8CD4g99sVJbxoQK/BjJ3luw0T03mvTrUbRicjyzdFWP7dlEYzhvqpyd6TWpTsYr+TSHf/95bVuWw=="],
 
     "@cloudflare/unenv-preset": ["@cloudflare/unenv-preset@2.12.0", "", { "peerDependencies": { "unenv": "2.0.0-rc.24", "workerd": "^1.20260115.0" }, "optionalPeers": ["workerd"] }, "sha512-NK4vN+2Z/GbfGS4BamtbbVk1rcu5RmqaYGiyHJQrA09AoxdZPHDF3W/EhgI0YSK8p3vRo/VNCtbSJFPON7FWMQ=="],
 
@@ -287,6 +293,8 @@
     "@octokit/webhooks": ["@octokit/webhooks@14.2.0", "", { "dependencies": { "@octokit/openapi-webhooks-types": "12.1.0", "@octokit/request-error": "^7.0.0", "@octokit/webhooks-methods": "^6.0.0" } }, "sha512-da6KbdNCV5sr1/txD896V+6W0iamFWrvVl8cHkBSPT+YlvmT3DwXa4jxZnQc+gnuTEqSWbBeoSZYTayXH9wXcw=="],
 
     "@octokit/webhooks-methods": ["@octokit/webhooks-methods@6.0.0", "", {}, "sha512-MFlzzoDJVw/GcbfzVC1RLR36QqkTLUf79vLVO3D+xn7r0QgxnFoLZgtrzxiQErAjFUOdH6fas2KeQJ1yr/qaXQ=="],
+
+    "@opencode-ai/sdk": ["@opencode-ai/sdk@1.1.63", "", {}, "sha512-9452K0G04slXOsYoVVRVGl0qwXdKhQ1RdvutslaA+b+TtA8y0nbm2iDzDpU74uM1paLXXNPCVCTWWUpnLiAcCA=="],
 
     "@oxc-resolver/binding-android-arm-eabi": ["@oxc-resolver/binding-android-arm-eabi@11.17.0", "", { "os": "android", "cpu": "arm" }, "sha512-kVnY21v0GyZ/+LG6EIO48wK3mE79BUuakHUYLIqobO/Qqq4mJsjuYXMSn3JtLcKZpN1HDVit4UHpGJHef1lrlw=="],
 

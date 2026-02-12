@@ -1,6 +1,7 @@
 import { drizzle, DrizzleD1Database } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import type { Sandbox } from "@cloudflare/sandbox";
 import * as schema from "./db/schema";
 import { createAuth } from "./auth";
 import { requireAuth } from "./middleware/requireAuth";
@@ -22,6 +23,10 @@ type Bindings = {
   OPENCODE_SERVER_PASSWORD?: string;
   OPENCODE_SERVER_USERNAME?: string;
   OPENCODE_MODEL?: string;
+  Sandbox: DurableObjectNamespace<Sandbox>;
+  ANTHROPIC_API_KEY?: string;
+  GITHUB_APP_ID?: string;
+  GITHUB_APP_PRIVATE_KEY?: string;
 };
 
 type Variables = {
@@ -82,6 +87,8 @@ app.post("/webhook", (c) => handleGitHubWebhook(c));
 app.get("*", async (c) => {
   return c.env.ASSETS.fetch(new URL("/index.html", c.req.url));
 });
+
+export { Sandbox } from "@cloudflare/sandbox";
 
 export default {
   fetch: app.fetch,

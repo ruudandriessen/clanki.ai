@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { and, desc, eq, gt } from "drizzle-orm";
 import { drizzle, type DrizzleD1Database } from "drizzle-orm/d1";
+import type { Sandbox } from "@cloudflare/sandbox";
 import * as schema from "../db/schema";
 import { executeTaskRun } from "../lib/task-runs";
 
@@ -11,6 +12,10 @@ type Env = {
     OPENCODE_SERVER_PASSWORD?: string;
     OPENCODE_SERVER_USERNAME?: string;
     OPENCODE_MODEL?: string;
+    Sandbox: DurableObjectNamespace<Sandbox>;
+    ANTHROPIC_API_KEY?: string;
+    GITHUB_APP_ID?: string;
+    GITHUB_APP_PRIVATE_KEY?: string;
   };
   Variables: {
     db: DrizzleD1Database<typeof schema>;
@@ -32,10 +37,10 @@ async function getTaskForOrg(
   db: DrizzleD1Database<typeof schema>,
   taskId: string,
   orgId: string,
-): Promise<{ id: string; title: string } | undefined> {
+): Promise<{ id: string; title: string; projectId: string | null } | undefined> {
   return db.query.tasks.findFirst({
     where: and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)),
-    columns: { id: true, title: true },
+    columns: { id: true, title: true, projectId: true },
   });
 }
 
@@ -312,6 +317,13 @@ tasks.post("/:taskId/runs", async (c) => {
     createdAt: now,
   });
 
+  const project = task.projectId
+    ? await db.query.projects.findFirst({
+        where: eq(schema.projects.id, task.projectId),
+        columns: { repoUrl: true, installationId: true },
+      })
+    : null;
+
   c.executionCtx.waitUntil(
     executeTaskRun({
       db: drizzle(c.env.DB, { schema }),
@@ -320,6 +332,8 @@ tasks.post("/:taskId/runs", async (c) => {
       taskId,
       taskTitle: task.title,
       prompt: inputMessage.content,
+      repoUrl: project?.repoUrl ?? null,
+      installationId: project?.installationId ?? null,
     }),
   );
 

@@ -55,11 +55,13 @@ Subsequent runs for the same task reuse the same sandbox — the OpenCode server
 ### Step 1 — Add dependencies and Dockerfile
 
 **Install:**
+
 ```bash
 bun add @cloudflare/sandbox @opencode-ai/sdk
 ```
 
 **Create `Dockerfile`** at repo root:
+
 ```dockerfile
 FROM docker.io/cloudflare/sandbox:0.7.2-opencode
 
@@ -83,23 +85,23 @@ Add container, Durable Object, and migration config:
     {
       "class_name": "Sandbox",
       "image": "./Dockerfile",
-      "instance_type": "basic"
-    }
+      "instance_type": "basic",
+    },
   ],
   "durable_objects": {
     "bindings": [
       {
         "name": "Sandbox",
-        "class_name": "Sandbox"
-      }
-    ]
+        "class_name": "Sandbox",
+      },
+    ],
   },
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["Sandbox"]
-    }
-  ]
+      "new_sqlite_classes": ["Sandbox"],
+    },
+  ],
 }
 ```
 
@@ -111,13 +113,14 @@ export { Sandbox } from "@cloudflare/sandbox";
 ```
 
 Add to `Bindings` type:
+
 ```ts
 type Bindings = {
   // ... existing ...
   Sandbox: DurableObjectNamespace;
-  ANTHROPIC_API_KEY?: string;       // for OpenCode inside sandbox
-  GITHUB_APP_ID?: string;           // for installation token generation
-  GITHUB_APP_PRIVATE_KEY?: string;  // for installation token generation
+  ANTHROPIC_API_KEY?: string; // for OpenCode inside sandbox
+  GITHUB_APP_ID?: string; // for installation token generation
+  GITHUB_APP_PRIVATE_KEY?: string; // for installation token generation
 };
 ```
 
@@ -129,10 +132,11 @@ Currently the codebase uses user OAuth tokens for GitHub API calls (`installatio
 export async function createInstallationToken(
   env: { GITHUB_APP_ID?: string; GITHUB_APP_PRIVATE_KEY?: string },
   installationId: number,
-): Promise<string>
+): Promise<string>;
 ```
 
 Flow:
+
 1. Generate a JWT signed with the GitHub App private key (`GITHUB_APP_PRIVATE_KEY`).
 2. Exchange it for an installation access token via `POST /app/installations/{installation_id}/access_tokens`.
 3. Return the token (valid for ~1 hour).
@@ -140,6 +144,7 @@ Flow:
 This token is used to construct an authenticated clone URL: `https://x-access-token:{token}@github.com/{owner}/{repo}.git`
 
 **New secrets** (set via `wrangler secret put`):
+
 - `GITHUB_APP_ID` — the numeric GitHub App ID
 - `GITHUB_APP_PRIVATE_KEY` — the PEM-encoded private key
 
@@ -186,6 +191,7 @@ export async function getOpenCodeClient(
 ```
 
 Key design decisions:
+
 - **`taskId` as sandbox ID** — all runs for the same task share the same sandbox.
 - **`sleepAfter: "15m"`** — sandbox stays warm while the user is chatting. After 15 min idle, auto-recycles.
 - **`createOpencode()`** — starts `opencode serve` inside the sandbox (or connects to it if already running) and returns a typed SDK client.
@@ -216,6 +222,7 @@ After:
 ```
 
 Specific changes:
+
 - Extend `TaskRunEnv` to include `SandboxEnv` + GitHub App secrets.
 - Add `repoUrl` and `installationId` to the `executeTaskRun` args (looked up from the task's project).
 - After getting the sandbox, update the `taskRuns` row with `sandboxId = taskId`.
@@ -228,6 +235,7 @@ Specific changes:
 ### Step 7 — Update the run creation route (`worker/src/routes/tasks.ts`)
 
 In `POST /api/tasks/:taskId/runs`:
+
 - Look up the task's project to get `repoUrl` and `installationId`.
 - Pass these + `c.env` (including `Sandbox` binding) to `executeTaskRun`.
 
@@ -261,9 +269,9 @@ The `TaskRun` type in `frontend/src/lib/api.ts:99` already includes `sandboxId: 
 In `frontend/src/pages/task-page.tsx`, display the sandbox ID in the run status panel:
 
 ```tsx
-{run.sandboxId && (
-  <p className="text-xs text-muted-foreground">sandbox: {run.sandboxId}</p>
-)}
+{
+  run.sandboxId && <p className="text-xs text-muted-foreground">sandbox: {run.sandboxId}</p>;
+}
 ```
 
 ### Step 9 — No migration needed
@@ -301,24 +309,25 @@ User sends message 3 (task T1, after sleep)
 
 ## File Change Summary
 
-| File | Change |
-|------|--------|
-| `package.json` | Add `@cloudflare/sandbox`, `@opencode-ai/sdk` |
-| `Dockerfile` | **New** — uses `cloudflare/sandbox:X.Y.Z-opencode` base image |
-| `wrangler.json` | Add `containers`, `durable_objects`, `migrations` |
-| `worker/src/index.ts` | Export `Sandbox` class, add `Sandbox` + API key bindings |
-| `worker/src/lib/github.ts` | **New** — `createInstallationToken()` for private repo cloning |
-| `worker/src/lib/sandbox.ts` | **New** — `getTaskSandbox()`, `getOpenCodeClient()` |
-| `worker/src/lib/task-runs.ts` | Rewrite to use sandbox + `@opencode-ai/sdk` client |
-| `worker/src/routes/tasks.ts` | Look up project repo info, pass to `executeTaskRun` |
-| `frontend/src/pages/task-page.tsx` | Show `sandboxId` in run status panel |
-| `worker/src/db/schema.ts` | No changes (column exists) |
-| `frontend/src/lib/api.ts` | No changes (type exists) |
-| `worker/src/lib/opencode.ts` | Can be removed once migration is complete |
+| File                               | Change                                                         |
+| ---------------------------------- | -------------------------------------------------------------- |
+| `package.json`                     | Add `@cloudflare/sandbox`, `@opencode-ai/sdk`                  |
+| `Dockerfile`                       | **New** — uses `cloudflare/sandbox:X.Y.Z-opencode` base image  |
+| `wrangler.json`                    | Add `containers`, `durable_objects`, `migrations`              |
+| `worker/src/index.ts`              | Export `Sandbox` class, add `Sandbox` + API key bindings       |
+| `worker/src/lib/github.ts`         | **New** — `createInstallationToken()` for private repo cloning |
+| `worker/src/lib/sandbox.ts`        | **New** — `getTaskSandbox()`, `getOpenCodeClient()`            |
+| `worker/src/lib/task-runs.ts`      | Rewrite to use sandbox + `@opencode-ai/sdk` client             |
+| `worker/src/routes/tasks.ts`       | Look up project repo info, pass to `executeTaskRun`            |
+| `frontend/src/pages/task-page.tsx` | Show `sandboxId` in run status panel                           |
+| `worker/src/db/schema.ts`          | No changes (column exists)                                     |
+| `frontend/src/lib/api.ts`          | No changes (type exists)                                       |
+| `worker/src/lib/opencode.ts`       | Can be removed once migration is complete                      |
 
 ## New Secrets Required
 
 Set via `wrangler secret put`:
+
 - `ANTHROPIC_API_KEY` — for OpenCode inside the sandbox to call Anthropic
 - `GITHUB_APP_ID` — GitHub App numeric ID (for installation token generation)
 - `GITHUB_APP_PRIVATE_KEY` — GitHub App PEM private key (for installation token generation)

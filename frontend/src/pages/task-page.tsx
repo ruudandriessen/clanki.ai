@@ -21,6 +21,7 @@ export function TaskPage() {
   const [runStatus, setRunStatus] = useState<string | null>(null);
   const [runEvents, setRunEvents] = useState<TaskRunEvent[]>([]);
   const [runError, setRunError] = useState<string | null>(null);
+  const [runSandboxId, setRunSandboxId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const mountedRef = useRef(true);
@@ -69,6 +70,7 @@ export function TaskPage() {
     setRunStatus(null);
     setRunEvents([]);
     setRunError(null);
+    setRunSandboxId(null);
   }, [taskId]);
 
   async function handleSend() {
@@ -80,6 +82,7 @@ export function TaskPage() {
     setRunError(null);
     setRunEvents([]);
     setRunStatus("queued");
+    setRunSandboxId(null);
 
     try {
       const userMessage = await createTaskMessage(taskId, "user", content);
@@ -119,6 +122,9 @@ export function TaskPage() {
 
       await messagesCollection?.utils.refetch();
 
+      if (run.sandboxId) {
+        setRunSandboxId(run.sandboxId);
+      }
       setRunStatus(run.status);
 
       if (RUN_TERMINAL_STATUSES.has(run.status)) {
@@ -190,6 +196,9 @@ export function TaskPage() {
                 <p className="text-xs font-medium text-foreground">
                   OpenCode run: {runStatus ?? "queued"}
                 </p>
+                {runSandboxId ? (
+                  <p className="text-xs text-muted-foreground">sandbox: {runSandboxId}</p>
+                ) : null}
                 {runEvents.slice(-4).map((event) => (
                   <p key={event.id} className="text-xs text-muted-foreground whitespace-pre-wrap">
                     {event.kind}: {event.payload}

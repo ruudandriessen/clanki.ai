@@ -22,7 +22,9 @@
     "wrangler": "wrangler"
   },
   "dependencies": {
+    "@cloudflare/sandbox": "^0.7.2",
     "@octokit/webhooks": "^14.2.0",
+    "@opencode-ai/sdk": "^1.1.63",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/query-core": "^5.90.20",
     "@tanstack/query-db-collection": "^1.0.22",
