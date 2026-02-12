@@ -318,3 +318,54 @@ export const taskMessages = sqliteTable(
   },
   (t) => [index("task_message_task").on(t.taskId, t.createdAt)],
 );
+
+// ---------------------------------------------------------------------------
+// Task runs
+// ---------------------------------------------------------------------------
+
+export const taskRuns = sqliteTable(
+  "task_runs",
+  {
+    id: text("id").primaryKey(),
+    taskId: text("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    tool: text("tool").notNull().default("opencode"),
+    status: text("status").notNull().default("queued"),
+    inputMessageId: text("input_message_id").references(() => taskMessages.id, {
+      onDelete: "set null",
+    }),
+    outputMessageId: text("output_message_id").references(() => taskMessages.id, {
+      onDelete: "set null",
+    }),
+    sandboxId: text("sandbox_id"),
+    sessionId: text("session_id"),
+    error: text("error"),
+    startedAt: integer("started_at"),
+    finishedAt: integer("finished_at"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => [
+    index("task_run_task").on(t.taskId, t.createdAt),
+    index("task_run_status").on(t.status, t.createdAt),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Task run events
+// ---------------------------------------------------------------------------
+
+export const taskRunEvents = sqliteTable(
+  "task_run_events",
+  {
+    id: text("id").primaryKey(),
+    runId: text("run_id")
+      .notNull()
+      .references(() => taskRuns.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    payload: text("payload").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [index("task_run_event_run").on(t.runId, t.createdAt)],
+);
