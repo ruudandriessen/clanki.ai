@@ -56,7 +56,7 @@ export async function executeTaskRun(args: {
     }
 
     // Start or connect to the OpenCode server and get a typed client
-    const { client } = await getOpenCodeClient(sandbox, env, repoDir);
+    const { client } = await getOpenCodeClient(sandbox, repoDir);
 
     // Reuse an existing OpenCode session from a previous run, or create a new one
     const previousRun = await db.query.taskRuns.findFirst({

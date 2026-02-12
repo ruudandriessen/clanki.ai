@@ -13,7 +13,6 @@ type Env = {
     OPENCODE_SERVER_USERNAME?: string;
     OPENCODE_MODEL?: string;
     Sandbox: DurableObjectNamespace<Sandbox>;
-    ANTHROPIC_API_KEY?: string;
     GITHUB_APP_ID?: string;
     GITHUB_APP_PRIVATE_KEY?: string;
   };

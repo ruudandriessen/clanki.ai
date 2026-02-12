@@ -328,6 +328,5 @@ User sends message 3 (task T1, after sleep)
 
 Set via `wrangler secret put`:
 
-- `ANTHROPIC_API_KEY` — for OpenCode inside the sandbox to call Anthropic
 - `GITHUB_APP_ID` — GitHub App numeric ID (for installation token generation)
 - `GITHUB_APP_PRIVATE_KEY` — GitHub App PEM private key (for installation token generation)
