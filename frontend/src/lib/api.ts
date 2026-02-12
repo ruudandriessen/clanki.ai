@@ -95,10 +95,6 @@ export function fetchTasks() {
   return fetchJson<Task[]>("/tasks");
 }
 
-export function fetchTask(taskId: string) {
-  return fetchJson<Task>(`/tasks/${taskId}`);
-}
-
 export function createTask(title: string, projectId?: string) {
   return postJson<Task>("/tasks", { title, projectId });
 }
