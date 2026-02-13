@@ -21,6 +21,19 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return res.json();
 }
 
+async function patchJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw new Error(`API ${res.status}: ${path}`);
+  }
+  return res.json();
+}
+
 // ---- Types matching API responses ----
 
 export interface Project {
@@ -121,6 +134,10 @@ export function fetchTasks() {
 
 export function createTask(title: string, projectId: string) {
   return postJson<Task>("/tasks", { title, projectId });
+}
+
+export function updateTask(taskId: string, title: string) {
+  return patchJson<Task>(`/tasks/${taskId}`, { title });
 }
 
 export function fetchTaskMessages(taskId: string) {

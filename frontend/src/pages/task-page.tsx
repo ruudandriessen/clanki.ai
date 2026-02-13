@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams } from "@tanstack/react-router";
 import { useLiveQuery } from "@tanstack/react-db";
-import { Loader2, Send } from "lucide-react";
+import { Check, Loader2, Pencil, Send, X } from "lucide-react";
 import { getTaskMessagesCollection, tasksCollection } from "../lib/collections";
 import {
   createTaskMessage,
   createTaskRun,
   fetchTaskRun,
   fetchTaskRunEvents,
+  updateTask,
   type TaskRunEvent,
 } from "../lib/api";
 
@@ -22,8 +23,13 @@ export function TaskPage() {
   const [runEvents, setRunEvents] = useState<TaskRunEvent[]>([]);
   const [runError, setRunError] = useState<string | null>(null);
   const [runSandboxId, setRunSandboxId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleInput, setTitleInput] = useState("");
+  const [savingTitle, setSavingTitle] = useState(false);
+  const [titleError, setTitleError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const mountedRef = useRef(true);
 
   const { data: tasks } = useLiveQuery((q) => q.from({ t: tasksCollection }));
@@ -71,7 +77,22 @@ export function TaskPage() {
     setRunEvents([]);
     setRunError(null);
     setRunSandboxId(null);
+    setEditingTitle(false);
+    setTitleError(null);
   }, [taskId]);
+
+  useEffect(() => {
+    if (!editingTitle) {
+      setTitleInput(task?.title ?? "");
+    }
+  }, [task?.title, editingTitle]);
+
+  useEffect(() => {
+    if (editingTitle) {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    }
+  }, [editingTitle]);
 
   async function handleSend() {
     const content = input.trim();
@@ -146,6 +167,66 @@ export function TaskPage() {
     }
   }
 
+  function handleTitleEditStart() {
+    if (!task) {
+      return;
+    }
+
+    setEditingTitle(true);
+    setTitleInput(task.title);
+    setTitleError(null);
+  }
+
+  function handleTitleEditCancel() {
+    setEditingTitle(false);
+    setTitleInput(task?.title ?? "");
+    setTitleError(null);
+  }
+
+  async function handleTitleEditSave() {
+    if (!task || !taskId || savingTitle) {
+      return;
+    }
+
+    const nextTitle = titleInput.trim();
+    if (nextTitle.length === 0) {
+      setTitleError("Title cannot be empty");
+      return;
+    }
+
+    if (nextTitle === task.title) {
+      setEditingTitle(false);
+      setTitleError(null);
+      return;
+    }
+
+    setSavingTitle(true);
+    setTitleError(null);
+
+    try {
+      await updateTask(taskId, nextTitle);
+      await tasksCollection.utils.refetch();
+      setEditingTitle(false);
+    } catch (error) {
+      setTitleError(error instanceof Error ? error.message : "Failed to update task title");
+    } finally {
+      setSavingTitle(false);
+    }
+  }
+
+  function handleTitleInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleTitleEditSave();
+      return;
+    }
+
+    if (e.key === "Escape") {
+      e.preventDefault();
+      handleTitleEditCancel();
+    }
+  }
+
   if (!taskId) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -158,7 +239,52 @@ export function TaskPage() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-4 md:px-6 py-3 border-b border-border shrink-0">
-        <h2 className="text-sm font-medium truncate">{task?.title ?? "Task"}</h2>
+        {editingTitle ? (
+          <div className="flex items-center gap-2 min-h-8">
+            <input
+              ref={titleInputRef}
+              value={titleInput}
+              onChange={(e) => setTitleInput(e.target.value)}
+              onKeyDown={handleTitleInputKeyDown}
+              className="h-8 w-full max-w-lg rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground outline-none focus:ring-1 focus:ring-primary"
+            />
+            <button
+              type="button"
+              onClick={handleTitleEditSave}
+              disabled={savingTitle}
+              className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+              title="Save task name"
+            >
+              {savingTitle ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={handleTitleEditCancel}
+              disabled={savingTitle}
+              className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+              title="Cancel"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 min-w-0 min-h-8">
+            <h2 className="m-0 text-sm font-medium truncate">{task?.title ?? "Task"}</h2>
+            <button
+              type="button"
+              onClick={handleTitleEditStart}
+              className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              title="Edit task name"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+        {titleError ? <p className="mt-1 text-xs text-red-500">{titleError}</p> : null}
       </div>
 
       {/* Messages area */}
