@@ -32,6 +32,10 @@ Examples:
 
 ## Code Style
 
+### One component per file
+
+Every React component must live in its own file. Do not define multiple components in a single `.tsx` file (except tiny local inline render helpers that are not reusable components).
+
 ### Prefer `??` over `||` for default values
 
 Use the nullish coalescing operator (`??`) instead of logical OR (`||`) when providing fallback/default values. `??` only falls back on `null`/`undefined`, while `||` also falls back on `0`, `""`, and `false` — which are often valid values.
