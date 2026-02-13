@@ -7,7 +7,6 @@ import { createAuth } from "./auth";
 import { handleAnalysisResults } from "./api/snapshot-results";
 import { requireAuth } from "./middleware/requireAuth";
 import { installations } from "./routes/installations";
-import { electric } from "./routes/electric";
 import { projects } from "./routes/projects";
 import { settings } from "./routes/settings";
 import { snapshots } from "./routes/snapshots";
@@ -17,6 +16,8 @@ import { handleGitHubWebhook } from "./webhook/github";
 type Bindings = {
   ASSETS: Fetcher;
   HYPERDRIVE: Hyperdrive;
+  DATABASE_URL?: string;
+  ENVIRONMENT?: string;
   ELECTRIC_URL: string;
   ELECTRIC_SOURCE_ID?: string;
   ELECTRIC_SOURCE_SECRET?: string;
@@ -76,7 +77,6 @@ app.use("/api/projects/*", requireAuth);
 app.use("/api/tasks/*", requireAuth);
 app.use("/api/tasks", requireAuth);
 app.use("/api/settings/*", requireAuth);
-app.use("/api/electric/*", requireAuth);
 
 // Data API routes
 app.route("/api/installations", installations);
@@ -84,7 +84,6 @@ app.route("/api/projects", projects);
 app.route("/api/projects/:projectId/snapshots", snapshots);
 app.route("/api/tasks", tasks);
 app.route("/api/settings", settings);
-app.route("/api/electric", electric);
 
 app.post("/webhook", (c) => handleGitHubWebhook(c));
 

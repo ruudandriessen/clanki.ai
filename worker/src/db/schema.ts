@@ -70,7 +70,7 @@ export const verification = pgTable("verification", {
 // User provider credentials
 // ---------------------------------------------------------------------------
 
-export const userProviderCredentials = sqliteTable(
+export const userProviderCredentials = pgTable(
   "user_provider_credentials",
   {
     id: text("id").primaryKey(),
@@ -81,8 +81,8 @@ export const userProviderCredentials = sqliteTable(
     encryptedApiKey: text("encrypted_api_key").notNull(),
     authType: text("auth_type").notNull().default("api"),
     encryptedAuthJson: text("encrypted_auth_json"),
-    createdAt: integer("created_at").notNull(),
-    updatedAt: integer("updated_at").notNull(),
+    createdAt: msTimestamp("created_at").notNull(),
+    updatedAt: msTimestamp("updated_at").notNull(),
   },
   (t) => [
     uniqueIndex("user_provider_unique").on(t.userId, t.provider),
@@ -94,7 +94,7 @@ export const userProviderCredentials = sqliteTable(
 // User provider OAuth attempts
 // ---------------------------------------------------------------------------
 
-export const userProviderOauthAttempts = sqliteTable(
+export const userProviderOauthAttempts = pgTable(
   "user_provider_oauth_attempts",
   {
     id: text("id").primaryKey(),
@@ -104,8 +104,8 @@ export const userProviderOauthAttempts = sqliteTable(
     provider: text("provider").notNull(),
     sandboxId: text("sandbox_id").notNull(),
     method: integer("method").notNull(),
-    createdAt: integer("created_at").notNull(),
-    expiresAt: integer("expires_at").notNull(),
+    createdAt: msTimestamp("created_at").notNull(),
+    expiresAt: msTimestamp("expires_at").notNull(),
   },
   (t) => [
     uniqueIndex("user_provider_oauth_unique").on(t.userId, t.provider),

@@ -1,8 +1,9 @@
-import { and, desc, eq, gt, sql } from "drizzle-orm";
+import { and, desc, eq, gt } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Sandbox } from "@cloudflare/sandbox";
 import type { AppDb } from "../db/client";
 import { getDb } from "../db/client";
+import { withTransaction, withTxid } from "../db/transaction";
 import * as schema from "../db/schema";
 import {
   DEFAULT_OPENCODE_MODEL,
@@ -37,26 +38,6 @@ function getOrgId(c: { get: (key: "session") => Env["Variables"]["session"] }): 
 
 function getUserId(c: { get: (key: "session") => Env["Variables"]["session"] }): string {
   return c.get("session").user.id;
-}
-
-function withTxid(response: Response, txid: number): Response {
-  response.headers.set("x-electric-txid", String(txid));
-  return response;
-}
-
-async function getCurrentTxid(executor: {
-  execute: (query: ReturnType<typeof sql>) => Promise<unknown>;
-}) {
-  const result = (await executor.execute(
-    sql<{ txid: string }>`select pg_current_xact_id()::text as txid`,
-  )) as { rows: Array<{ txid: string }> };
-
-  const txid = Number(result.rows[0]?.txid);
-  if (!Number.isFinite(txid)) {
-    throw new Error("Failed to resolve postgres txid");
-  }
-
-  return txid;
 }
 
 async function getTaskForOrg(
@@ -160,7 +141,7 @@ tasks.post("/", async (c) => {
     return c.json({ error: "Project not found" }, 404);
   }
 
-  const result = await db.transaction(async (tx) => {
+  const result = await withTransaction(db, async (tx, txid) => {
     const now = Date.now();
     const task = {
       id: crypto.randomUUID(),
@@ -173,9 +154,6 @@ tasks.post("/", async (c) => {
     };
 
     await tx.insert(schema.tasks).values(task);
-    const txid = await getCurrentTxid(
-      tx as unknown as { execute: (query: ReturnType<typeof sql>) => Promise<unknown> },
-    );
     return { task, txid };
   });
 
@@ -229,7 +207,7 @@ tasks.patch("/:taskId", async (c) => {
     return c.json({ error: "title is required" }, 400);
   }
 
-  const result = await db.transaction(async (tx) => {
+  const result = await withTransaction(db, async (tx, txid) => {
     const updatedAt = Date.now();
     await tx
       .update(schema.tasks)
@@ -244,9 +222,6 @@ tasks.patch("/:taskId", async (c) => {
       return { notFound: true as const };
     }
 
-    const txid = await getCurrentTxid(
-      tx as unknown as { execute: (query: ReturnType<typeof sql>) => Promise<unknown> },
-    );
     return { updatedTask, txid };
   });
 
@@ -272,22 +247,15 @@ tasks.delete("/:taskId", async (c) => {
     return c.json({ error: "Task not found" }, 404);
   }
 
-  const txid = await db.transaction(async (tx) => {
+  const txid = await withTransaction(db, async (tx, txid) => {
     await tx
       .delete(schema.tasks)
       .where(and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)));
 
-    return getCurrentTxid(
-      tx as unknown as { execute: (query: ReturnType<typeof sql>) => Promise<unknown> },
-    );
+    return txid;
   });
 
-  return new Response(null, {
-    status: 204,
-    headers: {
-      "x-electric-txid": String(txid),
-    },
-  });
+  return withTxid(new Response(null, { status: 204 }), txid);
 });
 
 // GET /api/tasks/:taskId/messages — list messages for a task
@@ -342,7 +310,7 @@ tasks.post("/:taskId/messages", async (c) => {
     return c.json({ error: "role must be 'user' or 'assistant'" }, 400);
   }
 
-  const result = await db.transaction(async (tx) => {
+  const result = await withTransaction(db, async (tx, txid) => {
     const now = await getNextTaskMessageTimestamp(tx as unknown as AppDb, taskId);
     const message = {
       id: crypto.randomUUID(),
@@ -357,9 +325,6 @@ tasks.post("/:taskId/messages", async (c) => {
     // Update task's updatedAt
     await tx.update(schema.tasks).set({ updatedAt: now }).where(eq(schema.tasks.id, taskId));
 
-    const txid = await getCurrentTxid(
-      tx as unknown as { execute: (query: ReturnType<typeof sql>) => Promise<unknown> },
-    );
     return { message, txid };
   });
 

@@ -1,6 +1,6 @@
 import type { Auth } from "@opencode-ai/sdk";
 import { and, eq } from "drizzle-orm";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
+import type { AppDb } from "../db/client";
 import * as schema from "../db/schema";
 import type { SupportedOpencodeProvider } from "./opencode";
 import { decryptSecret, encryptSecret, type SecretCryptoEnv } from "./secret-crypto";
@@ -14,7 +14,7 @@ type ProviderCredentialStatus = {
 };
 
 export async function getProviderCredentialStatus(
-  db: DrizzleD1Database<typeof schema>,
+  db: AppDb,
   userId: string,
   provider: SupportedOpencodeProvider,
 ): Promise<ProviderCredentialStatus> {
@@ -38,7 +38,7 @@ export async function getProviderCredentialStatus(
 }
 
 export async function upsertProviderApiKeyCredential(
-  db: DrizzleD1Database<typeof schema>,
+  db: AppDb,
   env: SecretCryptoEnv,
   userId: string,
   provider: SupportedOpencodeProvider,
@@ -49,7 +49,7 @@ export async function upsertProviderApiKeyCredential(
 }
 
 export async function upsertProviderAuthCredential(
-  db: DrizzleD1Database<typeof schema>,
+  db: AppDb,
   env: SecretCryptoEnv,
   userId: string,
   provider: SupportedOpencodeProvider,
@@ -60,7 +60,7 @@ export async function upsertProviderAuthCredential(
 }
 
 export async function deleteProviderCredential(
-  db: DrizzleD1Database<typeof schema>,
+  db: AppDb,
   userId: string,
   provider: SupportedOpencodeProvider,
 ): Promise<void> {
@@ -75,7 +75,7 @@ export async function deleteProviderCredential(
 }
 
 export async function getDecryptedProviderAuth(
-  db: DrizzleD1Database<typeof schema>,
+  db: AppDb,
   env: SecretCryptoEnv,
   userId: string,
   provider: SupportedOpencodeProvider,
@@ -111,7 +111,7 @@ export async function getDecryptedProviderAuth(
 }
 
 async function upsertProviderCredential(
-  db: DrizzleD1Database<typeof schema>,
+  db: AppDb,
   env: SecretCryptoEnv,
   userId: string,
   provider: SupportedOpencodeProvider,

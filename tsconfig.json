@@ -4,5 +4,13 @@
     "paths": {
       "@/*": ["frontend/src/*"]
     }
-  }
+  },
+  "references": [
+    {
+      "path": "./tsconfig.frontend.json"
+    },
+    {
+      "path": "./tsconfig.worker.json"
+    }
+  ]
 }

@@ -1,6 +1,7 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { Hono } from "hono";
 import type { AppDb } from "../db/client";
+import { withTransaction, withTxid } from "../db/transaction";
 import * as schema from "../db/schema";
 
 type Env = {
@@ -18,24 +19,6 @@ const projects = new Hono<Env>();
 function getOrgId(c: { get: (key: "session") => Env["Variables"]["session"] }): string | null {
   const session = c.get("session");
   return (session.session as { activeOrganizationId?: string | null }).activeOrganizationId ?? null;
-}
-
-function withTxid(response: Response, txid: number): Response {
-  response.headers.set("x-electric-txid", String(txid));
-  return response;
-}
-
-async function getCurrentTxid(executor: {
-  execute: (query: ReturnType<typeof sql>) => Promise<unknown>;
-}) {
-  const result = (await executor.execute(
-    sql<{ txid: string }>`select pg_current_xact_id()::text as txid`,
-  )) as { rows: Array<{ txid: string }> };
-  const txid = Number(result.rows[0]?.txid);
-  if (!Number.isFinite(txid)) {
-    throw new Error("Failed to resolve postgres txid");
-  }
-  return txid;
 }
 
 // GET /api/projects — list projects for the active organization
@@ -103,7 +86,7 @@ projects.post("/", async (c) => {
     }
   }
 
-  const result = await db.transaction(async (tx) => {
+  const result = await withTransaction(db, async (tx, txid) => {
     // Check for existing projects with same repoUrl in this org
     const repoUrls = body.repos.map((r) => r.repoUrl);
     const existing = await tx.query.projects.findMany({
@@ -132,10 +115,6 @@ projects.post("/", async (c) => {
     }));
 
     await tx.insert(schema.projects).values(created);
-
-    const txid = await getCurrentTxid(
-      tx as unknown as { execute: (query: ReturnType<typeof sql>) => Promise<unknown> },
-    );
     return { created, txid };
   });
 

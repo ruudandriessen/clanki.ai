@@ -8,12 +8,11 @@
       "@/*": ["frontend/src/*"]
     },
     "strict": true,
+    "composite": true,
     "jsx": "react-jsx",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "noEmit": true,
     "skipLibCheck": true,
-    "isolatedModules": true,
-    "allowImportingTsExtensions": true
+    "isolatedModules": true
   },
   "include": ["frontend/src"]
 }

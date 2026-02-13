@@ -30,6 +30,8 @@ function isLocalOrigin(origin: string): boolean {
 
 type AuthEnv = {
   HYPERDRIVE: Hyperdrive;
+  DATABASE_URL?: string;
+  ENVIRONMENT?: string;
   BETTER_AUTH_SECRET: string;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
@@ -123,5 +125,6 @@ export function createAuth(env: AuthEnv, request: Request) {
       },
     },
   });
+
   return auth;
 }

@@ -1,55 +1,55 @@
-import { snakeCamelMapper } from "@electric-sql/client";
-import { electricCollectionOptions } from "@tanstack/electric-db-collection";
 import { createCollection } from "@tanstack/react-db";
-import type { Project, Task, TaskMessage } from "./api";
+import { queryCollectionOptions } from "@tanstack/query-db-collection";
+import { QueryClient } from "@tanstack/query-core";
+import {
+  fetchProjects,
+  fetchTasks,
+  fetchTaskMessages,
+  type Project,
+  type Task,
+  type TaskMessage,
+} from "./api";
 
-const ELECTRIC_BASE_URL = "/api/electric";
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+    },
+  },
+});
 
-const electricParser = {
-  // Parse bigint columns (Postgres int8) into JS numbers.
-  int8: (value: string) => Number(value),
-};
-
-const columnMapper = snakeCamelMapper();
+// ---- Projects collection ----
 
 export const projectsCollection = createCollection(
-  electricCollectionOptions<Project>({
-    id: "projects",
-    shapeOptions: {
-      url: `${ELECTRIC_BASE_URL}/projects`,
-      parser: electricParser,
-      columnMapper,
-    },
-    syncMode: "progressive",
+  queryCollectionOptions({
+    queryKey: ["projects"] as const,
+    queryFn: async (): Promise<Array<Project>> => fetchProjects(),
+    queryClient,
     getKey: (p) => p.id,
   }),
 );
 
+// ---- Tasks collection ----
+
 export const tasksCollection = createCollection(
-  electricCollectionOptions<Task>({
-    id: "tasks",
-    shapeOptions: {
-      url: `${ELECTRIC_BASE_URL}/tasks`,
-      parser: electricParser,
-      columnMapper,
-    },
-    syncMode: "progressive",
+  queryCollectionOptions({
+    queryKey: ["tasks"] as const,
+    queryFn: async (): Promise<Array<Task>> => fetchTasks(),
+    queryClient,
     getKey: (t) => t.id,
   }),
 );
+
+// ---- Task messages collection (per task) ----
 
 const taskMessageCollections = new Map<string, ReturnType<typeof createTaskMessagesCollection>>();
 
 function createTaskMessagesCollection(taskId: string) {
   return createCollection(
-    electricCollectionOptions<TaskMessage>({
-      id: `taskMessages:${taskId}`,
-      shapeOptions: {
-        url: `${ELECTRIC_BASE_URL}/tasks/${taskId}/messages`,
-        parser: electricParser,
-        columnMapper,
-      },
-      syncMode: "progressive",
+    queryCollectionOptions({
+      queryKey: ["taskMessages", taskId] as const,
+      queryFn: async (): Promise<Array<TaskMessage>> => fetchTaskMessages(taskId),
+      queryClient,
       getKey: (m) => m.id,
     }),
   );

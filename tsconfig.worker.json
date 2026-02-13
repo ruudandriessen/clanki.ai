@@ -4,9 +4,10 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
+    "esModuleInterop": true,
     "lib": ["ESNext"],
     "types": ["@cloudflare/workers-types"],
-    "noEmit": true,
+    "composite": true,
     "skipLibCheck": true
   },
   "include": ["worker/src"]

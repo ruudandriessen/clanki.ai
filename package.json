@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev:worker": "CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=\"${CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE:-$(grep '^CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=' .env | cut -d= -f2-)}\" wrangler dev",
+    "dev:worker": "wrangler dev",
     "dev:frontend": "vite",
     "dev": "bun run dev:worker & bun run dev:frontend",
     "build:worker": "tsc --noEmit -p tsconfig.worker.json",
@@ -26,11 +26,11 @@
   },
   "dependencies": {
     "@cloudflare/sandbox": "^0.7.2",
-    "@electric-sql/client": "^1.5.4",
     "@octokit/webhooks": "^14.2.0",
     "@opencode-ai/sdk": "^1.1.63",
     "@tailwindcss/vite": "^4.1.18",
-    "@tanstack/electric-db-collection": "^0.2.33",
+    "@tanstack/query-core": "^5.90.20",
+    "@tanstack/query-db-collection": "^1.0.23",
     "@tanstack/react-db": "0.1.70",
     "@tanstack/react-router": "^1.157.16",
     "better-auth": "^1.4.18",

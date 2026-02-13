@@ -1,8 +1,8 @@
 import type { Sandbox } from "@cloudflare/sandbox";
 import { and, eq, lt } from "drizzle-orm";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import type { ProviderAuthMethod } from "@opencode-ai/sdk";
+import type { AppDb } from "../db/client";
 import * as schema from "../db/schema";
 import { inspectProviderAuthFromSandbox, readProviderAuthFromSandbox } from "../lib/opencode-auth";
 import {
@@ -25,11 +25,11 @@ const OAUTH_WORKDIR = "/home/user";
 
 type Env = {
   Bindings: {
-    DB: D1Database;
+    HYPERDRIVE: Hyperdrive;
     Sandbox: DurableObjectNamespace<Sandbox>;
   } & SecretCryptoEnv;
   Variables: {
-    db: DrizzleD1Database<typeof schema>;
+    db: AppDb;
     session: {
       session: { userId: string; activeOrganizationId?: string | null };
       user: { id: string; name: string; email: string; image?: string | null };

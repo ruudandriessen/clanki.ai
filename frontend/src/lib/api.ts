@@ -37,7 +37,10 @@ async function postJsonWithTx<T>(path: string, body: unknown): Promise<MutationR
   if (!res.ok) {
     throw new Error(await toApiErrorMessage(res, path));
   }
-  return res.json();
+  return {
+    data: await res.json(),
+    txid: parseTxid(res),
+  };
 }
 
 async function putJson<T>(path: string, body: unknown): Promise<T> {
@@ -51,10 +54,7 @@ async function putJson<T>(path: string, body: unknown): Promise<T> {
     throw new Error(await toApiErrorMessage(res, path));
   }
 
-  return {
-    data: await res.json(),
-    txid: parseTxid(res),
-  };
+  return res.json();
 }
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
@@ -91,6 +91,16 @@ async function deleteJsonWithTx(path: string): Promise<{ txid?: number }> {
   return {
     txid: parseTxid(res),
   };
+}
+
+async function deleteJson(path: string): Promise<void> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    throw new Error(await toApiErrorMessage(res, path));
+  }
 }
 
 async function toApiErrorMessage(res: Response, path: string): Promise<string> {

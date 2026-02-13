@@ -5,25 +5,24 @@ import * as schema from "./schema";
 export type AppDb = PostgresJsDatabase<typeof schema>;
 
 type DbEnv = {
-  HYPERDRIVE: Hyperdrive;
+  HYPERDRIVE?: Hyperdrive;
+  DATABASE_URL?: string;
+  ENVIRONMENT?: string;
 };
 
-const hyperdriveDbCache = new WeakMap<Hyperdrive, AppDb>();
-
 export function getDb(env: DbEnv): AppDb {
-  const cached = hyperdriveDbCache.get(env.HYPERDRIVE);
-  if (cached) {
-    return cached;
+  const url = env.DATABASE_URL ?? env.HYPERDRIVE?.connectionString;
+  if (!url) {
+    throw new Error("Database connection string is missing");
   }
 
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
+  const sql = postgres(url, {
+    fetch_types: false,
     prepare: false,
     max: 5,
     idle_timeout: 20,
     connect_timeout: 10,
   });
 
-  const db = drizzle(sql, { schema });
-  hyperdriveDbCache.set(env.HYPERDRIVE, db);
-  return db;
+  return drizzle({ client: sql, schema });
 }
