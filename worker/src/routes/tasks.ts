@@ -3,6 +3,11 @@ import { and, desc, eq, gt } from "drizzle-orm";
 import { drizzle, type DrizzleD1Database } from "drizzle-orm/d1";
 import type { Sandbox } from "@cloudflare/sandbox";
 import * as schema from "../db/schema";
+import {
+  DEFAULT_OPENCODE_MODEL,
+  DEFAULT_OPENCODE_PROVIDER,
+  isSupportedOpencodeProvider,
+} from "../lib/opencode";
 import { executeTaskRun } from "../lib/task-runs";
 
 type Env = {
@@ -11,6 +16,7 @@ type Env = {
     Sandbox: DurableObjectNamespace<Sandbox>;
     GITHUB_APP_ID?: string;
     GITHUB_APP_PRIVATE_KEY?: string;
+    CREDENTIALS_ENCRYPTION_KEY: string;
   };
   Variables: {
     db: DrizzleD1Database<typeof schema>;
@@ -26,6 +32,10 @@ const tasks = new Hono<Env>();
 function getOrgId(c: { get: (key: "session") => Env["Variables"]["session"] }): string | null {
   const session = c.get("session");
   return (session.session as { activeOrganizationId?: string | null }).activeOrganizationId ?? null;
+}
+
+function getUserId(c: { get: (key: "session") => Env["Variables"]["session"] }): string {
+  return c.get("session").user.id;
 }
 
 async function getTaskForOrg(
@@ -321,89 +331,129 @@ tasks.post("/:taskId/runs", async (c) => {
   const db = c.get("db");
   const { taskId } = c.req.param();
   const orgId = getOrgId(c);
+  const userId = getUserId(c);
 
-  if (!orgId) {
-    return c.json({ error: "No active organization" }, 400);
-  }
-
-  const task = await getTaskForOrg(db, taskId, orgId);
-  if (!task) {
-    return c.json({ error: "Task not found" }, 404);
-  }
-
-  let body: { messageId?: string };
   try {
-    body = await c.req.json();
-  } catch {
-    body = {};
-  }
+    if (!orgId) {
+      return c.json({ error: "No active organization" }, 400);
+    }
 
-  const inputMessage = body.messageId
-    ? await db.query.taskMessages.findFirst({
-        where: and(
-          eq(schema.taskMessages.id, body.messageId),
-          eq(schema.taskMessages.taskId, taskId),
-          eq(schema.taskMessages.role, "user"),
-        ),
-      })
-    : await db.query.taskMessages.findFirst({
-        where: and(eq(schema.taskMessages.taskId, taskId), eq(schema.taskMessages.role, "user")),
-        orderBy: desc(schema.taskMessages.createdAt),
-      });
+    const task = await getTaskForOrg(db, taskId, orgId);
+    if (!task) {
+      return c.json({ error: "Task not found" }, 404);
+    }
 
-  if (!inputMessage) {
-    return c.json({ error: "No user message found for this task" }, 400);
-  }
+    let body: { messageId?: string; provider?: string; model?: string };
+    try {
+      body = await c.req.json();
+    } catch {
+      body = {};
+    }
 
-  const now = Date.now();
-  const run = {
-    id: crypto.randomUUID(),
-    taskId,
-    tool: "opencode",
-    status: "queued",
-    inputMessageId: inputMessage.id,
-    outputMessageId: null,
-    sandboxId: null,
-    sessionId: null,
-    error: null,
-    startedAt: null,
-    finishedAt: null,
-    createdAt: now,
-    updatedAt: now,
-  };
+    const requestedProvider = body.provider?.trim().toLowerCase() ?? "";
+    const providerInput =
+      requestedProvider.length > 0 ? requestedProvider : DEFAULT_OPENCODE_PROVIDER;
+    if (!isSupportedOpencodeProvider(providerInput)) {
+      return c.json({ error: `Unsupported provider: ${providerInput}` }, 400);
+    }
 
-  await db.insert(schema.taskRuns).values(run);
-  await db.insert(schema.taskRunEvents).values({
-    id: crypto.randomUUID(),
-    runId: run.id,
-    kind: "status",
-    payload: "queued",
-    createdAt: now,
-  });
+    const model = body.model?.trim() ?? DEFAULT_OPENCODE_MODEL;
+    if (model.length === 0) {
+      return c.json({ error: "model is required" }, 400);
+    }
 
-  const project = await db.query.projects.findFirst({
-    where: eq(schema.projects.id, task.projectId!),
-    columns: { repoUrl: true, installationId: true },
-  });
+    const hasCredential = await db.query.userProviderCredentials.findFirst({
+      where: and(
+        eq(schema.userProviderCredentials.userId, userId),
+        eq(schema.userProviderCredentials.provider, providerInput),
+      ),
+      columns: { id: true },
+    });
+    if (!hasCredential) {
+      return c.json({ error: `No ${providerInput} credentials configured in Settings` }, 400);
+    }
 
-  if (!project?.repoUrl) {
-    return c.json({ error: "Task's project has no repository URL configured" }, 400);
-  }
+    const inputMessage = body.messageId
+      ? await db.query.taskMessages.findFirst({
+          where: and(
+            eq(schema.taskMessages.id, body.messageId),
+            eq(schema.taskMessages.taskId, taskId),
+            eq(schema.taskMessages.role, "user"),
+          ),
+        })
+      : await db.query.taskMessages.findFirst({
+          where: and(eq(schema.taskMessages.taskId, taskId), eq(schema.taskMessages.role, "user")),
+          orderBy: desc(schema.taskMessages.createdAt),
+        });
 
-  c.executionCtx.waitUntil(
-    executeTaskRun({
-      db: drizzle(c.env.DB, { schema }),
-      env: c.env,
-      runId: run.id,
+    if (!inputMessage) {
+      return c.json({ error: "No user message found for this task" }, 400);
+    }
+
+    const now = Date.now();
+    const run = {
+      id: crypto.randomUUID(),
       taskId,
-      taskTitle: task.title,
-      prompt: inputMessage.content,
-      repoUrl: project.repoUrl,
-      installationId: project.installationId ?? null,
-    }),
-  );
+      tool: "opencode",
+      status: "queued",
+      inputMessageId: inputMessage.id,
+      outputMessageId: null,
+      sandboxId: null,
+      sessionId: null,
+      initiatedByUserId: userId,
+      provider: providerInput,
+      model,
+      error: null,
+      startedAt: null,
+      finishedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
 
-  return c.json(run, 202);
+    await db.insert(schema.taskRuns).values(run);
+    await db.insert(schema.taskRunEvents).values({
+      id: crypto.randomUUID(),
+      runId: run.id,
+      kind: "status",
+      payload: "queued",
+      createdAt: now,
+    });
+
+    const project = await db.query.projects.findFirst({
+      where: eq(schema.projects.id, task.projectId!),
+      columns: { repoUrl: true, installationId: true },
+    });
+
+    if (!project?.repoUrl) {
+      return c.json({ error: "Task's project has no repository URL configured" }, 400);
+    }
+
+    c.executionCtx.waitUntil(
+      executeTaskRun({
+        db: drizzle(c.env.DB, { schema }),
+        env: c.env,
+        runId: run.id,
+        taskId,
+        taskTitle: task.title,
+        prompt: inputMessage.content,
+        repoUrl: project.repoUrl,
+        installationId: project.installationId ?? null,
+        initiatedByUserId: userId,
+        provider: providerInput,
+        model,
+      }),
+    );
+
+    return c.json(run, 202);
+  } catch (error) {
+    const message = getErrorMessage(error);
+    console.error("Failed to create task run", {
+      taskId,
+      userId,
+      message,
+    });
+    return c.json({ error: message }, 500);
+  }
 });
 
 // GET /api/tasks/runs/:runId — single run
@@ -469,3 +519,11 @@ tasks.get("/runs/:runId/events", async (c) => {
 });
 
 export { tasks };
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return "Failed to create task run";
+}

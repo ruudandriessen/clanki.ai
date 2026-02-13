@@ -56,6 +56,54 @@ export const verification = sqliteTable("verification", {
 });
 
 // ---------------------------------------------------------------------------
+// User provider credentials
+// ---------------------------------------------------------------------------
+
+export const userProviderCredentials = sqliteTable(
+  "user_provider_credentials",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    encryptedApiKey: text("encrypted_api_key").notNull(),
+    authType: text("auth_type").notNull().default("api"),
+    encryptedAuthJson: text("encrypted_auth_json"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => [
+    uniqueIndex("user_provider_unique").on(t.userId, t.provider),
+    index("user_provider_user").on(t.userId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// User provider OAuth attempts
+// ---------------------------------------------------------------------------
+
+export const userProviderOauthAttempts = sqliteTable(
+  "user_provider_oauth_attempts",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    sandboxId: text("sandbox_id").notNull(),
+    method: integer("method").notNull(),
+    createdAt: integer("created_at").notNull(),
+    expiresAt: integer("expires_at").notNull(),
+  },
+  (t) => [
+    uniqueIndex("user_provider_oauth_unique").on(t.userId, t.provider),
+    index("user_provider_oauth_user").on(t.userId, t.createdAt),
+    index("user_provider_oauth_exp").on(t.expiresAt),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // Organizations (BetterAuth)
 // ---------------------------------------------------------------------------
 
@@ -340,6 +388,11 @@ export const taskRuns = sqliteTable(
     }),
     sandboxId: text("sandbox_id"),
     sessionId: text("session_id"),
+    initiatedByUserId: text("initiated_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    provider: text("provider").notNull().default("openai"),
+    model: text("model").notNull().default("gpt-5.3-codex"),
     error: text("error"),
     startedAt: integer("started_at"),
     finishedAt: integer("finished_at"),
@@ -349,6 +402,7 @@ export const taskRuns = sqliteTable(
   (t) => [
     index("task_run_task").on(t.taskId, t.createdAt),
     index("task_run_status").on(t.status, t.createdAt),
+    index("task_run_user").on(t.initiatedByUserId, t.createdAt),
   ],
 );
 

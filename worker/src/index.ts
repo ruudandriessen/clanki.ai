@@ -7,6 +7,7 @@ import { createAuth } from "./auth";
 import { requireAuth } from "./middleware/requireAuth";
 import { installations } from "./routes/installations";
 import { projects } from "./routes/projects";
+import { settings } from "./routes/settings";
 import { snapshots } from "./routes/snapshots";
 import { tasks } from "./routes/tasks";
 import { handleGitHubWebhook } from "./webhook/github";
@@ -19,6 +20,7 @@ type Bindings = {
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
   GITHUB_WEBHOOK_SECRET: string;
+  CREDENTIALS_ENCRYPTION_KEY: string;
   Sandbox: DurableObjectNamespace<Sandbox>;
   GITHUB_APP_ID?: string;
   GITHUB_APP_PRIVATE_KEY?: string;
@@ -69,12 +71,14 @@ app.use("/api/installations/*", requireAuth);
 app.use("/api/projects/*", requireAuth);
 app.use("/api/tasks/*", requireAuth);
 app.use("/api/tasks", requireAuth);
+app.use("/api/settings/*", requireAuth);
 
 // Data API routes
 app.route("/api/installations", installations);
 app.route("/api/projects", projects);
 app.route("/api/projects/:projectId/snapshots", snapshots);
 app.route("/api/tasks", tasks);
+app.route("/api/settings", settings);
 
 app.post("/webhook", (c) => handleGitHubWebhook(c));
 

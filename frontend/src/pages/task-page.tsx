@@ -58,6 +58,7 @@ export function TaskPage() {
         return a.id.localeCompare(b.id);
       })
     : messages;
+  const hasRunFeedback = activeRunId !== null || runStatus !== null || runError !== null;
 
   useEffect(() => {
     return () => {
@@ -323,12 +324,15 @@ export function TaskPage() {
               </div>
             ))}
 
-            {activeRunId ? (
+            {hasRunFeedback ? (
               <Card className="gap-0 border-border bg-muted/50 py-0">
                 <CardContent className="space-y-1 px-3 py-2">
                   <p className="text-xs font-medium text-foreground">
-                    OpenCode run: {runStatus ?? "queued"}
+                    OpenCode run: {runStatus ?? (runError ? "failed" : "queued")}
                   </p>
+                  {activeRunId ? (
+                    <p className="text-xs text-muted-foreground">run: {activeRunId}</p>
+                  ) : null}
                   {runSandboxId ? (
                     <p className="text-xs text-muted-foreground">sandbox: {runSandboxId}</p>
                   ) : null}

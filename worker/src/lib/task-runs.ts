@@ -2,9 +2,17 @@ import { and, desc, eq, isNull, not } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import * as schema from "../db/schema";
 import { createInstallationToken, buildAuthenticatedCloneUrl, type GitHubAppEnv } from "./github";
+import { readProviderAuthFromSandbox } from "./opencode-auth";
+import {
+  buildTaskRunSandboxId,
+  toProviderModelRef,
+  type SupportedOpencodeProvider,
+} from "./opencode";
+import { getDecryptedProviderAuth, upsertProviderAuthCredential } from "./provider-credentials";
 import { getTaskSandbox, getOpenCodeClient, type SandboxEnv } from "./sandbox";
+import type { SecretCryptoEnv } from "./secret-crypto";
 
-type TaskRunEnv = SandboxEnv & GitHubAppEnv;
+type TaskRunEnv = SandboxEnv & GitHubAppEnv & SecretCryptoEnv;
 
 export async function executeTaskRun(args: {
   db: DrizzleD1Database<typeof schema>;
@@ -15,8 +23,23 @@ export async function executeTaskRun(args: {
   prompt: string;
   repoUrl: string;
   installationId: number | null;
+  initiatedByUserId: string;
+  provider: SupportedOpencodeProvider;
+  model: string;
 }): Promise<void> {
-  const { db, env, runId, taskId, taskTitle, prompt, repoUrl, installationId } = args;
+  const {
+    db,
+    env,
+    runId,
+    taskId,
+    taskTitle,
+    prompt,
+    repoUrl,
+    installationId,
+    initiatedByUserId,
+    provider,
+    model,
+  } = args;
 
   try {
     const startedAt = Date.now();
@@ -32,9 +55,14 @@ export async function executeTaskRun(args: {
 
     await appendRunEvent(db, runId, "status", "running", startedAt);
 
-    // Get or resume sandbox for this task
-    const sandbox = getTaskSandbox(env, taskId);
-    const sandboxId = taskId;
+    // Scope sandbox by task+user+provider+model to avoid cross-user/provider leakage.
+    const sandboxId = buildTaskRunSandboxId({
+      taskId,
+      userId: initiatedByUserId,
+      provider,
+      model,
+    });
+    const sandbox = getTaskSandbox(env, sandboxId);
 
     await db
       .update(schema.taskRuns)
@@ -61,14 +89,29 @@ export async function executeTaskRun(args: {
       await sandbox.exec(`git -C ${repoDir} remote set-url origin '${freshUrl}'`);
     }
 
+    const providerAuth = await getDecryptedProviderAuth(db, env, initiatedByUserId, provider);
+    if (!providerAuth) {
+      throw new Error(`No ${provider} credentials configured. Add them in Settings first.`);
+    }
+
     // Start or connect to the OpenCode server and get a typed client
-    const { client } = await getOpenCodeClient(sandbox, repoDir);
+    const { client } = await getOpenCodeClient(sandbox, repoDir, {
+      enabled_providers: [provider],
+      model: toProviderModelRef(provider, model),
+    });
+    await client.auth.set({
+      path: { id: provider },
+      body: providerAuth,
+    });
 
     // Reuse an existing OpenCode session from a previous run, or create a new one
     const previousRun = await db.query.taskRuns.findFirst({
       where: and(
         eq(schema.taskRuns.taskId, taskId),
         eq(schema.taskRuns.tool, "opencode"),
+        eq(schema.taskRuns.initiatedByUserId, initiatedByUserId),
+        eq(schema.taskRuns.provider, provider),
+        eq(schema.taskRuns.model, model),
         not(isNull(schema.taskRuns.sessionId)),
       ),
       columns: { sessionId: true },
@@ -93,6 +136,14 @@ export async function executeTaskRun(args: {
         parts: [{ type: "text", text: prompt }],
       },
     });
+
+    // Persist the latest auth payload in case provider refresh tokens rotated.
+    try {
+      const refreshedAuth = await readProviderAuthFromSandbox(sandbox, provider);
+      if (refreshedAuth) {
+        await upsertProviderAuthCredential(db, env, initiatedByUserId, provider, refreshedAuth);
+      }
+    } catch {}
 
     // Extract text from the response parts
     const output = extractTextFromParts(response?.parts).trim();
