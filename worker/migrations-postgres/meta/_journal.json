@@ -8,6 +8,13 @@
       "when": 1770986790793,
       "tag": "0000_equal_blazing_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1770995898651,
+      "tag": "0001_striped_wong",
+      "breakpoints": true
     }
   ]
 }
