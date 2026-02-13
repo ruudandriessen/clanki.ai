@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { OrgSwitcher } from "./org-switcher";
 import { TaskList } from "./task-list";
 import { UserMenu } from "./user-menu";
@@ -21,12 +22,14 @@ export function Sidebar({ onClose }: SidebarProps) {
             <h1 className="text-lg font-bold text-foreground tracking-tight truncate">{orgName}</h1>
           </Link>
         </div>
-        <button
-          className="md:hidden p-1 rounded-md hover:bg-accent text-muted-foreground"
+        <Button
+          className="md:hidden text-muted-foreground"
+          variant="ghost"
+          size="icon-sm"
           onClick={onClose}
         >
           <X className="w-5 h-5" />
-        </button>
+        </Button>
       </div>
 
       <OrgSwitcher />

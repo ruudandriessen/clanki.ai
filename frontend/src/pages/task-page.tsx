@@ -1,8 +1,11 @@
-import { useState, useRef, useEffect } from "react";
-import { useParams } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "@tanstack/react-db";
+import { useParams } from "@tanstack/react-router";
 import { Check, Loader2, Pencil, Send, X } from "lucide-react";
-import { getTaskMessagesCollection, tasksCollection } from "../lib/collections";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   createTaskMessage,
   createTaskRun,
@@ -11,6 +14,7 @@ import {
   updateTask,
   type TaskRunEvent,
 } from "../lib/api";
+import { getTaskMessagesCollection, tasksCollection } from "../lib/collections";
 
 const RUN_TERMINAL_STATUSES = new Set(["succeeded", "failed"]);
 
@@ -61,12 +65,10 @@ export function TaskPage() {
     };
   }, []);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, runEvents]);
 
-  // Focus input on mount
   useEffect(() => {
     inputRef.current?.focus();
   }, [taskId]);
@@ -163,7 +165,7 @@ export function TaskPage() {
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      void handleSend();
     }
   }
 
@@ -217,7 +219,7 @@ export function TaskPage() {
   function handleTitleInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault();
-      handleTitleEditSave();
+      void handleTitleEditSave();
       return;
     }
 
@@ -229,77 +231,81 @@ export function TaskPage() {
 
   if (!taskId) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
+      <div className="flex h-full items-center justify-center text-muted-foreground">
         Select a task to get started
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="px-4 md:px-6 py-3 border-b border-border shrink-0">
+    <div className="flex h-full flex-col">
+      <div className="shrink-0 border-b border-border px-4 py-3 md:px-6">
         {editingTitle ? (
-          <div className="flex items-center gap-2 min-h-8">
-            <input
+          <div className="flex min-h-8 items-center gap-2">
+            <Input
               ref={titleInputRef}
               value={titleInput}
               onChange={(e) => setTitleInput(e.target.value)}
               onKeyDown={handleTitleInputKeyDown}
-              className="h-8 w-full max-w-lg rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground outline-none focus:ring-1 focus:ring-primary"
+              className="h-8 w-full max-w-lg px-2 text-sm"
             />
-            <button
+            <Button
               type="button"
-              onClick={handleTitleEditSave}
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => void handleTitleEditSave()}
               disabled={savingTitle}
-              className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+              className="text-muted-foreground"
               title="Save task name"
             >
               {savingTitle ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Check className="w-4 h-4" />
+                <Check className="h-4 w-4" />
               )}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-sm"
               onClick={handleTitleEditCancel}
               disabled={savingTitle}
-              className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+              className="text-muted-foreground"
               title="Cancel"
             >
-              <X className="w-4 h-4" />
-            </button>
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         ) : (
-          <div className="flex items-center gap-2 min-w-0 min-h-8">
-            <h2 className="m-0 text-sm font-medium truncate">{task?.title ?? "Task"}</h2>
-            <button
+          <div className="flex min-h-8 min-w-0 items-center gap-2">
+            <h2 className="m-0 truncate text-sm font-medium">{task?.title ?? "Task"}</h2>
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-xs"
               onClick={handleTitleEditStart}
-              className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              className="text-muted-foreground"
               title="Edit task name"
             >
-              <Pencil className="w-3.5 h-3.5" />
-            </button>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
           </div>
         )}
-        {titleError ? <p className="mt-1 text-xs text-red-500">{titleError}</p> : null}
+        {titleError ? <p className="mt-1 text-xs text-destructive">{titleError}</p> : null}
       </div>
 
-      {/* Messages area */}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
           </div>
         ) : !orderedMessages || orderedMessages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2 px-4">
+          <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-muted-foreground">
             <p className="text-sm">No messages yet</p>
             <p className="text-xs">Send a message to start an OpenCode run.</p>
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto px-4 py-4 space-y-4">
+          <div className="mx-auto max-w-3xl space-y-4 px-4 py-4">
             {orderedMessages.map((msg) => (
               <div
                 key={msg.id}
@@ -318,20 +324,22 @@ export function TaskPage() {
             ))}
 
             {activeRunId ? (
-              <div className="rounded-lg border border-border bg-muted/50 px-3 py-2 space-y-1">
-                <p className="text-xs font-medium text-foreground">
-                  OpenCode run: {runStatus ?? "queued"}
-                </p>
-                {runSandboxId ? (
-                  <p className="text-xs text-muted-foreground">sandbox: {runSandboxId}</p>
-                ) : null}
-                {runEvents.slice(-4).map((event) => (
-                  <p key={event.id} className="text-xs text-muted-foreground whitespace-pre-wrap">
-                    {event.kind}: {event.payload}
+              <Card className="gap-0 border-border bg-muted/50 py-0">
+                <CardContent className="space-y-1 px-3 py-2">
+                  <p className="text-xs font-medium text-foreground">
+                    OpenCode run: {runStatus ?? "queued"}
                   </p>
-                ))}
-                {runError ? <p className="text-xs text-red-500">error: {runError}</p> : null}
-              </div>
+                  {runSandboxId ? (
+                    <p className="text-xs text-muted-foreground">sandbox: {runSandboxId}</p>
+                  ) : null}
+                  {runEvents.slice(-4).map((event) => (
+                    <p key={event.id} className="text-xs whitespace-pre-wrap text-muted-foreground">
+                      {event.kind}: {event.payload}
+                    </p>
+                  ))}
+                  {runError ? <p className="text-xs text-destructive">error: {runError}</p> : null}
+                </CardContent>
+              </Card>
             ) : null}
 
             <div ref={messagesEndRef} />
@@ -339,17 +347,16 @@ export function TaskPage() {
         )}
       </div>
 
-      {/* Input area */}
-      <div className="border-t border-border p-4 shrink-0">
-        <div className="max-w-3xl mx-auto flex items-end gap-2">
-          <textarea
+      <div className="shrink-0 border-t border-border p-4">
+        <div className="mx-auto flex max-w-3xl items-end gap-2">
+          <Textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Send a message..."
             rows={1}
-            className="flex-1 resize-none rounded-lg border border-border bg-background px-4 py-2.5 text-base md:text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary min-h-[42px] max-h-[200px]"
+            className="min-h-[42px] max-h-[200px] flex-1 resize-none rounded-lg px-4 py-2.5 text-base md:text-sm"
             style={{ height: "auto" }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
@@ -357,14 +364,14 @@ export function TaskPage() {
               target.style.height = Math.min(target.scrollHeight, 200) + "px";
             }}
           />
-          <button
+          <Button
             type="button"
-            onClick={handleSend}
+            onClick={() => void handleSend()}
             disabled={!input.trim() || sending}
-            className="shrink-0 p-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-auto shrink-0 rounded-lg p-2.5"
           >
-            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          </button>
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </Button>
         </div>
       </div>
     </div>

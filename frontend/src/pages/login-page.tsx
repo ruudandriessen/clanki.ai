@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Github } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { signIn, useSession } from "../lib/auth-client";
 
 export function LoginPage() {
@@ -15,26 +17,31 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Clanki</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Sign in to explore your architecture</p>
-        </div>
+      <Card className="w-full max-w-sm">
+        <CardContent className="space-y-6 px-6 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Clanki</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Sign in to explore your architecture
+            </p>
+          </div>
 
-        <button
-          type="button"
-          onClick={() =>
-            signIn.social({
-              provider: "github",
-              callbackURL: new URL("/", window.location.origin).toString(),
-            })
-          }
-          className="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-        >
-          <Github className="h-4 w-4" />
-          Continue with GitHub
-        </button>
-      </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() =>
+              signIn.social({
+                provider: "github",
+                callbackURL: new URL("/", window.location.origin).toString(),
+              })
+            }
+          >
+            <Github className="h-4 w-4" />
+            Continue with GitHub
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

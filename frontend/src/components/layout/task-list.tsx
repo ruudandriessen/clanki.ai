@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useLiveQuery } from "@tanstack/react-db";
 import { Loader2, Plus, MessageSquare } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "../../lib/utils";
 import { createTask } from "../../lib/api";
 import { projectsCollection, queryClient, tasksCollection } from "../../lib/collections";
@@ -33,11 +34,13 @@ export function TaskList() {
         <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
           Tasks
         </p>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           onClick={handleNewTask}
           disabled={creating || !defaultProject}
-          className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+          className="text-muted-foreground"
           title="New task"
         >
           {creating ? (
@@ -45,7 +48,7 @@ export function TaskList() {
           ) : (
             <Plus className="w-3.5 h-3.5" />
           )}
-        </button>
+        </Button>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5">

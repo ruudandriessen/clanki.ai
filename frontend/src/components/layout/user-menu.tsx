@@ -1,8 +1,17 @@
-import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { LogOut, Settings, ChevronDown } from "lucide-react";
+import { ChevronDown, LogOut, Settings } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "../../lib/utils";
-import { useSession, signOut } from "../../lib/auth-client";
+import { signOut, useSession } from "../../lib/auth-client";
 
 type UserMenuProps = {
   showIdentity?: boolean;
@@ -12,19 +21,6 @@ type UserMenuProps = {
 export function UserMenu({ showIdentity = false, menuDirection = "down" }: UserMenuProps) {
   const { data: session } = useSession();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-
-    window.addEventListener("mousedown", handlePointerDown);
-    return () => window.removeEventListener("mousedown", handlePointerDown);
-  }, []);
 
   if (!session) return null;
 
@@ -35,72 +31,65 @@ export function UserMenu({ showIdentity = false, menuDirection = "down" }: UserM
     .join("")
     .slice(0, 2)
     .toUpperCase();
-  const menuPlacement = menuDirection === "up" ? "bottom-full mb-1" : "top-full mt-1";
-  const menuWidth = showIdentity ? "w-full" : "w-64";
+  const menuSide = menuDirection === "up" ? "top" : "bottom";
 
   return (
-    <div className={cn("relative", showIdentity && "w-full")} ref={menuRef}>
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className={cn(
-          "flex items-center gap-2 px-2.5 py-2 rounded-md hover:bg-accent transition-colors",
-          showIdentity && "w-full",
-        )}
-        aria-expanded={open}
-        aria-haspopup="menu"
-      >
-        {user.image ? (
-          <img src={user.image} alt={user.name} className="w-7 h-7 rounded-full shrink-0" />
-        ) : (
-          <div className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
-            {initials}
-          </div>
-        )}
-        {showIdentity && <span className="text-sm font-medium truncate">{user.name}</span>}
-        <ChevronDown
-          className={cn("w-3.5 h-3.5 ml-auto text-muted-foreground", open && "rotate-180")}
-        />
-      </button>
+    <div className={cn(showIdentity && "w-full")}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            className={cn(
+              "h-auto items-center gap-2 rounded-md px-2.5 py-2",
+              showIdentity ? "w-full justify-start" : "w-auto justify-center",
+            )}
+          >
+            <Avatar size="sm">
+              <AvatarImage src={user.image ?? undefined} alt={user.name} />
+              <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            {showIdentity ? (
+              <span className="truncate text-sm font-medium">{user.name}</span>
+            ) : null}
+            <ChevronDown className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+        </DropdownMenuTrigger>
 
-      {open && (
-        <div
-          className={cn(
-            "absolute right-0 rounded-md border border-border bg-card text-card-foreground shadow-md z-10 overflow-hidden",
-            menuPlacement,
-            menuWidth,
-          )}
+        <DropdownMenuContent
+          side={menuSide}
+          align="end"
+          className={cn(showIdentity ? "w-(--radix-dropdown-menu-trigger-width)" : "w-64")}
         >
-          <div className="px-3 py-2.5 border-b border-border">
-            <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
-            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-          </div>
+          <DropdownMenuLabel className="px-3 py-2.5">
+            <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
+            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
 
-          <nav className="p-1.5">
-            <Link
-              to="/settings"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-            >
-              <Settings className="w-4 h-4" />
+          <DropdownMenuItem asChild>
+            <Link to="/settings">
+              <Settings className="h-4 w-4" />
               Settings
             </Link>
+          </DropdownMenuItem>
 
-            <button
-              type="button"
-              onClick={() =>
-                signOut({
-                  fetchOptions: { onSuccess: () => navigate({ to: "/login" }) },
-                })
-              }
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              Log out
-            </button>
-          </nav>
-        </div>
-      )}
+          <DropdownMenuItem
+            onSelect={() =>
+              void signOut({
+                fetchOptions: {
+                  onSuccess: () => navigate({ to: "/login" }),
+                },
+              })
+            }
+          >
+            <LogOut className="h-4 w-4" />
+            Log out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
