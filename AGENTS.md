@@ -36,6 +36,12 @@ Examples:
 
 Every React component must live in its own file. Do not define multiple components in a single `.tsx` file (except tiny local inline render helpers that are not reusable components).
 
+### Use shadcn components where applicable
+
+For new UI work, prefer existing shadcn primitives from `frontend/src/components/ui` (for example `Button`, `Input`, `Textarea`, `Dialog`, `DropdownMenu`, `Card`, `Avatar`) instead of custom base controls.
+
+Only create custom component wrappers when there is no suitable shadcn primitive or when product-specific behavior requires it.
+
 ### Prefer `??` over `||` for default values
 
 Use the nullish coalescing operator (`??`) instead of logical OR (`||`) when providing fallback/default values. `??` only falls back on `null`/`undefined`, while `||` also falls back on `0`, `""`, and `false` — which are often valid values.
