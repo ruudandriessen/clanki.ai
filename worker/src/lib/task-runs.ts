@@ -13,7 +13,7 @@ export async function executeTaskRun(args: {
   taskId: string;
   taskTitle: string;
   prompt: string;
-  repoUrl: string | null;
+  repoUrl: string;
   installationId: number | null;
 }): Promise<void> {
   const { db, env, runId, taskId, taskTitle, prompt, repoUrl, installationId } = args;
@@ -51,16 +51,14 @@ export async function executeTaskRun(args: {
     }
 
     // Clone repo on first use (gitCheckout is a no-op if dir already exists on a warm sandbox)
-    if (repoUrl) {
-      const needsClone = !(await sandbox.exists(repoDir)).exists;
-      if (needsClone) {
-        const cloneUrl = gitToken ? buildAuthenticatedCloneUrl(repoUrl, gitToken) : repoUrl;
-        await sandbox.gitCheckout(cloneUrl, { targetDir: repoDir });
-      } else if (gitToken) {
-        // Update the remote URL with the fresh token so pushes work on warm sandboxes
-        const freshUrl = buildAuthenticatedCloneUrl(repoUrl, gitToken);
-        await sandbox.exec(`git -C ${repoDir} remote set-url origin '${freshUrl}'`);
-      }
+    const needsClone = !(await sandbox.exists(repoDir)).exists;
+    if (needsClone) {
+      const cloneUrl = gitToken ? buildAuthenticatedCloneUrl(repoUrl, gitToken) : repoUrl;
+      await sandbox.gitCheckout(cloneUrl, { targetDir: repoDir });
+    } else if (gitToken) {
+      // Update the remote URL with the fresh token so pushes work on warm sandboxes
+      const freshUrl = buildAuthenticatedCloneUrl(repoUrl, gitToken);
+      await sandbox.exec(`git -C ${repoDir} remote set-url origin '${freshUrl}'`);
     }
 
     // Start or connect to the OpenCode server and get a typed client

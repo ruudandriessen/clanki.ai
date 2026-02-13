@@ -8,10 +8,6 @@ import { executeTaskRun } from "../lib/task-runs";
 type Env = {
   Bindings: {
     DB: D1Database;
-    OPENCODE_BASE_URL?: string;
-    OPENCODE_SERVER_PASSWORD?: string;
-    OPENCODE_SERVER_USERNAME?: string;
-    OPENCODE_MODEL?: string;
     Sandbox: DurableObjectNamespace<Sandbox>;
     GITHUB_APP_ID?: string;
     GITHUB_APP_PRIVATE_KEY?: string;
@@ -112,7 +108,7 @@ tasks.post("/", async (c) => {
     return c.json({ error: "No active organization" }, 400);
   }
 
-  let body: { title: string; projectId?: string };
+  let body: { title: string; projectId: string };
   try {
     body = await c.req.json();
   } catch {
@@ -123,11 +119,15 @@ tasks.post("/", async (c) => {
     return c.json({ error: "title is required" }, 400);
   }
 
+  if (!body.projectId || typeof body.projectId !== "string") {
+    return c.json({ error: "projectId is required" }, 400);
+  }
+
   const now = Date.now();
   const task = {
     id: crypto.randomUUID(),
     organizationId: orgId,
-    projectId: body.projectId ?? null,
+    projectId: body.projectId,
     title: body.title.trim(),
     status: "open",
     createdAt: now,
@@ -316,12 +316,14 @@ tasks.post("/:taskId/runs", async (c) => {
     createdAt: now,
   });
 
-  const project = task.projectId
-    ? await db.query.projects.findFirst({
-        where: eq(schema.projects.id, task.projectId),
-        columns: { repoUrl: true, installationId: true },
-      })
-    : null;
+  const project = await db.query.projects.findFirst({
+    where: eq(schema.projects.id, task.projectId!),
+    columns: { repoUrl: true, installationId: true },
+  });
+
+  if (!project?.repoUrl) {
+    return c.json({ error: "Task's project has no repository URL configured" }, 400);
+  }
 
   c.executionCtx.waitUntil(
     executeTaskRun({
@@ -331,8 +333,8 @@ tasks.post("/:taskId/runs", async (c) => {
       taskId,
       taskTitle: task.title,
       prompt: inputMessage.content,
-      repoUrl: project?.repoUrl ?? null,
-      installationId: project?.installationId ?? null,
+      repoUrl: project.repoUrl,
+      installationId: project.installationId ?? null,
     }),
   );
 

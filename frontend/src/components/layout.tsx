@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useSession, signOut, authClient } from "../lib/auth-client";
-import { tasksCollection, queryClient } from "../lib/collections";
+import { projectsCollection, tasksCollection, queryClient } from "../lib/collections";
 import { createTask } from "../lib/api";
 
 function useOrganization() {
@@ -231,15 +231,18 @@ function MobileHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
 
 function TaskList() {
   const { data: tasks, isLoading } = useLiveQuery((q) => q.from({ t: tasksCollection }));
+  const { data: projects } = useLiveQuery((q) => q.from({ p: projectsCollection }));
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [creating, setCreating] = useState(false);
 
+  const defaultProject = projects?.[0];
+
   async function handleNewTask() {
-    if (creating) return;
+    if (creating || !defaultProject) return;
     setCreating(true);
     try {
-      const task = await createTask("New task");
+      const task = await createTask("New task", defaultProject.id);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       navigate({ to: "/tasks/$taskId", params: { taskId: task.id } });
     } finally {
@@ -256,7 +259,7 @@ function TaskList() {
         <button
           type="button"
           onClick={handleNewTask}
-          disabled={creating}
+          disabled={creating || !defaultProject}
           className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
           title="New task"
         >
