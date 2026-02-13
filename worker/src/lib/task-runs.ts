@@ -1,5 +1,5 @@
 import { and, desc, eq, isNull, not } from "drizzle-orm";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
+import type { AppDb } from "../db/client";
 import * as schema from "../db/schema";
 import { createInstallationToken, buildAuthenticatedCloneUrl, type GitHubAppEnv } from "./github";
 import { readProviderAuthFromSandbox } from "./opencode-auth";
@@ -15,7 +15,7 @@ import type { SecretCryptoEnv } from "./secret-crypto";
 type TaskRunEnv = SandboxEnv & GitHubAppEnv & SecretCryptoEnv;
 
 export async function executeTaskRun(args: {
-  db: DrizzleD1Database<typeof schema>;
+  db: AppDb;
   env: TaskRunEnv;
   runId: string;
   taskId: string;
@@ -205,7 +205,7 @@ function extractTextFromParts(parts: unknown): string {
 }
 
 async function appendRunEvent(
-  db: DrizzleD1Database<typeof schema>,
+  db: AppDb,
   runId: string,
   kind: string,
   payload: string,
@@ -228,10 +228,7 @@ function getErrorMessage(error: unknown): string {
   return "Unknown task run failure";
 }
 
-async function getNextTaskMessageTimestamp(
-  db: DrizzleD1Database<typeof schema>,
-  taskId: string,
-): Promise<number> {
+async function getNextTaskMessageTimestamp(db: AppDb, taskId: string): Promise<number> {
   const now = Date.now();
   const latest = await db.query.taskMessages.findFirst({
     where: eq(schema.taskMessages.taskId, taskId),
@@ -247,7 +244,7 @@ async function getNextTaskMessageTimestamp(
 }
 
 async function markRunFailed(
-  db: DrizzleD1Database<typeof schema>,
+  db: AppDb,
   runId: string,
   taskId: string,
   message: string,

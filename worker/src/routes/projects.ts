@@ -1,20 +1,54 @@
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { eq, desc, inArray } from "drizzle-orm";
+import type { AppDb } from "../db/client";
 import * as schema from "../db/schema";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
 
 type Env = {
   Variables: {
-    db: DrizzleD1Database<typeof schema>;
+    db: AppDb;
+    session: {
+      session: { userId: string; activeOrganizationId?: string | null };
+      user: { id: string; name: string; email: string; image?: string | null };
+    };
   };
 };
 
 const projects = new Hono<Env>();
 
-// GET /api/projects — list all projects
+function getOrgId(c: { get: (key: "session") => Env["Variables"]["session"] }): string | null {
+  const session = c.get("session");
+  return (session.session as { activeOrganizationId?: string | null }).activeOrganizationId ?? null;
+}
+
+function withTxid(response: Response, txid: number): Response {
+  response.headers.set("x-electric-txid", String(txid));
+  return response;
+}
+
+async function getCurrentTxid(executor: {
+  execute: (query: ReturnType<typeof sql>) => Promise<unknown>;
+}) {
+  const result = (await executor.execute(
+    sql<{ txid: string }>`select pg_current_xact_id()::text as txid`,
+  )) as { rows: Array<{ txid: string }> };
+  const txid = Number(result.rows[0]?.txid);
+  if (!Number.isFinite(txid)) {
+    throw new Error("Failed to resolve postgres txid");
+  }
+  return txid;
+}
+
+// GET /api/projects — list projects for the active organization
 projects.get("/", async (c) => {
   const db = c.get("db");
+  const orgId = getOrgId(c);
+
+  if (!orgId) {
+    return c.json({ error: "No active organization" }, 400);
+  }
+
   const rows = await db.query.projects.findMany({
+    where: eq(schema.projects.organizationId, orgId),
     orderBy: desc(schema.projects.createdAt),
   });
   return c.json(rows);
@@ -24,9 +58,14 @@ projects.get("/", async (c) => {
 projects.get("/:projectId", async (c) => {
   const db = c.get("db");
   const { projectId } = c.req.param();
+  const orgId = getOrgId(c);
+
+  if (!orgId) {
+    return c.json({ error: "No active organization" }, 400);
+  }
 
   const project = await db.query.projects.findFirst({
-    where: eq(schema.projects.id, projectId),
+    where: and(eq(schema.projects.id, projectId), eq(schema.projects.organizationId, orgId)),
   });
 
   if (!project) {
@@ -39,6 +78,11 @@ projects.get("/:projectId", async (c) => {
 // POST /api/projects — create project(s) from selected repos
 projects.post("/", async (c) => {
   const db = c.get("db");
+  const orgId = getOrgId(c);
+
+  if (!orgId) {
+    return c.json({ error: "No active organization" }, 400);
+  }
 
   let body: {
     repos: Array<{ name: string; repoUrl: string; installationId: number }>;
@@ -59,32 +103,47 @@ projects.post("/", async (c) => {
     }
   }
 
-  // Check for existing projects with same repoUrl
-  const repoUrls = body.repos.map((r) => r.repoUrl);
-  const existing = await db.query.projects.findMany({
-    where: inArray(schema.projects.repoUrl, repoUrls),
-    columns: { repoUrl: true },
-  });
-  const existingUrls = new Set(existing.map((p) => p.repoUrl));
+  const result = await db.transaction(async (tx) => {
+    // Check for existing projects with same repoUrl in this org
+    const repoUrls = body.repos.map((r) => r.repoUrl);
+    const existing = await tx.query.projects.findMany({
+      where: and(
+        eq(schema.projects.organizationId, orgId),
+        inArray(schema.projects.repoUrl, repoUrls),
+      ),
+      columns: { repoUrl: true },
+    });
+    const existingUrls = new Set(existing.map((p) => p.repoUrl));
 
-  const newRepos = body.repos.filter((r) => !existingUrls.has(r.repoUrl));
-  if (newRepos.length === 0) {
+    const newRepos = body.repos.filter((r) => !existingUrls.has(r.repoUrl));
+    if (newRepos.length === 0) {
+      return { conflict: true as const };
+    }
+
+    const now = Date.now();
+    const created = newRepos.map((repo) => ({
+      id: crypto.randomUUID(),
+      organizationId: orgId,
+      name: repo.name,
+      repoUrl: repo.repoUrl,
+      installationId: repo.installationId,
+      createdAt: now,
+      updatedAt: now,
+    }));
+
+    await tx.insert(schema.projects).values(created);
+
+    const txid = await getCurrentTxid(
+      tx as unknown as { execute: (query: ReturnType<typeof sql>) => Promise<unknown> },
+    );
+    return { created, txid };
+  });
+
+  if ("conflict" in result) {
     return c.json({ error: "All selected repos already have projects" }, 409);
   }
 
-  const now = Date.now();
-  const created = newRepos.map((repo) => ({
-    id: crypto.randomUUID(),
-    name: repo.name,
-    repoUrl: repo.repoUrl,
-    installationId: repo.installationId,
-    createdAt: now,
-    updatedAt: now,
-  }));
-
-  await db.insert(schema.projects).values(created);
-
-  return c.json(created, 201);
+  return withTxid(c.json(result.created, 201), result.txid);
 });
 
 export { projects };

@@ -25,7 +25,7 @@ export function AddProjectDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (txid?: number) => Promise<void> | void;
   existingProjects: Project[];
 }) {
   const [installations, setInstallations] = useState<Installation[]>([]);
@@ -91,8 +91,8 @@ export function AddProjectDialog({
           installationId: r.installationId,
         }));
 
-      await createProjects(reposList);
-      onCreated();
+      const { txid } = await createProjects(reposList);
+      await onCreated(txid);
       onClose();
     } catch {
       setError("Failed to create projects.");

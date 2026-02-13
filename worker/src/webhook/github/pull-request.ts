@@ -1,12 +1,11 @@
 import type { EmitterWebhookEvent } from "@octokit/webhooks";
 import { and, eq } from "drizzle-orm";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
-import type * as schema from "../../db/schema";
+import type { AppDb } from "../../db/client";
 import { pullRequests } from "../../db/schema";
 
 export async function handlePullRequest(
   event: EmitterWebhookEvent<"pull_request">,
-  db: DrizzleD1Database<typeof schema>,
+  db: AppDb,
 ): Promise<void> {
   const { action, pull_request: pr, repository } = event.payload;
 

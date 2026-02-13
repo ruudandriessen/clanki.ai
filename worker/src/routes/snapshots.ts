@@ -1,20 +1,46 @@
+import { and, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { eq, desc } from "drizzle-orm";
+import type { AppDb } from "../db/client";
 import * as schema from "../db/schema";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
 
 type Env = {
   Variables: {
-    db: DrizzleD1Database<typeof schema>;
+    db: AppDb;
+    session: {
+      session: { userId: string; activeOrganizationId?: string | null };
+      user: { id: string; name: string; email: string; image?: string | null };
+    };
   };
 };
 
 const snapshots = new Hono<Env>();
 
+function getOrgId(c: { get: (key: "session") => Env["Variables"]["session"] }): string | null {
+  const session = c.get("session");
+  return (session.session as { activeOrganizationId?: string | null }).activeOrganizationId ?? null;
+}
+
+async function ensureProjectForOrg(db: AppDb, projectId: string, orgId: string) {
+  return db.query.projects.findFirst({
+    where: and(eq(schema.projects.id, projectId), eq(schema.projects.organizationId, orgId)),
+    columns: { id: true },
+  });
+}
+
 // GET /api/projects/:projectId/snapshots — list snapshots for a project
 snapshots.get("/", async (c) => {
   const db = c.get("db");
   const projectId = c.req.param("projectId")!;
+  const orgId = getOrgId(c);
+
+  if (!orgId) {
+    return c.json({ error: "No active organization" }, 400);
+  }
+
+  const project = await ensureProjectForOrg(db, projectId, orgId);
+  if (!project) {
+    return c.json({ error: "Project not found" }, 404);
+  }
 
   const rows = await db.query.snapshots.findMany({
     where: eq(schema.snapshots.projectId, projectId),
@@ -28,6 +54,16 @@ snapshots.get("/", async (c) => {
 snapshots.get("/latest", async (c) => {
   const db = c.get("db");
   const projectId = c.req.param("projectId")!;
+  const orgId = getOrgId(c);
+
+  if (!orgId) {
+    return c.json({ error: "No active organization" }, 400);
+  }
+
+  const project = await ensureProjectForOrg(db, projectId, orgId);
+  if (!project) {
+    return c.json({ error: "Project not found" }, 404);
+  }
 
   const snapshot = await db.query.snapshots.findFirst({
     where: eq(schema.snapshots.projectId, projectId),
@@ -44,10 +80,21 @@ snapshots.get("/latest", async (c) => {
 // GET /api/projects/:projectId/snapshots/:snapshotId — single snapshot
 snapshots.get("/:snapshotId", async (c) => {
   const db = c.get("db");
+  const projectId = c.req.param("projectId")!;
   const snapshotId = c.req.param("snapshotId")!;
+  const orgId = getOrgId(c);
+
+  if (!orgId) {
+    return c.json({ error: "No active organization" }, 400);
+  }
+
+  const project = await ensureProjectForOrg(db, projectId, orgId);
+  if (!project) {
+    return c.json({ error: "Project not found" }, 404);
+  }
 
   const snapshot = await db.query.snapshots.findFirst({
-    where: eq(schema.snapshots.id, snapshotId),
+    where: and(eq(schema.snapshots.id, snapshotId), eq(schema.snapshots.projectId, projectId)),
   });
 
   if (!snapshot) {
@@ -62,6 +109,16 @@ snapshots.get("/:snapshotId/graph", async (c) => {
   const db = c.get("db");
   const projectId = c.req.param("projectId")!;
   const snapshotId = c.req.param("snapshotId")!;
+  const orgId = getOrgId(c);
+
+  if (!orgId) {
+    return c.json({ error: "No active organization" }, 400);
+  }
+
+  const project = await ensureProjectForOrg(db, projectId, orgId);
+  if (!project) {
+    return c.json({ error: "Project not found" }, 404);
+  }
 
   // Fetch all graph data in parallel
   const [groups, classifications, fileEdgeRows, groupEdgeRows] = await Promise.all([

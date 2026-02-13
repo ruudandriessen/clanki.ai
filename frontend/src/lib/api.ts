@@ -1,5 +1,19 @@
 const BASE = "/api";
 
+function parseTxid(res: Response): number | undefined {
+  const txidHeader = res.headers.get("x-electric-txid");
+  if (!txidHeader) {
+    return undefined;
+  }
+
+  const txid = Number(txidHeader);
+  if (!Number.isFinite(txid)) {
+    return undefined;
+  }
+
+  return txid;
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { credentials: "include" });
   if (!res.ok) {
@@ -8,7 +22,12 @@ async function fetchJson<T>(path: string): Promise<T> {
   return res.json();
 }
 
-async function postJson<T>(path: string, body: unknown): Promise<T> {
+export interface MutationResult<T> {
+  data: T;
+  txid?: number;
+}
+
+async function postJsonWithTx<T>(path: string, body: unknown): Promise<MutationResult<T>> {
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
     credentials: "include",
@@ -31,10 +50,19 @@ async function putJson<T>(path: string, body: unknown): Promise<T> {
   if (!res.ok) {
     throw new Error(await toApiErrorMessage(res, path));
   }
-  return res.json();
+
+  return {
+    data: await res.json(),
+    txid: parseTxid(res),
+  };
 }
 
-async function patchJson<T>(path: string, body: unknown): Promise<T> {
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const result = await postJsonWithTx<T>(path, body);
+  return result.data;
+}
+
+async function patchJsonWithTx<T>(path: string, body: unknown): Promise<MutationResult<T>> {
   const res = await fetch(`${BASE}${path}`, {
     method: "PATCH",
     credentials: "include",
@@ -44,10 +72,14 @@ async function patchJson<T>(path: string, body: unknown): Promise<T> {
   if (!res.ok) {
     throw new Error(await toApiErrorMessage(res, path));
   }
-  return res.json();
+
+  return {
+    data: await res.json(),
+    txid: parseTxid(res),
+  };
 }
 
-async function deleteJson(path: string): Promise<void> {
+async function deleteJsonWithTx(path: string): Promise<{ txid?: number }> {
   const res = await fetch(`${BASE}${path}`, {
     method: "DELETE",
     credentials: "include",
@@ -55,6 +87,10 @@ async function deleteJson(path: string): Promise<void> {
   if (!res.ok) {
     throw new Error(await toApiErrorMessage(res, path));
   }
+
+  return {
+    txid: parseTxid(res),
+  };
 }
 
 async function toApiErrorMessage(res: Response, path: string): Promise<string> {
@@ -71,8 +107,9 @@ async function toApiErrorMessage(res: Response, path: string): Promise<string> {
 
 // ---- Types matching API responses ----
 
-export interface Project {
+export interface Project extends Record<string, unknown> {
   id: string;
+  organizationId: string;
   name: string;
   repoUrl: string | null;
   installationId: number | null;
@@ -113,13 +150,13 @@ export function fetchInstallationRepos(installationId: number) {
 
 export function createProjects(
   repos: Array<{ name: string; repoUrl: string; installationId: number }>,
-) {
-  return postJson<Project[]>("/projects", { repos });
+): Promise<MutationResult<Project[]>> {
+  return postJsonWithTx<Project[]>("/projects", { repos });
 }
 
 // ---- Task types ----
 
-export interface Task {
+export interface Task extends Record<string, unknown> {
   id: string;
   organizationId: string;
   projectId: string | null;
@@ -129,7 +166,7 @@ export interface Task {
   updatedAt: number;
 }
 
-export interface TaskMessage {
+export interface TaskMessage extends Record<string, unknown> {
   id: string;
   taskId: string;
   role: string;
@@ -170,24 +207,28 @@ export function fetchTasks() {
   return fetchJson<Task[]>("/tasks");
 }
 
-export function createTask(title: string, projectId: string) {
-  return postJson<Task>("/tasks", { title, projectId });
+export function createTask(title: string, projectId: string): Promise<MutationResult<Task>> {
+  return postJsonWithTx<Task>("/tasks", { title, projectId });
 }
 
-export function updateTask(taskId: string, title: string) {
-  return patchJson<Task>(`/tasks/${taskId}`, { title });
+export function updateTask(taskId: string, title: string): Promise<MutationResult<Task>> {
+  return patchJsonWithTx<Task>(`/tasks/${taskId}`, { title });
 }
 
-export function deleteTask(taskId: string) {
-  return deleteJson(`/tasks/${taskId}`);
+export function deleteTask(taskId: string): Promise<{ txid?: number }> {
+  return deleteJsonWithTx(`/tasks/${taskId}`);
 }
 
 export function fetchTaskMessages(taskId: string) {
   return fetchJson<TaskMessage[]>(`/tasks/${taskId}/messages`);
 }
 
-export function createTaskMessage(taskId: string, role: string, content: string) {
-  return postJson<TaskMessage>(`/tasks/${taskId}/messages`, { role, content });
+export function createTaskMessage(
+  taskId: string,
+  role: string,
+  content: string,
+): Promise<MutationResult<TaskMessage>> {
+  return postJsonWithTx<TaskMessage>(`/tasks/${taskId}/messages`, { role, content });
 }
 
 export function createTaskRun(

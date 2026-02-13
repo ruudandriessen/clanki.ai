@@ -1,21 +1,25 @@
-import { drizzle, DrizzleD1Database } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { Sandbox } from "@cloudflare/sandbox";
-import * as schema from "./db/schema";
+import type { AppDb } from "./db/client";
+import { getDb } from "./db/client";
 import { createAuth } from "./auth";
+import { handleAnalysisResults } from "./api/snapshot-results";
 import { requireAuth } from "./middleware/requireAuth";
 import { installations } from "./routes/installations";
+import { electric } from "./routes/electric";
 import { projects } from "./routes/projects";
 import { settings } from "./routes/settings";
 import { snapshots } from "./routes/snapshots";
 import { tasks } from "./routes/tasks";
 import { handleGitHubWebhook } from "./webhook/github";
-import { handleAnalysisResults } from "./api/snapshot-results";
 
 type Bindings = {
   ASSETS: Fetcher;
-  DB: D1Database;
+  DATABASE_URL: string;
+  ELECTRIC_URL: string;
+  ELECTRIC_SOURCE_ID?: string;
+  ELECTRIC_SOURCE_SECRET?: string;
   BETTER_AUTH_SECRET: string;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
@@ -27,7 +31,7 @@ type Bindings = {
 };
 
 type Variables = {
-  db: DrizzleD1Database<typeof schema>;
+  db: AppDb;
 };
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -46,12 +50,12 @@ app.use(
 app.use("/*", cors());
 
 app.use("/api/*", async (c, next) => {
-  c.set("db", drizzle(c.env.DB, { schema }));
+  c.set("db", getDb(c.env));
   await next();
 });
 
 app.use("/webhook", async (c, next) => {
-  c.set("db", drizzle(c.env.DB, { schema }));
+  c.set("db", getDb(c.env));
   await next();
 });
 
@@ -72,6 +76,7 @@ app.use("/api/projects/*", requireAuth);
 app.use("/api/tasks/*", requireAuth);
 app.use("/api/tasks", requireAuth);
 app.use("/api/settings/*", requireAuth);
+app.use("/api/electric/*", requireAuth);
 
 // Data API routes
 app.route("/api/installations", installations);
@@ -79,6 +84,7 @@ app.route("/api/projects", projects);
 app.route("/api/projects/:projectId/snapshots", snapshots);
 app.route("/api/tasks", tasks);
 app.route("/api/settings", settings);
+app.route("/api/electric", electric);
 
 app.post("/webhook", (c) => handleGitHubWebhook(c));
 

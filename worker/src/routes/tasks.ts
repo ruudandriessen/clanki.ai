@@ -1,7 +1,8 @@
+import { and, desc, eq, gt, sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { and, desc, eq, gt } from "drizzle-orm";
-import { drizzle, type DrizzleD1Database } from "drizzle-orm/d1";
 import type { Sandbox } from "@cloudflare/sandbox";
+import type { AppDb } from "../db/client";
+import { getDb } from "../db/client";
 import * as schema from "../db/schema";
 import {
   DEFAULT_OPENCODE_MODEL,
@@ -12,14 +13,14 @@ import { executeTaskRun } from "../lib/task-runs";
 
 type Env = {
   Bindings: {
-    DB: D1Database;
+    DATABASE_URL: string;
     Sandbox: DurableObjectNamespace<Sandbox>;
     GITHUB_APP_ID?: string;
     GITHUB_APP_PRIVATE_KEY?: string;
     CREDENTIALS_ENCRYPTION_KEY: string;
   };
   Variables: {
-    db: DrizzleD1Database<typeof schema>;
+    db: AppDb;
     session: {
       session: { userId: string; activeOrganizationId?: string | null };
       user: { id: string; name: string; email: string; image?: string | null };
@@ -38,8 +39,28 @@ function getUserId(c: { get: (key: "session") => Env["Variables"]["session"] }):
   return c.get("session").user.id;
 }
 
+function withTxid(response: Response, txid: number): Response {
+  response.headers.set("x-electric-txid", String(txid));
+  return response;
+}
+
+async function getCurrentTxid(executor: {
+  execute: (query: ReturnType<typeof sql>) => Promise<unknown>;
+}) {
+  const result = (await executor.execute(
+    sql<{ txid: string }>`select pg_current_xact_id()::text as txid`,
+  )) as { rows: Array<{ txid: string }> };
+
+  const txid = Number(result.rows[0]?.txid);
+  if (!Number.isFinite(txid)) {
+    throw new Error("Failed to resolve postgres txid");
+  }
+
+  return txid;
+}
+
 async function getTaskForOrg(
-  db: DrizzleD1Database<typeof schema>,
+  db: AppDb,
   taskId: string,
   orgId: string,
 ): Promise<{ id: string; title: string; projectId: string | null } | undefined> {
@@ -50,7 +71,7 @@ async function getTaskForOrg(
 }
 
 async function ensureRunForOrg(
-  db: DrizzleD1Database<typeof schema>,
+  db: AppDb,
   orgId: string,
   runId: string,
 ): Promise<{ id: string; taskId: string } | undefined> {
@@ -75,10 +96,7 @@ async function ensureRunForOrg(
   return run;
 }
 
-async function getNextTaskMessageTimestamp(
-  db: DrizzleD1Database<typeof schema>,
-  taskId: string,
-): Promise<number> {
+async function getNextTaskMessageTimestamp(db: AppDb, taskId: string): Promise<number> {
   const now = Date.now();
   const latest = await db.query.taskMessages.findFirst({
     where: eq(schema.taskMessages.taskId, taskId),
@@ -133,19 +151,35 @@ tasks.post("/", async (c) => {
     return c.json({ error: "projectId is required" }, 400);
   }
 
-  const now = Date.now();
-  const task = {
-    id: crypto.randomUUID(),
-    organizationId: orgId,
-    projectId: body.projectId,
-    title: body.title.trim(),
-    status: "open",
-    createdAt: now,
-    updatedAt: now,
-  };
+  const project = await db.query.projects.findFirst({
+    where: and(eq(schema.projects.id, body.projectId), eq(schema.projects.organizationId, orgId)),
+    columns: { id: true },
+  });
 
-  await db.insert(schema.tasks).values(task);
-  return c.json(task, 201);
+  if (!project) {
+    return c.json({ error: "Project not found" }, 404);
+  }
+
+  const result = await db.transaction(async (tx) => {
+    const now = Date.now();
+    const task = {
+      id: crypto.randomUUID(),
+      organizationId: orgId,
+      projectId: body.projectId,
+      title: body.title.trim(),
+      status: "open",
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await tx.insert(schema.tasks).values(task);
+    const txid = await getCurrentTxid(
+      tx as unknown as { execute: (query: ReturnType<typeof sql>) => Promise<unknown> },
+    );
+    return { task, txid };
+  });
+
+  return withTxid(c.json(result.task, 201), result.txid);
 });
 
 // GET /api/tasks/:taskId — single task
@@ -195,21 +229,32 @@ tasks.patch("/:taskId", async (c) => {
     return c.json({ error: "title is required" }, 400);
   }
 
-  const updatedAt = Date.now();
-  await db
-    .update(schema.tasks)
-    .set({ title: body.title.trim(), updatedAt })
-    .where(and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)));
+  const result = await db.transaction(async (tx) => {
+    const updatedAt = Date.now();
+    await tx
+      .update(schema.tasks)
+      .set({ title: body.title?.trim(), updatedAt })
+      .where(and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)));
 
-  const updatedTask = await db.query.tasks.findFirst({
-    where: and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)),
+    const updatedTask = await tx.query.tasks.findFirst({
+      where: and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)),
+    });
+
+    if (!updatedTask) {
+      return { notFound: true as const };
+    }
+
+    const txid = await getCurrentTxid(
+      tx as unknown as { execute: (query: ReturnType<typeof sql>) => Promise<unknown> },
+    );
+    return { updatedTask, txid };
   });
 
-  if (!updatedTask) {
+  if ("notFound" in result) {
     return c.json({ error: "Task not found" }, 404);
   }
 
-  return c.json(updatedTask);
+  return withTxid(c.json(result.updatedTask), result.txid);
 });
 
 // DELETE /api/tasks/:taskId — delete a task
@@ -227,11 +272,22 @@ tasks.delete("/:taskId", async (c) => {
     return c.json({ error: "Task not found" }, 404);
   }
 
-  await db
-    .delete(schema.tasks)
-    .where(and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)));
+  const txid = await db.transaction(async (tx) => {
+    await tx
+      .delete(schema.tasks)
+      .where(and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)));
 
-  return c.body(null, 204);
+    return getCurrentTxid(
+      tx as unknown as { execute: (query: ReturnType<typeof sql>) => Promise<unknown> },
+    );
+  });
+
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "x-electric-txid": String(txid),
+    },
+  });
 });
 
 // GET /api/tasks/:taskId/messages — list messages for a task
@@ -286,21 +342,28 @@ tasks.post("/:taskId/messages", async (c) => {
     return c.json({ error: "role must be 'user' or 'assistant'" }, 400);
   }
 
-  const now = await getNextTaskMessageTimestamp(db, taskId);
-  const message = {
-    id: crypto.randomUUID(),
-    taskId,
-    role: body.role,
-    content: body.content.trim(),
-    createdAt: now,
-  };
+  const result = await db.transaction(async (tx) => {
+    const now = await getNextTaskMessageTimestamp(tx as unknown as AppDb, taskId);
+    const message = {
+      id: crypto.randomUUID(),
+      taskId,
+      role: body.role,
+      content: body.content.trim(),
+      createdAt: now,
+    };
 
-  await db.insert(schema.taskMessages).values(message);
+    await tx.insert(schema.taskMessages).values(message);
 
-  // Update task's updatedAt
-  await db.update(schema.tasks).set({ updatedAt: now }).where(eq(schema.tasks.id, taskId));
+    // Update task's updatedAt
+    await tx.update(schema.tasks).set({ updatedAt: now }).where(eq(schema.tasks.id, taskId));
 
-  return c.json(message, 201);
+    const txid = await getCurrentTxid(
+      tx as unknown as { execute: (query: ReturnType<typeof sql>) => Promise<unknown> },
+    );
+    return { message, txid };
+  });
+
+  return withTxid(c.json(result.message, 201), result.txid);
 });
 
 // GET /api/tasks/:taskId/runs — list runs for a task
@@ -419,10 +482,15 @@ tasks.post("/:taskId/runs", async (c) => {
       createdAt: now,
     });
 
-    const project = await db.query.projects.findFirst({
-      where: eq(schema.projects.id, task.projectId!),
-      columns: { repoUrl: true, installationId: true },
-    });
+    const project = task.projectId
+      ? await db.query.projects.findFirst({
+          where: and(
+            eq(schema.projects.id, task.projectId),
+            eq(schema.projects.organizationId, orgId),
+          ),
+          columns: { repoUrl: true, installationId: true },
+        })
+      : null;
 
     if (!project?.repoUrl) {
       return c.json({ error: "Task's project has no repository URL configured" }, 400);
@@ -430,7 +498,7 @@ tasks.post("/:taskId/runs", async (c) => {
 
     c.executionCtx.waitUntil(
       executeTaskRun({
-        db: drizzle(c.env.DB, { schema }),
+        db: getDb(c.env),
         env: c.env,
         runId: run.id,
         taskId,

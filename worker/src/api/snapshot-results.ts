@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { Context } from "hono";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
+import type { AppDb } from "../db/client";
 import * as schema from "../db/schema";
 import { snapshots } from "../db/schema";
 
@@ -31,8 +31,7 @@ async function verifyGitHubToken(token: string, repository: string): Promise<boo
   return data.full_name === repository;
 }
 
-// D1 rejects queries with >= 100 bind parameters
-const D1_MAX_BIND_PARAMS = 99;
+const POSTGRES_MAX_BIND_PARAMS = 65535;
 
 async function batchInsert<T extends Record<string, unknown>>(
   rows: T[],
@@ -40,7 +39,7 @@ async function batchInsert<T extends Record<string, unknown>>(
 ): Promise<void> {
   if (rows.length === 0) return;
   const columnsPerRow = Object.keys(rows[0]).length;
-  const batchSize = Math.max(1, Math.floor(D1_MAX_BIND_PARAMS / columnsPerRow));
+  const batchSize = Math.max(1, Math.floor(POSTGRES_MAX_BIND_PARAMS / columnsPerRow));
   for (let i = 0; i < rows.length; i += batchSize) {
     const batch = rows.slice(i, i + batchSize);
     await insert(batch);
@@ -118,7 +117,7 @@ function dedupeGroupEdges(
 }
 
 export async function handleAnalysisResults(c: Context): Promise<Response> {
-  const db = c.get("db") as DrizzleD1Database<typeof schema>;
+  const db = c.get("db") as AppDb;
 
   // Parse body
   let payload: AnalysisPayload;

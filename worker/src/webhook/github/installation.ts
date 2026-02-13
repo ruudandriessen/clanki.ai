@@ -1,12 +1,11 @@
 import type { EmitterWebhookEvent } from "@octokit/webhooks";
 import { eq } from "drizzle-orm";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
-import type * as schema from "../../db/schema";
+import type { AppDb } from "../../db/client";
 import { installations } from "../../db/schema";
 
 export async function handleInstallation(
   event: EmitterWebhookEvent<"installation">,
-  db: DrizzleD1Database<typeof schema>,
+  db: AppDb,
 ): Promise<void> {
   const { action, installation } = event.payload;
 

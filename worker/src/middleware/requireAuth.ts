@@ -3,7 +3,7 @@ import { createAuth } from "../auth";
 
 type Env = {
   Bindings: {
-    DB: D1Database;
+    DATABASE_URL: string;
     BETTER_AUTH_SECRET: string;
     GITHUB_CLIENT_ID: string;
     GITHUB_CLIENT_SECRET: string;

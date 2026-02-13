@@ -13,7 +13,7 @@ import {
   type ProviderOauthStart,
 } from "../lib/api";
 import { AddProjectDialog } from "../components/add-project-dialog";
-import { projectsCollection, queryClient } from "../lib/collections";
+import { projectsCollection } from "../lib/collections";
 
 const OPENAI_PROVIDER = "openai";
 
@@ -30,8 +30,10 @@ export function SettingsPage() {
   const [oauthAttempt, setOauthAttempt] = useState<ProviderOauthStart | null>(null);
   const [providerError, setProviderError] = useState<string | null>(null);
 
-  function handleCreated() {
-    queryClient.invalidateQueries({ queryKey: ["projects"] });
+  async function handleCreated(txid?: number) {
+    if (txid !== undefined) {
+      await projectsCollection.utils.awaitTxId(txid);
+    }
   }
 
   useEffect(() => {

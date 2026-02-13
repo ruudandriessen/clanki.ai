@@ -1,11 +1,11 @@
 import { Hono } from "hono";
 import { and, eq, isNull, inArray } from "drizzle-orm";
 import * as schema from "../db/schema";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
+import type { AppDb } from "../db/client";
 
 type Env = {
   Variables: {
-    db: DrizzleD1Database<typeof schema>;
+    db: AppDb;
     session: {
       session: { userId: string };
       user: { id: string; name: string; email: string; image?: string | null };

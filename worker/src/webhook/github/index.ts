@@ -1,12 +1,11 @@
 import { Webhooks } from "@octokit/webhooks";
 import type { Context } from "hono";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
-import type * as schema from "../../db/schema";
+import type { AppDb } from "../../db/client";
 import { handleInstallation } from "./installation";
 import { handlePing } from "./ping";
 import { handlePullRequest } from "./pull-request";
 
-function createWebhooks(secret: string, db: DrizzleD1Database<typeof schema>): Webhooks {
+function createWebhooks(secret: string, db: AppDb): Webhooks {
   const webhooks = new Webhooks({ secret });
 
   webhooks.on("pull_request", async (event) => {

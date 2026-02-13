@@ -109,8 +109,14 @@ export function TaskPage() {
     setRunSandboxId(null);
 
     try {
-      const userMessage = await createTaskMessage(taskId, "user", content);
-      await Promise.all([messagesCollection?.utils.refetch(), tasksCollection.utils.refetch()]);
+      const { data: userMessage, txid: messageTxid } = await createTaskMessage(
+        taskId,
+        "user",
+        content,
+      );
+      if (messageTxid !== undefined) {
+        await messagesCollection?.utils.awaitTxId(messageTxid);
+      }
 
       const run = await createTaskRun(taskId, userMessage.id);
       setActiveRunId(run.id);
@@ -144,8 +150,6 @@ export function TaskPage() {
         after = events[events.length - 1]?.createdAt;
       }
 
-      await messagesCollection?.utils.refetch();
-
       if (run.sandboxId) {
         setRunSandboxId(run.sandboxId);
       }
@@ -155,7 +159,6 @@ export function TaskPage() {
         if (run.error) {
           setRunError(run.error);
         }
-        await Promise.all([messagesCollection?.utils.refetch(), tasksCollection.utils.refetch()]);
         return;
       }
 
@@ -207,8 +210,10 @@ export function TaskPage() {
     setTitleError(null);
 
     try {
-      await updateTask(taskId, nextTitle);
-      await tasksCollection.utils.refetch();
+      const { txid } = await updateTask(taskId, nextTitle);
+      if (txid !== undefined) {
+        await tasksCollection.utils.awaitTxId(txid);
+      }
       setEditingTitle(false);
     } catch (error) {
       setTitleError(error instanceof Error ? error.message : "Failed to update task title");

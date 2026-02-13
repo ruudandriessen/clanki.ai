@@ -1,22 +1,33 @@
-import { sqliteTable, text, integer, index, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+  bigint,
+  boolean,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
+
+const msTimestamp = (name: string) => bigint(name, { mode: "number" });
 
 // ---------------------------------------------------------------------------
 // Auth (BetterAuth)
 // ---------------------------------------------------------------------------
 
-export const user = sqliteTable("user", {
+export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  emailVerified: integer("emailVerified", { mode: "boolean" }).notNull(),
+  emailVerified: boolean("emailVerified").notNull(),
   image: text("image"),
-  createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true, mode: "date" }).notNull(),
 });
 
-export const session = sqliteTable("session", {
+export const session = pgTable("session", {
   id: text("id").primaryKey(),
-  expiresAt: integer("expiresAt", { mode: "timestamp" }).notNull(),
+  expiresAt: timestamp("expiresAt", { withTimezone: true, mode: "date" }).notNull(),
   token: text("token").notNull().unique(),
   ipAddress: text("ipAddress"),
   userAgent: text("userAgent"),
@@ -24,11 +35,11 @@ export const session = sqliteTable("session", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   activeOrganizationId: text("activeOrganizationId"),
-  createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true, mode: "date" }).notNull(),
 });
 
-export const account = sqliteTable("account", {
+export const account = pgTable("account", {
   id: text("id").primaryKey(),
   accountId: text("accountId").notNull(),
   providerId: text("providerId").notNull(),
@@ -38,21 +49,21 @@ export const account = sqliteTable("account", {
   accessToken: text("accessToken"),
   refreshToken: text("refreshToken"),
   idToken: text("idToken"),
-  accessTokenExpiresAt: integer("accessTokenExpiresAt", { mode: "timestamp" }),
-  refreshTokenExpiresAt: integer("refreshTokenExpiresAt", { mode: "timestamp" }),
+  accessTokenExpiresAt: timestamp("accessTokenExpiresAt", { withTimezone: true, mode: "date" }),
+  refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt", { withTimezone: true, mode: "date" }),
   scope: text("scope"),
   password: text("password"),
-  createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true, mode: "date" }).notNull(),
 });
 
-export const verification = sqliteTable("verification", {
+export const verification = pgTable("verification", {
   id: text("id").primaryKey(),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
-  expiresAt: integer("expiresAt", { mode: "timestamp" }).notNull(),
-  createdAt: integer("createdAt", { mode: "timestamp" }),
-  updatedAt: integer("updatedAt", { mode: "timestamp" }),
+  expiresAt: timestamp("expiresAt", { withTimezone: true, mode: "date" }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }),
+  updatedAt: timestamp("updatedAt", { withTimezone: true, mode: "date" }),
 });
 
 // ---------------------------------------------------------------------------
@@ -107,16 +118,16 @@ export const userProviderOauthAttempts = sqliteTable(
 // Organizations (BetterAuth)
 // ---------------------------------------------------------------------------
 
-export const organization = sqliteTable("organization", {
+export const organization = pgTable("organization", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").unique(),
   logo: text("logo"),
-  createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
   metadata: text("metadata"),
 });
 
-export const member = sqliteTable("member", {
+export const member = pgTable("member", {
   id: text("id").primaryKey(),
   organizationId: text("organizationId")
     .notNull()
@@ -125,10 +136,10 @@ export const member = sqliteTable("member", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   role: text("role").notNull().default("member"),
-  createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
 });
 
-export const invitation = sqliteTable("invitation", {
+export const invitation = pgTable("invitation", {
   id: text("id").primaryKey(),
   organizationId: text("organizationId")
     .notNull()
@@ -136,46 +147,53 @@ export const invitation = sqliteTable("invitation", {
   email: text("email").notNull(),
   role: text("role"),
   status: text("status").notNull().default("pending"),
-  expiresAt: integer("expiresAt", { mode: "timestamp" }).notNull(),
+  expiresAt: timestamp("expiresAt", { withTimezone: true, mode: "date" }).notNull(),
   inviterId: text("inviterId")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
 });
 
 // ---------------------------------------------------------------------------
 // Installations (GitHub App)
 // ---------------------------------------------------------------------------
 
-export const installations = sqliteTable("installations", {
+export const installations = pgTable("installations", {
   installationId: integer("installation_id").primaryKey(),
   accountLogin: text("account_login").notNull(),
   accountType: text("account_type").notNull(),
-  createdAt: integer("created_at").notNull(),
-  deletedAt: integer("deleted_at"),
-  updatedAt: integer("updated_at"),
+  createdAt: msTimestamp("created_at").notNull(),
+  deletedAt: msTimestamp("deleted_at"),
+  updatedAt: msTimestamp("updated_at"),
 });
 
 // ---------------------------------------------------------------------------
 // Projects
 // ---------------------------------------------------------------------------
 
-export const projects = sqliteTable("projects", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  repoUrl: text("repo_url"),
-  installationId: integer("installation_id").references(() => installations.installationId, {
-    onDelete: "set null",
-  }),
-  createdAt: integer("created_at").notNull(),
-  updatedAt: integer("updated_at").notNull(),
-});
+export const projects = pgTable(
+  "projects",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    repoUrl: text("repo_url"),
+    installationId: integer("installation_id").references(() => installations.installationId, {
+      onDelete: "set null",
+    }),
+    createdAt: msTimestamp("created_at").notNull(),
+    updatedAt: msTimestamp("updated_at").notNull(),
+  },
+  (t) => [index("project_org").on(t.organizationId, t.createdAt)],
+);
 
 // ---------------------------------------------------------------------------
 // Pull requests
 // ---------------------------------------------------------------------------
 
-export const pullRequests = sqliteTable(
+export const pullRequests = pgTable(
   "pull_requests",
   {
     id: text("id").primaryKey(),
@@ -184,10 +202,10 @@ export const pullRequests = sqliteTable(
       .references(() => installations.installationId, { onDelete: "cascade" }),
     repository: text("repository").notNull(),
     prNumber: integer("pr_number").notNull(),
-    openedAt: integer("opened_at").notNull(),
+    openedAt: msTimestamp("opened_at").notNull(),
     mergedBy: text("merged_by"),
-    mergedAt: integer("merged_at"),
-    readyAt: integer("ready_at"),
+    mergedAt: msTimestamp("merged_at"),
+    readyAt: msTimestamp("ready_at"),
   },
   (t) => [
     uniqueIndex("pr_repo_number").on(t.repository, t.prNumber),
@@ -199,7 +217,7 @@ export const pullRequests = sqliteTable(
 // Group definitions (project-level config)
 // ---------------------------------------------------------------------------
 
-export const groupDefinitions = sqliteTable(
+export const groupDefinitions = pgTable(
   "group_definitions",
   {
     id: text("id").primaryKey(),
@@ -217,7 +235,7 @@ export const groupDefinitions = sqliteTable(
 // Group overrides (project-level config)
 // ---------------------------------------------------------------------------
 
-export const groupOverrides = sqliteTable("group_overrides", {
+export const groupOverrides = pgTable("group_overrides", {
   id: text("id").primaryKey(),
   projectId: text("project_id")
     .notNull()
@@ -231,7 +249,7 @@ export const groupOverrides = sqliteTable("group_overrides", {
 // Snapshots
 // ---------------------------------------------------------------------------
 
-export const snapshots = sqliteTable(
+export const snapshots = pgTable(
   "snapshots",
   {
     id: text("id").primaryKey(),
@@ -244,7 +262,7 @@ export const snapshots = sqliteTable(
     commitSha: text("commit_sha"),
     branch: text("branch"),
     status: text("status").notNull().default("pending"),
-    createdAt: integer("created_at").notNull(),
+    createdAt: msTimestamp("created_at").notNull(),
   },
   (t) => [index("snapshot_project_created").on(t.projectId, t.createdAt)],
 );
@@ -253,7 +271,7 @@ export const snapshots = sqliteTable(
 // File classifications
 // ---------------------------------------------------------------------------
 
-export const fileClassifications = sqliteTable(
+export const fileClassifications = pgTable(
   "file_classifications",
   {
     id: text("id").primaryKey(),
@@ -274,7 +292,7 @@ export const fileClassifications = sqliteTable(
 // File edges
 // ---------------------------------------------------------------------------
 
-export const fileEdges = sqliteTable(
+export const fileEdges = pgTable(
   "file_edges",
   {
     id: text("id").primaryKey(),
@@ -296,7 +314,7 @@ export const fileEdges = sqliteTable(
 // Group edges
 // ---------------------------------------------------------------------------
 
-export const groupEdges = sqliteTable(
+export const groupEdges = pgTable(
   "group_edges",
   {
     id: text("id").primaryKey(),
@@ -315,7 +333,7 @@ export const groupEdges = sqliteTable(
 // Narratives (Phase 7)
 // ---------------------------------------------------------------------------
 
-export const narratives = sqliteTable(
+export const narratives = pgTable(
   "narratives",
   {
     id: text("id").primaryKey(),
@@ -324,7 +342,7 @@ export const narratives = sqliteTable(
       .references(() => snapshots.id, { onDelete: "cascade" }),
     kind: text("kind").notNull(),
     content: text("content").notNull(),
-    createdAt: integer("created_at").notNull(),
+    createdAt: msTimestamp("created_at").notNull(),
   },
   (t) => [uniqueIndex("narrative_snapshot_kind").on(t.snapshotId, t.kind)],
 );
@@ -333,7 +351,7 @@ export const narratives = sqliteTable(
 // Tasks
 // ---------------------------------------------------------------------------
 
-export const tasks = sqliteTable(
+export const tasks = pgTable(
   "tasks",
   {
     id: text("id").primaryKey(),
@@ -343,8 +361,8 @@ export const tasks = sqliteTable(
     projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
     title: text("title").notNull(),
     status: text("status").notNull().default("open"),
-    createdAt: integer("created_at").notNull(),
-    updatedAt: integer("updated_at").notNull(),
+    createdAt: msTimestamp("created_at").notNull(),
+    updatedAt: msTimestamp("updated_at").notNull(),
   },
   (t) => [index("task_org").on(t.organizationId, t.createdAt)],
 );
@@ -353,7 +371,7 @@ export const tasks = sqliteTable(
 // Task messages
 // ---------------------------------------------------------------------------
 
-export const taskMessages = sqliteTable(
+export const taskMessages = pgTable(
   "task_messages",
   {
     id: text("id").primaryKey(),
@@ -362,7 +380,7 @@ export const taskMessages = sqliteTable(
       .references(() => tasks.id, { onDelete: "cascade" }),
     role: text("role").notNull(),
     content: text("content").notNull(),
-    createdAt: integer("created_at").notNull(),
+    createdAt: msTimestamp("created_at").notNull(),
   },
   (t) => [index("task_message_task").on(t.taskId, t.createdAt)],
 );
@@ -371,7 +389,7 @@ export const taskMessages = sqliteTable(
 // Task runs
 // ---------------------------------------------------------------------------
 
-export const taskRuns = sqliteTable(
+export const taskRuns = pgTable(
   "task_runs",
   {
     id: text("id").primaryKey(),
@@ -394,10 +412,10 @@ export const taskRuns = sqliteTable(
     provider: text("provider").notNull().default("openai"),
     model: text("model").notNull().default("gpt-5.3-codex"),
     error: text("error"),
-    startedAt: integer("started_at"),
-    finishedAt: integer("finished_at"),
-    createdAt: integer("created_at").notNull(),
-    updatedAt: integer("updated_at").notNull(),
+    startedAt: msTimestamp("started_at"),
+    finishedAt: msTimestamp("finished_at"),
+    createdAt: msTimestamp("created_at").notNull(),
+    updatedAt: msTimestamp("updated_at").notNull(),
   },
   (t) => [
     index("task_run_task").on(t.taskId, t.createdAt),
@@ -410,7 +428,7 @@ export const taskRuns = sqliteTable(
 // Task run events
 // ---------------------------------------------------------------------------
 
-export const taskRunEvents = sqliteTable(
+export const taskRunEvents = pgTable(
   "task_run_events",
   {
     id: text("id").primaryKey(),
@@ -419,7 +437,7 @@ export const taskRunEvents = sqliteTable(
       .references(() => taskRuns.id, { onDelete: "cascade" }),
     kind: text("kind").notNull(),
     payload: text("payload").notNull(),
-    createdAt: integer("created_at").notNull(),
+    createdAt: msTimestamp("created_at").notNull(),
   },
   (t) => [index("task_run_event_run").on(t.runId, t.createdAt)],
 );

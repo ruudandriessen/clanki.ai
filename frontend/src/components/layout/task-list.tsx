@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "../../lib/utils";
 import { createTask, deleteTask } from "../../lib/api";
-import { projectsCollection, queryClient, tasksCollection } from "../../lib/collections";
+import { projectsCollection, tasksCollection } from "../../lib/collections";
 
 export function TaskList() {
   const { data: tasks, isLoading } = useLiveQuery((query) => query.from({ t: tasksCollection }));
@@ -31,8 +31,10 @@ export function TaskList() {
     if (creating || !defaultProject) return;
     setCreating(true);
     try {
-      const task = await createTask("New task", defaultProject.id);
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      const { data: task, txid } = await createTask("New task", defaultProject.id);
+      if (txid !== undefined) {
+        await tasksCollection.utils.awaitTxId(txid);
+      }
       navigate({ to: "/tasks/$taskId", params: { taskId: task.id } });
     } finally {
       setCreating(false);
@@ -62,12 +64,13 @@ export function TaskList() {
     setDeleteError(null);
 
     try {
-      await deleteTask(deletingTaskId);
+      const { txid } = await deleteTask(deletingTaskId);
+      if (txid !== undefined) {
+        await tasksCollection.utils.awaitTxId(txid);
+      }
       if (isDeletingActiveTask) {
         navigate({ to: "/", replace: true });
       }
-      await tasksCollection.utils.refetch();
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       setTaskToDelete(null);
     } catch (error) {
       setDeleteError(error instanceof Error ? error.message : "Failed to delete task");

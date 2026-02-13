@@ -3,8 +3,8 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { organization } from "better-auth/plugins";
 import { oAuthProxy } from "better-auth/plugins/oauth-proxy";
 import { eq, and } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./db/schema";
+import { getDb } from "./db/client";
 
 const PRODUCTION_URL = "https://clanki.ai";
 const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
@@ -29,7 +29,7 @@ function isLocalOrigin(origin: string): boolean {
 }
 
 type AuthEnv = {
-  DB: D1Database;
+  DATABASE_URL: string;
   BETTER_AUTH_SECRET: string;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
@@ -41,11 +41,11 @@ export function createAuth(env: AuthEnv, request: Request) {
   const githubRedirectURI = isLocal
     ? `${origin}/api/auth/callback/github`
     : `${PRODUCTION_URL}/api/auth/callback/github`;
-  const db = drizzle(env.DB, { schema });
+  const db = getDb(env);
 
   const auth = betterAuth({
     database: drizzleAdapter(db, {
-      provider: "sqlite",
+      provider: "pg",
       schema,
     }),
     secret: env.BETTER_AUTH_SECRET,
