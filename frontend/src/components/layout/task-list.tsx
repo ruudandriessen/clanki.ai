@@ -12,7 +12,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "../../lib/utils";
-import { createTask, deleteTask } from "../../lib/api";
 import { projectsCollection, tasksCollection } from "../../lib/collections";
 
 export function TaskList() {
@@ -35,10 +34,20 @@ export function TaskList() {
     if (creating || !defaultProject) return;
     setCreating(true);
     try {
-      const { data: task, txid } = await createTask("New task", defaultProject.id);
-      if (txid !== undefined) {
-        await tasksCollection.utils.awaitTxId(txid);
-      }
+      const now = Date.now();
+      const task = {
+        id: crypto.randomUUID(),
+        organization_id: defaultProject.organization_id,
+        project_id: defaultProject.id,
+        title: "New task",
+        status: "open",
+        created_at: BigInt(now),
+        updated_at: BigInt(now),
+      };
+
+      const tx = tasksCollection.insert(task);
+      await tx.isPersisted.promise;
+
       navigate({ to: "/tasks/$taskId", params: { taskId: task.id } });
     } finally {
       setCreating(false);
@@ -68,10 +77,9 @@ export function TaskList() {
     setDeleteError(null);
 
     try {
-      const { txid } = await deleteTask(deletingTaskId);
-      if (txid !== undefined) {
-        await tasksCollection.utils.awaitTxId(txid);
-      }
+      const tx = tasksCollection.delete(deletingTaskId);
+      await tx.isPersisted.promise;
+
       if (isDeletingActiveTask) {
         navigate({ to: "/", replace: true });
       }

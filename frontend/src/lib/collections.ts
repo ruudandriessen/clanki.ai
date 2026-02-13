@@ -1,6 +1,7 @@
 import { createCollection } from "@tanstack/react-db";
 import { electricCollectionOptions } from "@tanstack/electric-db-collection";
 import { z } from "zod";
+import { createProjects, createTask, createTaskMessage, deleteTask, updateTask } from "./api";
 
 const BASE_URL = globalThis.location?.origin;
 
@@ -33,6 +34,18 @@ const taskMessageSchema = z.object({
   created_at: z.bigint(),
 });
 
+function txidsToMatch(txids: Array<number>) {
+  if (txids.length === 0) {
+    return;
+  }
+
+  if (txids.length === 1) {
+    return { txid: txids[0] };
+  }
+
+  return { txid: txids };
+}
+
 // ---- Projects collection ----
 
 export const projectsCollection = createCollection(
@@ -42,6 +55,35 @@ export const projectsCollection = createCollection(
       url: `${BASE_URL}/api/projects/shape`,
     },
     getKey: (p) => p.id,
+    onInsert: async ({ transaction }) => {
+      const repos = transaction.mutations.map((mutation) => {
+        const project = mutation.modified;
+        if (!project.repo_url) {
+          throw new Error("Project repository URL is required");
+        }
+        if (project.installation_id === null) {
+          throw new Error("Project installation ID is required");
+        }
+
+        return {
+          id: project.id,
+          name: project.name,
+          repoUrl: project.repo_url,
+          installationId: project.installation_id,
+          createdAt: Number(project.created_at),
+          updatedAt: Number(project.updated_at),
+        };
+      });
+
+      const { txid } = await createProjects(repos);
+      return txid !== undefined ? { txid } : undefined;
+    },
+    onUpdate: async () => {
+      throw new Error("Project updates are not supported");
+    },
+    onDelete: async () => {
+      throw new Error("Project deletion is not supported");
+    },
   }),
 );
 
@@ -54,6 +96,60 @@ export const tasksCollection = createCollection(
       url: `${BASE_URL}/api/tasks/shape`,
     },
     getKey: (t) => t.id,
+    onInsert: async ({ transaction }) => {
+      const txids: Array<number> = [];
+
+      for (const mutation of transaction.mutations) {
+        const task = mutation.modified;
+        if (!task.project_id) {
+          throw new Error("Task project is required");
+        }
+
+        const { txid } = await createTask({
+          id: task.id,
+          title: task.title,
+          projectId: task.project_id,
+          status: task.status,
+          createdAt: Number(task.created_at),
+          updatedAt: Number(task.updated_at),
+        });
+
+        if (txid !== undefined) {
+          txids.push(txid);
+        }
+      }
+
+      return txidsToMatch(txids);
+    },
+    onUpdate: async ({ transaction }) => {
+      const txids: Array<number> = [];
+
+      for (const mutation of transaction.mutations) {
+        const title = mutation.modified.title.trim();
+        if (title.length === 0) {
+          throw new Error("Task title cannot be empty");
+        }
+
+        const { txid } = await updateTask(String(mutation.key), title);
+        if (txid !== undefined) {
+          txids.push(txid);
+        }
+      }
+
+      return txidsToMatch(txids);
+    },
+    onDelete: async ({ transaction }) => {
+      const txids: Array<number> = [];
+
+      for (const mutation of transaction.mutations) {
+        const { txid } = await deleteTask(String(mutation.key));
+        if (txid !== undefined) {
+          txids.push(txid);
+        }
+      }
+
+      return txidsToMatch(txids);
+    },
   }),
 );
 
@@ -66,5 +162,30 @@ export const taskMessagesCollection = createCollection(
       url: `${BASE_URL}/api/tasks/messages/shape`,
     },
     getKey: (m) => m.id,
+    onInsert: async ({ transaction }) => {
+      const txids: Array<number> = [];
+
+      for (const mutation of transaction.mutations) {
+        const message = mutation.modified;
+        const { txid } = await createTaskMessage(message.task_id, {
+          id: message.id,
+          role: message.role,
+          content: message.content,
+          createdAt: Number(message.created_at),
+        });
+
+        if (txid !== undefined) {
+          txids.push(txid);
+        }
+      }
+
+      return txidsToMatch(txids);
+    },
+    onUpdate: async () => {
+      throw new Error("Task message updates are not supported");
+    },
+    onDelete: async () => {
+      throw new Error("Task message deletion is not supported");
+    },
   }),
 );

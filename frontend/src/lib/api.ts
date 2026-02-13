@@ -152,8 +152,17 @@ export function fetchInstallationRepos(installationId: number) {
   return fetchJson<GitHubRepo[]>(`/installations/${installationId}/repos`);
 }
 
+export interface CreateProjectInput {
+  id?: string;
+  name: string;
+  repoUrl: string;
+  installationId: number;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
 export function createProjects(
-  repos: Array<{ name: string; repoUrl: string; installationId: number }>,
+  repos: Array<CreateProjectInput>,
 ): Promise<MutationResult<Project[]>> {
   return postJsonWithTx<Project[]>("/projects", { repos });
 }
@@ -205,8 +214,17 @@ export interface TaskRunEvent {
   createdAt: number;
 }
 
-export function createTask(title: string, projectId: string): Promise<MutationResult<Task>> {
-  return postJsonWithTx<Task>("/tasks", { title, projectId });
+export interface CreateTaskInput {
+  id?: string;
+  title: string;
+  projectId: string;
+  status?: string;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+export function createTask(input: CreateTaskInput): Promise<MutationResult<Task>> {
+  return postJsonWithTx<Task>("/tasks", input);
 }
 
 export function updateTask(taskId: string, title: string): Promise<MutationResult<Task>> {
@@ -219,10 +237,14 @@ export function deleteTask(taskId: string): Promise<{ txid?: number }> {
 
 export function createTaskMessage(
   taskId: string,
-  role: string,
-  content: string,
+  input: {
+    id?: string;
+    role: string;
+    content: string;
+    createdAt?: number;
+  },
 ): Promise<MutationResult<TaskMessage>> {
-  return postJsonWithTx<TaskMessage>(`/tasks/${taskId}/messages`, { role, content });
+  return postJsonWithTx<TaskMessage>(`/tasks/${taskId}/messages`, input);
 }
 
 export function createTaskRun(

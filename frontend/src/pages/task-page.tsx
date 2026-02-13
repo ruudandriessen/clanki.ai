@@ -6,14 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  createTaskMessage,
-  createTaskRun,
-  fetchTaskRun,
-  fetchTaskRunEvents,
-  updateTask,
-  type TaskRunEvent,
-} from "../lib/api";
+import { createTaskRun, fetchTaskRun, fetchTaskRunEvents, type TaskRunEvent } from "../lib/api";
 import { taskMessagesCollection, tasksCollection } from "../lib/collections";
 
 const RUN_TERMINAL_STATUSES = new Set(["succeeded", "failed"]);
@@ -99,14 +92,15 @@ export function TaskPage() {
     setRunSandboxId(null);
 
     try {
-      const { data: userMessage, txid: messageTxid } = await createTaskMessage(
-        taskId,
-        "user",
+      const userMessage = {
+        id: crypto.randomUUID(),
+        task_id: taskId,
+        role: "user",
         content,
-      );
-      if (messageTxid !== undefined) {
-        await taskMessagesCollection.utils.awaitTxId(messageTxid);
-      }
+        created_at: BigInt(Date.now()),
+      };
+      const messageTx = taskMessagesCollection.insert(userMessage);
+      await messageTx.isPersisted.promise;
 
       const run = await createTaskRun(taskId, userMessage.id);
       setActiveRunId(run.id);
@@ -200,10 +194,12 @@ export function TaskPage() {
     setTitleError(null);
 
     try {
-      const { txid } = await updateTask(taskId, nextTitle);
-      if (txid !== undefined) {
-        await tasksCollection.utils.awaitTxId(txid);
-      }
+      const tx = tasksCollection.update(taskId, (draft) => {
+        draft.title = nextTitle;
+        draft.updated_at = BigInt(Date.now());
+      });
+      await tx.isPersisted.promise;
+
       setEditingTitle(false);
     } catch (error) {
       setTitleError(error instanceof Error ? error.message : "Failed to update task title");

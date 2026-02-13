@@ -23,6 +23,27 @@ function getOrgId(c: { get: (key: "session") => Env["Variables"]["session"] }): 
   return (session.session as { activeOrganizationId?: string | null }).activeOrganizationId ?? null;
 }
 
+function parseOptionalId(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function parseOptionalTimestamp(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return undefined;
+  }
+
+  if (value < 0) {
+    return undefined;
+  }
+
+  return Math.trunc(value);
+}
+
 projects.get("/shape", async (c) => {
   const orgId = getOrgId(c);
 
@@ -47,7 +68,14 @@ projects.post("/", async (c) => {
   }
 
   let body: {
-    repos: Array<{ name: string; repoUrl: string; installationId: number }>;
+    repos: Array<{
+      id?: string;
+      name: string;
+      repoUrl: string;
+      installationId: number;
+      createdAt?: number;
+      updatedAt?: number;
+    }>;
   };
   try {
     body = await c.req.json();
@@ -60,7 +88,7 @@ projects.post("/", async (c) => {
   }
 
   for (const repo of body.repos) {
-    if (!repo.name || !repo.repoUrl || !repo.installationId) {
+    if (!repo.name || !repo.repoUrl || typeof repo.installationId !== "number") {
       return c.json({ error: "Each repo must have name, repoUrl, and installationId" }, 400);
     }
   }
@@ -83,15 +111,20 @@ projects.post("/", async (c) => {
     }
 
     const now = Date.now();
-    const created = newRepos.map((repo) => ({
-      id: crypto.randomUUID(),
-      organizationId: orgId,
-      name: repo.name,
-      repoUrl: repo.repoUrl,
-      installationId: repo.installationId,
-      createdAt: now,
-      updatedAt: now,
-    }));
+    const created = newRepos.map((repo) => {
+      const createdAt = parseOptionalTimestamp(repo.createdAt) ?? now;
+      const updatedAt = parseOptionalTimestamp(repo.updatedAt) ?? createdAt;
+
+      return {
+        id: parseOptionalId(repo.id) ?? crypto.randomUUID(),
+        organizationId: orgId,
+        name: repo.name,
+        repoUrl: repo.repoUrl,
+        installationId: repo.installationId,
+        createdAt,
+        updatedAt,
+      };
+    });
 
     await tx.insert(schema.projects).values(created);
     return { created, txid };

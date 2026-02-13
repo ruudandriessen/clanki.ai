@@ -13,6 +13,7 @@ import {
   type ProviderOauthStart,
 } from "../lib/api";
 import { AddProjectDialog } from "../components/add-project-dialog";
+import { useOrganization } from "../components/layout/use-organization";
 import { projectsCollection } from "../lib/collections";
 
 const OPENAI_PROVIDER = "openai";
@@ -25,6 +26,7 @@ export function SettingsPage() {
   const { data: projects, isLoading } = useLiveQuery((q) =>
     q.from({ p: projectsCollection }).orderBy(({ p }) => p.created_at, "asc"),
   );
+  const activeOrganization = useOrganization();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openaiApiKey, setOpenaiApiKey] = useState("");
@@ -36,12 +38,6 @@ export function SettingsPage() {
   const [completingOauth, setCompletingOauth] = useState(false);
   const [oauthAttempt, setOauthAttempt] = useState<ProviderOauthStart | null>(null);
   const [providerError, setProviderError] = useState<string | null>(null);
-
-  async function handleCreated(txid?: number) {
-    if (txid !== undefined) {
-      await projectsCollection.utils.awaitTxId(txid);
-    }
-  }
 
   useEffect(() => {
     void loadOpenAiStatus();
@@ -287,7 +283,7 @@ export function SettingsPage() {
       <AddProjectDialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
-        onCreated={handleCreated}
+        organizationId={activeOrganization.data?.id ?? null}
         existingProjects={projects}
       />
     </div>

@@ -42,6 +42,27 @@ function getUserId(c: { get: (key: "session") => Env["Variables"]["session"] }):
   return c.get("session").user.id;
 }
 
+function parseOptionalId(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function parseOptionalTimestamp(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return undefined;
+  }
+
+  if (value < 0) {
+    return undefined;
+  }
+
+  return Math.trunc(value);
+}
+
 async function getTaskForOrg(
   db: AppDb,
   taskId: string,
@@ -79,19 +100,14 @@ async function ensureRunForOrg(
   return run;
 }
 
-async function getNextTaskMessageTimestamp(db: AppDb, taskId: string): Promise<number> {
-  const now = Date.now();
+async function getLatestTaskMessageTimestamp(db: AppDb, taskId: string): Promise<number | null> {
   const latest = await db.query.taskMessages.findFirst({
     where: eq(schema.taskMessages.taskId, taskId),
     columns: { createdAt: true },
     orderBy: desc(schema.taskMessages.createdAt),
   });
 
-  if (!latest?.createdAt) {
-    return now;
-  }
-
-  return latest.createdAt >= now ? latest.createdAt + 1 : now;
+  return latest?.createdAt ?? null;
 }
 
 tasks.get("/shape", async (c) => {
@@ -117,7 +133,14 @@ tasks.post("/", async (c) => {
     return c.json({ error: "No active organization" }, 400);
   }
 
-  let body: { title: string; projectId: string };
+  let body: {
+    id?: string;
+    title: string;
+    projectId: string;
+    status?: string;
+    createdAt?: number;
+    updatedAt?: number;
+  };
   try {
     body = await c.req.json();
   } catch {
@@ -143,14 +166,20 @@ tasks.post("/", async (c) => {
 
   const result = await withTransaction(db, async (tx, txid) => {
     const now = Date.now();
+    const createdAt = parseOptionalTimestamp(body.createdAt) ?? now;
+    const updatedAt = parseOptionalTimestamp(body.updatedAt) ?? createdAt;
+    const status =
+      typeof body.status === "string" && body.status.trim().length > 0
+        ? body.status.trim()
+        : "open";
     const task = {
-      id: crypto.randomUUID(),
+      id: parseOptionalId(body.id) ?? crypto.randomUUID(),
       organizationId: orgId,
       projectId: body.projectId,
       title: body.title.trim(),
-      status: "open",
-      createdAt: now,
-      updatedAt: now,
+      status,
+      createdAt,
+      updatedAt,
     };
 
     await tx.insert(schema.tasks).values(task);
@@ -289,7 +318,7 @@ tasks.post("/:taskId/messages", async (c) => {
     return c.json({ error: "Task not found" }, 404);
   }
 
-  let body: { role: string; content: string };
+  let body: { id?: string; role: string; content: string; createdAt?: number };
   try {
     body = await c.req.json();
   } catch {
@@ -305,20 +334,26 @@ tasks.post("/:taskId/messages", async (c) => {
   }
 
   const result = await withTransaction(db, async (tx, txid) => {
-    const now = await getNextTaskMessageTimestamp(tx as unknown as AppDb, taskId);
+    const requestedCreatedAt = parseOptionalTimestamp(body.createdAt) ?? Date.now();
+    const latestCreatedAt = await getLatestTaskMessageTimestamp(tx as unknown as AppDb, taskId);
+    const createdAt =
+      latestCreatedAt !== null && latestCreatedAt >= requestedCreatedAt
+        ? latestCreatedAt + 1
+        : requestedCreatedAt;
+
     const message = {
-      id: crypto.randomUUID(),
+      id: parseOptionalId(body.id) ?? crypto.randomUUID(),
       organizationId: orgId,
       taskId,
       role: body.role,
       content: body.content.trim(),
-      createdAt: now,
+      createdAt,
     };
 
     await tx.insert(schema.taskMessages).values(message);
 
     // Update task's updatedAt
-    await tx.update(schema.tasks).set({ updatedAt: now }).where(eq(schema.tasks.id, taskId));
+    await tx.update(schema.tasks).set({ updatedAt: createdAt }).where(eq(schema.tasks.id, taskId));
 
     return { message, txid };
   });

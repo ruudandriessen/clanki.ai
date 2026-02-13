@@ -3,15 +3,14 @@ import { Loader2, Search, Lock, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Project, projectsCollection } from "@/lib/collections";
 import { cn } from "../lib/utils";
 import {
   fetchInstallations,
   fetchInstallationRepos,
-  createProjects,
   type Installation,
   type GitHubRepo,
 } from "../lib/api";
-import { Project } from "@/lib/collections";
 
 interface RepoWithInstallation extends GitHubRepo {
   installationId: number;
@@ -20,12 +19,12 @@ interface RepoWithInstallation extends GitHubRepo {
 export function AddProjectDialog({
   open,
   onClose,
-  onCreated,
+  organizationId,
   existingProjects,
 }: {
   open: boolean;
   onClose: () => void;
-  onCreated: (txid?: number) => Promise<void> | void;
+  organizationId: string | null;
   existingProjects: Project[];
 }) {
   const [installations, setInstallations] = useState<Installation[]>([]);
@@ -80,19 +79,38 @@ export function AddProjectDialog({
   }
 
   async function handleAdd() {
+    if (!organizationId) {
+      setError("No active organization selected.");
+      return;
+    }
+
     setCreating(true);
     setError(null);
     try {
-      const reposList = repos
+      const now = Date.now();
+      const selectedRepos = repos
         .filter((r) => selected.has(r.htmlUrl))
-        .map((r) => ({
-          name: r.fullName,
-          repoUrl: r.htmlUrl,
-          installationId: r.installationId,
-        }));
+        .map((r, index) => {
+          const createdAt = now + index;
+          return {
+            id: crypto.randomUUID(),
+            organization_id: organizationId,
+            created_at: BigInt(createdAt),
+            updated_at: BigInt(createdAt),
+            name: r.fullName,
+            repo_url: r.htmlUrl,
+            installation_id: r.installationId,
+          };
+        });
 
-      const { txid } = await createProjects(reposList);
-      await onCreated(txid);
+      if (selectedRepos.length === 0) {
+        setError("Select at least one repository.");
+        return;
+      }
+
+      const tx = projectsCollection.insert(selectedRepos);
+      await tx.isPersisted.promise;
+
       onClose();
     } catch {
       setError("Failed to create projects.");
