@@ -56,27 +56,15 @@ export const tasksCollection = createCollection(
   }),
 );
 
-// ---- Task messages collection (per task) ----
+// ---- Task messages collection ----
 
-const taskMessageCollections = new Map<string, ReturnType<typeof createTaskMessagesCollection>>();
-
-function createTaskMessagesCollection(taskId: string) {
-  return createCollection(
-    electricCollectionOptions({
-      schema: taskMessageSchema,
-      shapeOptions: {
-        url: `${BASE_URL}/api/tasks/${taskId}/messages/shape`,
-      },
-      getKey: (m) => m.id,
-    }),
-  );
-}
-
-export function getTaskMessagesCollection(taskId: string) {
-  let col = taskMessageCollections.get(taskId);
-  if (!col) {
-    col = createTaskMessagesCollection(taskId);
-    taskMessageCollections.set(taskId, col);
-  }
-  return col;
-}
+export const taskMessagesCollection = createCollection(
+  electricCollectionOptions({
+    schema: taskMessageSchema,
+    shapeOptions: {
+      url: `${BASE_URL}/api/tasks/messages/shape`,
+    },
+    syncMode: "on-demand",
+    getKey: (m) => m.id,
+  }),
+);

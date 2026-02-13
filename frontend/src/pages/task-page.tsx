@@ -1,3 +1,4 @@
+import { eq } from "@tanstack/db";
 import { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "@tanstack/react-db";
 import { useParams } from "@tanstack/react-router";
@@ -14,7 +15,7 @@ import {
   updateTask,
   type TaskRunEvent,
 } from "../lib/api";
-import { getTaskMessagesCollection, tasksCollection } from "../lib/collections";
+import { taskMessagesCollection, tasksCollection } from "../lib/collections";
 
 const RUN_TERMINAL_STATUSES = new Set(["succeeded", "failed"]);
 
@@ -39,9 +40,9 @@ export function TaskPage() {
   const { data: tasks } = useLiveQuery((q) => q.from({ t: tasksCollection }));
   const task = tasks?.find((t) => t.id === taskId);
 
-  const messagesCollection = taskId ? getTaskMessagesCollection(taskId) : null;
   const { data: messages, isLoading } = useLiveQuery(
-    (q) => (messagesCollection ? q.from({ m: messagesCollection }) : null),
+    (q) =>
+      taskId ? q.from({ m: taskMessagesCollection }).where(({ m }) => eq(m.taskId, taskId)) : null,
     [taskId],
   );
   const orderedMessages = messages
@@ -115,7 +116,7 @@ export function TaskPage() {
         content,
       );
       if (messageTxid !== undefined) {
-        await messagesCollection?.utils.awaitTxId(messageTxid);
+        await taskMessagesCollection.utils.awaitTxId(messageTxid);
       }
 
       const run = await createTaskRun(taskId, userMessage.id);

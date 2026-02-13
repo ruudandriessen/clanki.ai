@@ -1,4 +1,4 @@
-import { and, desc, eq, gt } from "drizzle-orm";
+import { and, desc, eq, gt, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Sandbox } from "@cloudflare/sandbox";
 import type { AppDb } from "../db/client";
@@ -235,6 +235,26 @@ tasks.delete("/:taskId", async (c) => {
   });
 
   return withTxid(new Response(null, { status: 204 }), txid);
+});
+
+tasks.get("/messages/shape", async (c) => {
+  const orgId = getOrgId(c);
+
+  if (!orgId) {
+    return c.json({ error: "No active organization" }, 400);
+  }
+
+  return electricFn({
+    request: c.req.raw,
+    table: "task_messages",
+    where: clauseToString(
+      sql`${schema.taskMessages.taskId} in (
+        select ${schema.tasks.id}
+        from ${schema.tasks}
+        where ${schema.tasks.organizationId} = ${orgId}
+      )`,
+    ),
+  });
 });
 
 tasks.get("/:taskId/messages/shape", async (c) => {
