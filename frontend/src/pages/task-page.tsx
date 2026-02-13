@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { createTaskRun, fetchTaskRun, fetchTaskRunEvents, type TaskRunEvent } from "../lib/api";
-import { taskMessagesCollection, tasksCollection } from "../lib/collections";
+import { projectsCollection, taskMessagesCollection, tasksCollection } from "../lib/collections";
 
 const RUN_TERMINAL_STATUSES = new Set(["succeeded", "failed"]);
 
@@ -30,7 +30,11 @@ export function TaskPage() {
   const mountedRef = useRef(true);
 
   const { data: tasks } = useLiveQuery((q) => q.from({ t: tasksCollection }));
+  const { data: projects } = useLiveQuery((q) => q.from({ p: projectsCollection }));
   const task = tasks?.find((t) => t.id === taskId);
+  const taskProject = task?.project_id
+    ? projects.find((project) => project.id === task.project_id)
+    : null;
 
   const { data: messages, isLoading } = useLiveQuery(
     (q) =>
@@ -269,18 +273,23 @@ export function TaskPage() {
             </Button>
           </div>
         ) : (
-          <div className="flex min-h-8 min-w-0 items-center gap-2">
-            <h2 className="m-0 truncate text-sm font-medium">{task?.title ?? "Task"}</h2>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              onClick={handleTitleEditStart}
-              className="text-muted-foreground"
-              title="Edit task name"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
+          <div className="min-w-0">
+            <div className="flex min-h-8 min-w-0 items-center gap-2">
+              <h2 className="m-0 truncate text-sm font-medium">{task?.title ?? "Task"}</h2>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                onClick={handleTitleEditStart}
+                className="text-muted-foreground"
+                title="Edit task name"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            {taskProject ? (
+              <p className="truncate text-xs text-muted-foreground">{taskProject.name}</p>
+            ) : null}
           </div>
         )}
         {titleError ? <p className="mt-1 text-xs text-destructive">{titleError}</p> : null}

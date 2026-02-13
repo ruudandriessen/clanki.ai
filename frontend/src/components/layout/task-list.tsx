@@ -29,6 +29,7 @@ export function TaskList() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [defaultProject] = projects;
+  const projectsById = new Map(projects.map((project) => [project.id, project]));
 
   async function handleNewTask() {
     if (creating || !defaultProject) return;
@@ -126,6 +127,7 @@ export function TaskList() {
         ) : (
           tasks.map((task) => {
             const isActive = pathname === `/tasks/${task.id}`;
+            const projectName = task.project_id ? projectsById.get(task.project_id)?.name : null;
             return (
               <div
                 key={task.id}
@@ -139,10 +141,22 @@ export function TaskList() {
                 <Link
                   to="/tasks/$taskId"
                   params={{ taskId: task.id }}
-                  className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-sm"
+                  className="flex min-w-0 flex-1 items-start gap-2 px-2.5 py-2 text-sm"
                 >
-                  <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">{task.title}</span>
+                  <MessageSquare className="mt-0.5 w-3.5 h-3.5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate">{task.title}</p>
+                    {projectName ? (
+                      <p
+                        className={cn(
+                          "truncate text-[11px]",
+                          isActive ? "text-accent-foreground/80" : "text-muted-foreground",
+                        )}
+                      >
+                        {projectName}
+                      </p>
+                    ) : null}
+                  </div>
                 </Link>
                 <Button
                   type="button"
