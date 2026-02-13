@@ -26,11 +26,11 @@
   },
   "dependencies": {
     "@cloudflare/sandbox": "^0.7.2",
+    "@electric-sql/client": "^1.5.4",
     "@octokit/webhooks": "^14.2.0",
     "@opencode-ai/sdk": "^1.1.63",
     "@tailwindcss/vite": "^4.1.18",
-    "@tanstack/query-core": "^5.90.20",
-    "@tanstack/query-db-collection": "^1.0.23",
+    "@tanstack/electric-db-collection": "^0.2.33",
     "@tanstack/react-db": "0.1.70",
     "@tanstack/react-router": "^1.157.16",
     "better-auth": "^1.4.18",
@@ -45,7 +45,8 @@
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.18",
-    "yaml": "^2.8.2"
+    "yaml": "^2.8.2",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250121.0",

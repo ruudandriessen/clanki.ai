@@ -1,7 +1,9 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { Hono } from "hono";
 import type { AppDb } from "../db/client";
 import { withTransaction, withTxid } from "../db/transaction";
+import { clauseToString } from "../lib/clause-to-string";
+import { electricFn } from "../lib/electric";
 import * as schema from "../db/schema";
 
 type Env = {
@@ -21,41 +23,18 @@ function getOrgId(c: { get: (key: "session") => Env["Variables"]["session"] }): 
   return (session.session as { activeOrganizationId?: string | null }).activeOrganizationId ?? null;
 }
 
-// GET /api/projects — list projects for the active organization
-projects.get("/", async (c) => {
-  const db = c.get("db");
+projects.get("/shape", async (c) => {
   const orgId = getOrgId(c);
 
   if (!orgId) {
     return c.json({ error: "No active organization" }, 400);
   }
 
-  const rows = await db.query.projects.findMany({
-    where: eq(schema.projects.organizationId, orgId),
-    orderBy: desc(schema.projects.createdAt),
+  return electricFn({
+    request: c.req.raw,
+    table: "projects",
+    where: clauseToString(eq(schema.projects.organizationId, orgId)),
   });
-  return c.json(rows);
-});
-
-// GET /api/projects/:projectId — single project
-projects.get("/:projectId", async (c) => {
-  const db = c.get("db");
-  const { projectId } = c.req.param();
-  const orgId = getOrgId(c);
-
-  if (!orgId) {
-    return c.json({ error: "No active organization" }, 400);
-  }
-
-  const project = await db.query.projects.findFirst({
-    where: and(eq(schema.projects.id, projectId), eq(schema.projects.organizationId, orgId)),
-  });
-
-  if (!project) {
-    return c.json({ error: "Project not found" }, 404);
-  }
-
-  return c.json(project);
 });
 
 // POST /api/projects — create project(s) from selected repos

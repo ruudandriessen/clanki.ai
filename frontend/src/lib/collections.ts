@@ -1,30 +1,45 @@
 import { createCollection } from "@tanstack/react-db";
-import { queryCollectionOptions } from "@tanstack/query-db-collection";
-import { QueryClient } from "@tanstack/query-core";
-import {
-  fetchProjects,
-  fetchTasks,
-  fetchTaskMessages,
-  type Project,
-  type Task,
-  type TaskMessage,
-} from "./api";
+import { electricCollectionOptions } from "@tanstack/electric-db-collection";
+import { z } from "zod";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-    },
-  },
+const BASE_URL = globalThis.location?.origin;
+
+const projectSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  name: z.string(),
+  repoUrl: z.string().nullable(),
+  installationId: z.number().nullable(),
+  createdAt: z.number().int(),
+  updatedAt: z.number().int(),
+});
+
+const taskSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  projectId: z.string().nullable(),
+  title: z.string(),
+  status: z.string(),
+  createdAt: z.number().int(),
+  updatedAt: z.number().int(),
+});
+
+const taskMessageSchema = z.object({
+  id: z.string(),
+  taskId: z.string(),
+  role: z.string(),
+  content: z.string(),
+  createdAt: z.number().int(),
 });
 
 // ---- Projects collection ----
 
 export const projectsCollection = createCollection(
-  queryCollectionOptions({
-    queryKey: ["projects"] as const,
-    queryFn: async (): Promise<Array<Project>> => fetchProjects(),
-    queryClient,
+  electricCollectionOptions({
+    schema: projectSchema,
+    shapeOptions: {
+      url: `${BASE_URL}/api/projects/shape`,
+    },
     getKey: (p) => p.id,
   }),
 );
@@ -32,10 +47,11 @@ export const projectsCollection = createCollection(
 // ---- Tasks collection ----
 
 export const tasksCollection = createCollection(
-  queryCollectionOptions({
-    queryKey: ["tasks"] as const,
-    queryFn: async (): Promise<Array<Task>> => fetchTasks(),
-    queryClient,
+  electricCollectionOptions({
+    schema: taskSchema,
+    shapeOptions: {
+      url: `${BASE_URL}/api/tasks/shape`,
+    },
     getKey: (t) => t.id,
   }),
 );
@@ -46,10 +62,11 @@ const taskMessageCollections = new Map<string, ReturnType<typeof createTaskMessa
 
 function createTaskMessagesCollection(taskId: string) {
   return createCollection(
-    queryCollectionOptions({
-      queryKey: ["taskMessages", taskId] as const,
-      queryFn: async (): Promise<Array<TaskMessage>> => fetchTaskMessages(taskId),
-      queryClient,
+    electricCollectionOptions({
+      schema: taskMessageSchema,
+      shapeOptions: {
+        url: `${BASE_URL}/api/tasks/${taskId}/messages/shape`,
+      },
       getKey: (m) => m.id,
     }),
   );

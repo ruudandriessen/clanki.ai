@@ -19,7 +19,7 @@ type Bindings = {
   DATABASE_URL?: string;
   ENVIRONMENT?: string;
   ELECTRIC_SOURCE_ID?: string;
-  ELECTRIC_SOURCE_SECRET?: string;
+  ELECTRIC_SECRET: string;
   BETTER_AUTH_SECRET: string;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;

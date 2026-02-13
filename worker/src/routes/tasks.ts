@@ -5,6 +5,8 @@ import type { AppDb } from "../db/client";
 import { getDb } from "../db/client";
 import { withTransaction, withTxid } from "../db/transaction";
 import * as schema from "../db/schema";
+import { clauseToString } from "../lib/clause-to-string";
+import { electricFn } from "../lib/electric";
 import {
   DEFAULT_OPENCODE_MODEL,
   DEFAULT_OPENCODE_PROVIDER,
@@ -92,20 +94,18 @@ async function getNextTaskMessageTimestamp(db: AppDb, taskId: string): Promise<n
   return latest.createdAt >= now ? latest.createdAt + 1 : now;
 }
 
-// GET /api/tasks — list tasks for the active organization
-tasks.get("/", async (c) => {
-  const db = c.get("db");
+tasks.get("/shape", async (c) => {
   const orgId = getOrgId(c);
 
   if (!orgId) {
     return c.json({ error: "No active organization" }, 400);
   }
 
-  const rows = await db.query.tasks.findMany({
-    where: eq(schema.tasks.organizationId, orgId),
-    orderBy: desc(schema.tasks.updatedAt),
+  return electricFn({
+    request: c.req.raw,
+    table: "tasks",
+    where: clauseToString(eq(schema.tasks.organizationId, orgId)),
   });
-  return c.json(rows);
 });
 
 // POST /api/tasks — create a new task
@@ -158,27 +158,6 @@ tasks.post("/", async (c) => {
   });
 
   return withTxid(c.json(result.task, 201), result.txid);
-});
-
-// GET /api/tasks/:taskId — single task
-tasks.get("/:taskId", async (c) => {
-  const db = c.get("db");
-  const { taskId } = c.req.param();
-  const orgId = getOrgId(c);
-
-  if (!orgId) {
-    return c.json({ error: "No active organization" }, 400);
-  }
-
-  const task = await db.query.tasks.findFirst({
-    where: and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)),
-  });
-
-  if (!task) {
-    return c.json({ error: "Task not found" }, 404);
-  }
-
-  return c.json(task);
 });
 
 // PATCH /api/tasks/:taskId — update task fields
@@ -258,8 +237,7 @@ tasks.delete("/:taskId", async (c) => {
   return withTxid(new Response(null, { status: 204 }), txid);
 });
 
-// GET /api/tasks/:taskId/messages — list messages for a task
-tasks.get("/:taskId/messages", async (c) => {
+tasks.get("/:taskId/messages/shape", async (c) => {
   const db = c.get("db");
   const { taskId } = c.req.param();
   const orgId = getOrgId(c);
@@ -273,11 +251,11 @@ tasks.get("/:taskId/messages", async (c) => {
     return c.json({ error: "Task not found" }, 404);
   }
 
-  const rows = await db.query.taskMessages.findMany({
-    where: eq(schema.taskMessages.taskId, taskId),
-    orderBy: schema.taskMessages.createdAt,
+  return electricFn({
+    request: c.req.raw,
+    table: "task_messages",
+    where: clauseToString(eq(schema.taskMessages.taskId, taskId)),
   });
-  return c.json(rows);
 });
 
 // POST /api/tasks/:taskId/messages — add a message

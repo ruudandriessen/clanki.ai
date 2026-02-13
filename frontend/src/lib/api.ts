@@ -144,12 +144,6 @@ export interface GitHubRepo {
   private: boolean;
 }
 
-// ---- Fetch functions ----
-
-export function fetchProjects() {
-  return fetchJson<Project[]>("/projects");
-}
-
 export function fetchInstallations() {
   return fetchJson<Installation[]>("/installations");
 }
@@ -211,12 +205,6 @@ export interface TaskRunEvent {
   createdAt: number;
 }
 
-// ---- Task fetch functions ----
-
-export function fetchTasks() {
-  return fetchJson<Task[]>("/tasks");
-}
-
 export function createTask(title: string, projectId: string): Promise<MutationResult<Task>> {
   return postJsonWithTx<Task>("/tasks", { title, projectId });
 }
@@ -227,10 +215,6 @@ export function updateTask(taskId: string, title: string): Promise<MutationResul
 
 export function deleteTask(taskId: string): Promise<{ txid?: number }> {
   return deleteJsonWithTx(`/tasks/${taskId}`);
-}
-
-export function fetchTaskMessages(taskId: string) {
-  return fetchJson<TaskMessage[]>(`/tasks/${taskId}/messages`);
 }
 
 export function createTaskMessage(

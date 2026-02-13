@@ -25,7 +25,25 @@ export function TaskList() {
   const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const defaultProject = projects?.[0];
+  const sortedTasks = tasks
+    ? [...tasks].toSorted((a, b) => {
+        const updatedDiff = b.updatedAt - a.updatedAt;
+        if (updatedDiff !== 0) {
+          return updatedDiff;
+        }
+        return a.id.localeCompare(b.id);
+      })
+    : tasks;
+  const sortedProjects = projects
+    ? [...projects].toSorted((a, b) => {
+        const createdDiff = b.createdAt - a.createdAt;
+        if (createdDiff !== 0) {
+          return createdDiff;
+        }
+        return a.id.localeCompare(b.id);
+      })
+    : projects;
+  const defaultProject = sortedProjects?.[0];
 
   async function handleNewTask() {
     if (creating || !defaultProject) return;
@@ -107,12 +125,12 @@ export function TaskList() {
           <div className="flex items-center justify-center py-6 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
           </div>
-        ) : !tasks || tasks.length === 0 ? (
+        ) : !sortedTasks || sortedTasks.length === 0 ? (
           <div className="px-2 py-6 text-center">
             <p className="text-xs text-muted-foreground">No tasks yet</p>
           </div>
         ) : (
-          tasks.map((task) => {
+          sortedTasks.map((task) => {
             const isActive = pathname === `/tasks/${task.id}`;
             return (
               <div

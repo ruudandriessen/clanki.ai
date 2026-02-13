@@ -19,6 +19,15 @@ const OPENAI_PROVIDER = "openai";
 
 export function SettingsPage() {
   const { data: projects, isLoading } = useLiveQuery((q) => q.from({ p: projectsCollection }));
+  const sortedProjects = projects
+    ? [...projects].toSorted((a, b) => {
+        const createdDiff = b.createdAt - a.createdAt;
+        if (createdDiff !== 0) {
+          return createdDiff;
+        }
+        return a.id.localeCompare(b.id);
+      })
+    : projects;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [openaiStatus, setOpenaiStatus] = useState<ProviderCredentialStatus | null>(null);
@@ -245,14 +254,14 @@ export function SettingsPage() {
             <div className="flex items-center justify-center py-12 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
             </div>
-          ) : !projects || projects.length === 0 ? (
+          ) : !sortedProjects || sortedProjects.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-border border-dashed py-12 text-muted-foreground">
               <BookMarked className="h-8 w-8" />
               <p className="text-sm">No projects yet. Add a repository to get started.</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {projects.map((project) => (
+              {sortedProjects.map((project) => (
                 <Card key={project.id} className="gap-0 py-0">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-3">
@@ -281,7 +290,7 @@ export function SettingsPage() {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onCreated={handleCreated}
-        existingProjects={projects ?? []}
+        existingProjects={sortedProjects ?? []}
       />
     </div>
   );
