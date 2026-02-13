@@ -159,6 +159,49 @@ tasks.get("/:taskId", async (c) => {
   return c.json(task);
 });
 
+// PATCH /api/tasks/:taskId — update task fields
+tasks.patch("/:taskId", async (c) => {
+  const db = c.get("db");
+  const { taskId } = c.req.param();
+  const orgId = getOrgId(c);
+
+  if (!orgId) {
+    return c.json({ error: "No active organization" }, 400);
+  }
+
+  const task = await getTaskForOrg(db, taskId, orgId);
+  if (!task) {
+    return c.json({ error: "Task not found" }, 404);
+  }
+
+  let body: { title?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+
+  if (typeof body.title !== "string" || body.title.trim().length === 0) {
+    return c.json({ error: "title is required" }, 400);
+  }
+
+  const updatedAt = Date.now();
+  await db
+    .update(schema.tasks)
+    .set({ title: body.title.trim(), updatedAt })
+    .where(and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)));
+
+  const updatedTask = await db.query.tasks.findFirst({
+    where: and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)),
+  });
+
+  if (!updatedTask) {
+    return c.json({ error: "Task not found" }, 404);
+  }
+
+  return c.json(updatedTask);
+});
+
 // GET /api/tasks/:taskId/messages — list messages for a task
 tasks.get("/:taskId/messages", async (c) => {
   const db = c.get("db");
