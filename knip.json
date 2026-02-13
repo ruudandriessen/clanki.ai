@@ -2,6 +2,6 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": ["frontend/src/main.tsx", "frontend/src/lib/auth-client.ts", "graph/src/index.ts"],
   "project": ["frontend/src/**/*.{ts,tsx}", "worker/src/**/*.ts", "graph/src/**/*.ts"],
-  "ignore": ["frontend/src/components/ui/**"],
+  "ignore": ["frontend/src/components/ui/**", "frontend/src/routeTree.gen.ts"],
   "ignoreDependencies": ["cloudflare"]
 }
