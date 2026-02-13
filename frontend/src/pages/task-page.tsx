@@ -46,7 +46,7 @@ export function TaskPage() {
   );
   const orderedMessages = messages
     ? [...messages].toSorted((a, b) => {
-        const createdDiff = a.createdAt - b.createdAt;
+        const createdDiff = toEpochMs(a.createdAt) - toEpochMs(b.createdAt);
         if (createdDiff !== 0) {
           return createdDiff;
         }
@@ -391,4 +391,28 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+function toEpochMs(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
+  if (typeof value === "string") {
+    const asNumber = Number(value);
+    if (Number.isFinite(asNumber)) {
+      return asNumber;
+    }
+
+    const asDate = Date.parse(value);
+    if (Number.isFinite(asDate)) {
+      return asDate;
+    }
+  }
+
+  return 0;
 }
