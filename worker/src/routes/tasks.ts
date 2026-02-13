@@ -202,6 +202,28 @@ tasks.patch("/:taskId", async (c) => {
   return c.json(updatedTask);
 });
 
+// DELETE /api/tasks/:taskId — delete a task
+tasks.delete("/:taskId", async (c) => {
+  const db = c.get("db");
+  const { taskId } = c.req.param();
+  const orgId = getOrgId(c);
+
+  if (!orgId) {
+    return c.json({ error: "No active organization" }, 400);
+  }
+
+  const task = await getTaskForOrg(db, taskId, orgId);
+  if (!task) {
+    return c.json({ error: "Task not found" }, 404);
+  }
+
+  await db
+    .delete(schema.tasks)
+    .where(and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)));
+
+  return c.body(null, 204);
+});
+
 // GET /api/tasks/:taskId/messages — list messages for a task
 tasks.get("/:taskId/messages", async (c) => {
   const db = c.get("db");

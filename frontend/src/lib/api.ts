@@ -34,6 +34,16 @@ async function patchJson<T>(path: string, body: unknown): Promise<T> {
   return res.json();
 }
 
+async function deleteJson(path: string): Promise<void> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    throw new Error(`API ${res.status}: ${path}`);
+  }
+}
+
 // ---- Types matching API responses ----
 
 export interface Project {
@@ -138,6 +148,10 @@ export function createTask(title: string, projectId: string) {
 
 export function updateTask(taskId: string, title: string) {
   return patchJson<Task>(`/tasks/${taskId}`, { title });
+}
+
+export function deleteTask(taskId: string) {
+  return deleteJson(`/tasks/${taskId}`);
 }
 
 export function fetchTaskMessages(taskId: string) {

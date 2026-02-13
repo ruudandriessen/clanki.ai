@@ -1,10 +1,18 @@
 import { useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useLiveQuery } from "@tanstack/react-db";
-import { Loader2, Plus, MessageSquare } from "lucide-react";
+import { Loader2, MessageSquare, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "../../lib/utils";
-import { createTask } from "../../lib/api";
+import { createTask, deleteTask } from "../../lib/api";
 import { projectsCollection, queryClient, tasksCollection } from "../../lib/collections";
 
 export function TaskList() {
@@ -13,6 +21,9 @@ export function TaskList() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [creating, setCreating] = useState(false);
+  const [deletingTask, setDeletingTask] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const defaultProject = projects?.[0];
 
@@ -25,6 +36,43 @@ export function TaskList() {
       navigate({ to: "/tasks/$taskId", params: { taskId: task.id } });
     } finally {
       setCreating(false);
+    }
+  }
+
+  function handleDeleteDialogOpenChange(open: boolean) {
+    if (deletingTask) {
+      return;
+    }
+
+    if (!open) {
+      setTaskToDelete(null);
+      setDeleteError(null);
+    }
+  }
+
+  async function handleDeleteTask() {
+    if (!taskToDelete || deletingTask) {
+      return;
+    }
+
+    const deletingTaskId = taskToDelete.id;
+    const isDeletingActiveTask = pathname === `/tasks/${deletingTaskId}`;
+
+    setDeletingTask(true);
+    setDeleteError(null);
+
+    try {
+      await deleteTask(deletingTaskId);
+      if (isDeletingActiveTask) {
+        navigate({ to: "/", replace: true });
+      }
+      await tasksCollection.utils.refetch();
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      setTaskToDelete(null);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "Failed to delete task");
+    } finally {
+      setDeletingTask(false);
     }
   }
 
@@ -64,24 +112,79 @@ export function TaskList() {
           tasks.map((task) => {
             const isActive = pathname === `/tasks/${task.id}`;
             return (
-              <Link
+              <div
                 key={task.id}
-                to="/tasks/$taskId"
-                params={{ taskId: task.id }}
                 className={cn(
-                  "flex items-center gap-2 px-2.5 py-2 rounded-md text-sm transition-colors truncate",
+                  "group flex items-center gap-1 rounded-md transition-colors",
                   isActive
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                 )}
               >
-                <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{task.title}</span>
-              </Link>
+                <Link
+                  to="/tasks/$taskId"
+                  params={{ taskId: task.id }}
+                  className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-sm"
+                >
+                  <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">{task.title}</span>
+                </Link>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  className={cn(
+                    "mr-1 shrink-0 text-muted-foreground hover:text-destructive",
+                    isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+                  )}
+                  onClick={() => {
+                    setTaskToDelete({ id: task.id, title: task.title });
+                    setDeleteError(null);
+                  }}
+                  title={`Delete ${task.title}`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
             );
           })
         )}
       </nav>
+
+      <Dialog open={taskToDelete !== null} onOpenChange={handleDeleteDialogOpenChange}>
+        <DialogContent className="max-w-md" showCloseButton={!deletingTask}>
+          <DialogHeader>
+            <DialogTitle>Delete task?</DialogTitle>
+            <DialogDescription>
+              This will permanently remove{" "}
+              <span className="font-medium text-foreground">
+                {taskToDelete?.title ?? "this task"}
+              </span>{" "}
+              and all related messages and runs.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError ? <p className="text-xs text-destructive">{deleteError}</p> : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTaskToDelete(null)}
+              disabled={deletingTask}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void handleDeleteTask()}
+              disabled={deletingTask}
+            >
+              {deletingTask ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+              Delete task
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
