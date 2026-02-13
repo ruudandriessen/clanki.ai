@@ -131,10 +131,6 @@ export function createTaskMessage(taskId: string, role: string, content: string)
   return postJson<TaskMessage>(`/tasks/${taskId}/messages`, { role, content });
 }
 
-export function fetchTaskRuns(taskId: string) {
-  return fetchJson<TaskRun[]>(`/tasks/${taskId}/runs`);
-}
-
 export function createTaskRun(taskId: string, messageId?: string) {
   return postJson<TaskRun>(`/tasks/${taskId}/runs`, messageId ? { messageId } : {});
 }
