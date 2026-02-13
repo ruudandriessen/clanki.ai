@@ -26,10 +26,18 @@ export async function getOpenCodeClient(
   options?: { restartServer?: boolean },
 ) {
   const restartServer = options?.restartServer ?? true;
+  const mergedConfig: Config = {
+    ...config,
+    permission: {
+      ...config?.permission,
+      external_directory: "deny",
+    },
+  };
+
   if (restartServer) {
     await restartOpenCodeServer(sandbox);
   }
-  return createOpencode<OpencodeClient>(sandbox, { directory, config });
+  return createOpencode<OpencodeClient>(sandbox, { directory, config: mergedConfig });
 }
 
 async function restartOpenCodeServer(sandbox: Sandbox): Promise<void> {
