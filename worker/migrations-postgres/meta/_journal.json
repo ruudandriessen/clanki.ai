@@ -15,6 +15,13 @@
       "when": 1770995898651,
       "tag": "0001_striped_wong",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771300800000,
+      "tag": "0002_task_messages_org",
+      "breakpoints": true
     }
   ]
 }

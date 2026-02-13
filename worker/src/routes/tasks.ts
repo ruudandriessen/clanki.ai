@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, sql } from "drizzle-orm";
+import { and, desc, eq, gt } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Sandbox } from "@cloudflare/sandbox";
 import type { AppDb } from "../db/client";
@@ -244,17 +244,13 @@ tasks.get("/messages/shape", async (c) => {
     return c.json({ error: "No active organization" }, 400);
   }
 
-  return electricFn({
+  const result = await electricFn({
     request: c.req.raw,
     table: "task_messages",
-    where: clauseToString(
-      sql`${schema.taskMessages.taskId} in (
-        select ${schema.tasks.id}
-        from ${schema.tasks}
-        where ${schema.tasks.organizationId} = ${orgId}
-      )`,
-    ),
+    where: clauseToString(eq(schema.taskMessages.organizationId, orgId)),
   });
+
+  return result;
 });
 
 tasks.get("/:taskId/messages/shape", async (c) => {
@@ -312,6 +308,7 @@ tasks.post("/:taskId/messages", async (c) => {
     const now = await getNextTaskMessageTimestamp(tx as unknown as AppDb, taskId);
     const message = {
       id: crypto.randomUUID(),
+      organizationId: orgId,
       taskId,
       role: body.role,
       content: body.content.trim(),
@@ -470,6 +467,7 @@ tasks.post("/:taskId/runs", async (c) => {
         repoUrl: project.repoUrl,
         installationId: project.installationId ?? null,
         initiatedByUserId: userId,
+        organizationId: orgId,
         provider: providerInput,
         model,
       }),

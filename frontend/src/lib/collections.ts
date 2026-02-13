@@ -6,30 +6,31 @@ const BASE_URL = globalThis.location?.origin;
 
 const projectSchema = z.object({
   id: z.string(),
-  organizationId: z.string(),
+  organization_id: z.string(),
   name: z.string(),
-  repoUrl: z.string().nullable(),
-  installationId: z.number().nullable(),
-  createdAt: z.number().int(),
-  updatedAt: z.number().int(),
+  repo_url: z.string().nullable(),
+  installation_id: z.number().nullable(),
+  created_at: z.bigint(),
+  updated_at: z.bigint(),
 });
+export type Project = z.infer<typeof projectSchema>;
 
 const taskSchema = z.object({
   id: z.string(),
-  organizationId: z.string(),
-  projectId: z.string().nullable(),
+  organization_id: z.string(),
+  project_id: z.string().nullable(),
   title: z.string(),
   status: z.string(),
-  createdAt: z.number().int(),
-  updatedAt: z.number().int(),
+  created_at: z.bigint(),
+  updated_at: z.bigint(),
 });
 
 const taskMessageSchema = z.object({
   id: z.string(),
-  taskId: z.string(),
+  task_id: z.string(),
   role: z.string(),
   content: z.string(),
-  createdAt: z.number().int(),
+  created_at: z.bigint(),
 });
 
 // ---- Projects collection ----
@@ -64,7 +65,6 @@ export const taskMessagesCollection = createCollection(
     shapeOptions: {
       url: `${BASE_URL}/api/tasks/messages/shape`,
     },
-    syncMode: "on-demand",
     getKey: (m) => m.id,
   }),
 );

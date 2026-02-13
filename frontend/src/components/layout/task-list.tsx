@@ -16,8 +16,12 @@ import { createTask, deleteTask } from "../../lib/api";
 import { projectsCollection, tasksCollection } from "../../lib/collections";
 
 export function TaskList() {
-  const { data: tasks, isLoading } = useLiveQuery((query) => query.from({ t: tasksCollection }));
-  const { data: projects } = useLiveQuery((query) => query.from({ p: projectsCollection }));
+  const { data: tasks, isLoading } = useLiveQuery((query) =>
+    query.from({ t: tasksCollection }).orderBy(({ t }) => t.updated_at, "desc"),
+  );
+  const { data: projects } = useLiveQuery((query) =>
+    query.from({ p: projectsCollection }).orderBy(({ p }) => p.created_at, "asc"),
+  );
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [creating, setCreating] = useState(false);
@@ -25,25 +29,7 @@ export function TaskList() {
   const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const sortedTasks = tasks
-    ? [...tasks].toSorted((a, b) => {
-        const updatedDiff = b.updatedAt - a.updatedAt;
-        if (updatedDiff !== 0) {
-          return updatedDiff;
-        }
-        return a.id.localeCompare(b.id);
-      })
-    : tasks;
-  const sortedProjects = projects
-    ? [...projects].toSorted((a, b) => {
-        const createdDiff = b.createdAt - a.createdAt;
-        if (createdDiff !== 0) {
-          return createdDiff;
-        }
-        return a.id.localeCompare(b.id);
-      })
-    : projects;
-  const defaultProject = sortedProjects?.[0];
+  const [defaultProject] = projects;
 
   async function handleNewTask() {
     if (creating || !defaultProject) return;
@@ -125,12 +111,12 @@ export function TaskList() {
           <div className="flex items-center justify-center py-6 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
           </div>
-        ) : !sortedTasks || sortedTasks.length === 0 ? (
+        ) : tasks.length === 0 ? (
           <div className="px-2 py-6 text-center">
             <p className="text-xs text-muted-foreground">No tasks yet</p>
           </div>
         ) : (
-          sortedTasks.map((task) => {
+          tasks.map((task) => {
             const isActive = pathname === `/tasks/${task.id}`;
             return (
               <div
