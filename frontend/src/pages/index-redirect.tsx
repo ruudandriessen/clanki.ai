@@ -5,30 +5,23 @@ import { Loader2 } from "lucide-react";
 import { tasksCollection } from "../lib/collections";
 
 export function IndexRedirect() {
-  const { data: tasks, isLoading } = useLiveQuery((q) => q.from({ t: tasksCollection }));
-  const sortedTasks = tasks
-    ? [...tasks].toSorted((a, b) => {
-        const updatedDiff = b.updatedAt - a.updatedAt;
-        if (updatedDiff !== 0) {
-          return updatedDiff;
-        }
-        return a.id.localeCompare(b.id);
-      })
-    : tasks;
+  const { data: tasks, isLoading } = useLiveQuery((q) =>
+    q.from({ t: tasksCollection }).orderBy(({ t }) => t.updated_at, "desc"),
+  );
   const navigate = useNavigate();
 
   useEffect(() => {
     if (isLoading) return;
 
-    if (sortedTasks && sortedTasks.length > 0) {
+    if (tasks.length > 0) {
       navigate({
         to: "/tasks/$taskId",
-        params: { taskId: sortedTasks[0].id },
+        params: { taskId: tasks[0].id },
         replace: true,
       });
     }
     // If no tasks, stay on the index page — sidebar shows "No tasks yet"
-  }, [isLoading, sortedTasks, navigate]);
+  }, [isLoading, tasks, navigate]);
 
   if (isLoading) {
     return (

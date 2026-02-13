@@ -17,17 +17,15 @@ import { projectsCollection } from "../lib/collections";
 
 const OPENAI_PROVIDER = "openai";
 
+function formatMsTimestamp(msTimestamp: bigint): string {
+  return new Date(Number(msTimestamp)).toLocaleDateString();
+}
+
 export function SettingsPage() {
-  const { data: projects, isLoading } = useLiveQuery((q) => q.from({ p: projectsCollection }));
-  const sortedProjects = projects
-    ? [...projects].toSorted((a, b) => {
-        const createdDiff = b.createdAt - a.createdAt;
-        if (createdDiff !== 0) {
-          return createdDiff;
-        }
-        return a.id.localeCompare(b.id);
-      })
-    : projects;
+  const { data: projects, isLoading } = useLiveQuery((q) =>
+    q.from({ p: projectsCollection }).orderBy(({ p }) => p.created_at, "asc"),
+  );
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [openaiStatus, setOpenaiStatus] = useState<ProviderCredentialStatus | null>(null);
@@ -254,28 +252,28 @@ export function SettingsPage() {
             <div className="flex items-center justify-center py-12 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
             </div>
-          ) : !sortedProjects || sortedProjects.length === 0 ? (
+          ) : projects.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-border border-dashed py-12 text-muted-foreground">
               <BookMarked className="h-8 w-8" />
               <p className="text-sm">No projects yet. Add a repository to get started.</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {sortedProjects.map((project) => (
+              {projects.map((project) => (
                 <Card key={project.id} className="gap-0 py-0">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-3">
                       <BookMarked className="h-4 w-4 shrink-0 text-muted-foreground" />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{project.name}</p>
-                        {project.repoUrl ? (
+                        {project.repo_url ? (
                           <p className="truncate text-xs text-muted-foreground">
-                            {project.repoUrl}
+                            {project.repo_url}
                           </p>
                         ) : null}
                       </div>
                       <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-                        {new Date(project.createdAt).toLocaleDateString()}
+                        {formatMsTimestamp(project.created_at)}
                       </span>
                     </div>
                   </CardContent>
@@ -290,7 +288,7 @@ export function SettingsPage() {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onCreated={handleCreated}
-        existingProjects={sortedProjects ?? []}
+        existingProjects={projects}
       />
     </div>
   );

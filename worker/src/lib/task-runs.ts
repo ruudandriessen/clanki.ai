@@ -19,6 +19,7 @@ export async function executeTaskRun(args: {
   env: TaskRunEnv;
   runId: string;
   taskId: string;
+  organizationId: string;
   taskTitle: string;
   prompt: string;
   repoUrl: string;
@@ -32,6 +33,7 @@ export async function executeTaskRun(args: {
     env,
     runId,
     taskId,
+    organizationId,
     taskTitle,
     prompt,
     repoUrl,
@@ -154,6 +156,7 @@ export async function executeTaskRun(args: {
 
     await db.insert(schema.taskMessages).values({
       id: assistantMessageId,
+      organizationId,
       taskId,
       role: "assistant",
       content: assistantOutput,

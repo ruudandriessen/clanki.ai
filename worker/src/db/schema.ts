@@ -375,6 +375,9 @@ export const taskMessages = pgTable(
   "task_messages",
   {
     id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
     taskId: text("task_id")
       .notNull()
       .references(() => tasks.id, { onDelete: "cascade" }),
@@ -382,7 +385,10 @@ export const taskMessages = pgTable(
     content: text("content").notNull(),
     createdAt: msTimestamp("created_at").notNull(),
   },
-  (t) => [index("task_message_task").on(t.taskId, t.createdAt)],
+  (t) => [
+    index("task_message_org").on(t.organizationId, t.createdAt),
+    index("task_message_task").on(t.taskId, t.createdAt),
+  ],
 );
 
 // ---------------------------------------------------------------------------

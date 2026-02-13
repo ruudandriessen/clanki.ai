@@ -1,6 +1,5 @@
-import { eq } from "@tanstack/db";
 import { useEffect, useRef, useState } from "react";
-import { useLiveQuery } from "@tanstack/react-db";
+import { useLiveQuery, eq } from "@tanstack/react-db";
 import { useParams } from "@tanstack/react-router";
 import { Check, Loader2, Pencil, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,23 +41,13 @@ export function TaskPage() {
 
   const { data: messages, isLoading } = useLiveQuery(
     (q) =>
-      taskId ? q.from({ m: taskMessagesCollection }).where(({ m }) => eq(m.taskId, taskId)) : null,
+      q
+        .from({ m: taskMessagesCollection })
+        .where(({ m }) => eq(m.task_id, taskId))
+        .orderBy(({ m }) => m.created_at, "asc"),
     [taskId],
   );
-  const orderedMessages = messages
-    ? [...messages].toSorted((a, b) => {
-        const createdDiff = a.createdAt - b.createdAt;
-        if (createdDiff !== 0) {
-          return createdDiff;
-        }
 
-        if (a.role !== b.role) {
-          return a.role === "user" ? -1 : 1;
-        }
-
-        return a.id.localeCompare(b.id);
-      })
-    : messages;
   const hasRunFeedback = activeRunId !== null || runStatus !== null || runError !== null;
 
   useEffect(() => {
@@ -306,14 +295,14 @@ export function TaskPage() {
           <div className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
           </div>
-        ) : !orderedMessages || orderedMessages.length === 0 ? (
+        ) : messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-muted-foreground">
             <p className="text-sm">No messages yet</p>
             <p className="text-xs">Send a message to start an OpenCode run.</p>
           </div>
         ) : (
           <div className="mx-auto max-w-3xl space-y-4 px-4 py-4">
-            {orderedMessages.map((msg) => (
+            {messages.map((msg) => (
               <div key={msg.id} className="flex justify-start">
                 <div
                   className={`max-w-[80%] text-sm whitespace-pre-wrap ${

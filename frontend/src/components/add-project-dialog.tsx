@@ -10,8 +10,8 @@ import {
   createProjects,
   type Installation,
   type GitHubRepo,
-  type Project,
 } from "../lib/api";
+import { Project } from "@/lib/collections";
 
 interface RepoWithInstallation extends GitHubRepo {
   installationId: number;
@@ -36,7 +36,7 @@ export function AddProjectDialog({
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const existingRepoUrls = new Set(existingProjects.map((p) => p.repoUrl).filter(Boolean));
+  const existingRepoUrls = new Set(existingProjects.map((p) => p.repo_url).filter(Boolean));
 
   const loadData = useCallback(async () => {
     setLoading(true);
