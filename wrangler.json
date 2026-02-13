@@ -40,5 +40,11 @@
       "tag": "v1",
       "new_sqlite_classes": ["Sandbox"]
     }
+  ],
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "ad6e23d2714f4c1ca45fe58fe2abac2e"
+    }
   ]
 }
