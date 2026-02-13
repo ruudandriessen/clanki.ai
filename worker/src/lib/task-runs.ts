@@ -52,6 +52,10 @@ export async function executeTaskRun(args: {
         error: null,
       })
       .where(eq(schema.taskRuns.id, runId));
+    await db
+      .update(schema.tasks)
+      .set({ status: "running", updatedAt: startedAt })
+      .where(eq(schema.tasks.id, taskId));
 
     await appendRunEvent(db, runId, "status", "running", startedAt);
 
@@ -174,7 +178,10 @@ export async function executeTaskRun(args: {
       })
       .where(eq(schema.taskRuns.id, runId));
 
-    await db.update(schema.tasks).set({ updatedAt: finishedAt }).where(eq(schema.tasks.id, taskId));
+    await db
+      .update(schema.tasks)
+      .set({ status: "succeeded", updatedAt: finishedAt })
+      .where(eq(schema.tasks.id, taskId));
 
     await appendRunEvent(db, runId, "assistant", assistantOutput);
     await appendRunEvent(db, runId, "status", "succeeded");
@@ -264,7 +271,10 @@ async function markRunFailed(
   } catch {}
 
   try {
-    await db.update(schema.tasks).set({ updatedAt: finishedAt }).where(eq(schema.tasks.id, taskId));
+    await db
+      .update(schema.tasks)
+      .set({ status: "failed", updatedAt: finishedAt })
+      .where(eq(schema.tasks.id, taskId));
   } catch {}
 
   try {

@@ -15,6 +15,36 @@ import { cn } from "../../lib/utils";
 import { createTask, deleteTask } from "../../lib/api";
 import { projectsCollection, tasksCollection } from "../../lib/collections";
 
+const TASK_RUN_STATUS_ORDER: Record<string, number> = {
+  running: 0,
+  queued: 1,
+  failed: 2,
+  succeeded: 3,
+  no_runs: 4,
+  unknown: 5,
+};
+
+function toRunStatusGroup(status: string) {
+  const normalizedStatus = status.trim().toLowerCase();
+  if (normalizedStatus === "open" || normalizedStatus.length === 0) {
+    return "no_runs";
+  }
+  if (["queued", "running", "succeeded", "failed"].includes(normalizedStatus)) {
+    return normalizedStatus;
+  }
+  return "unknown";
+}
+
+function formatTaskStatusLabel(status: string) {
+  if (status === "no_runs") {
+    return "No Runs";
+  }
+  if (status === "unknown") {
+    return "Unknown";
+  }
+  return status.replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export function TaskList() {
   const { data: tasks, isLoading } = useLiveQuery((query) => query.from({ t: tasksCollection }));
   const { data: projects } = useLiveQuery((query) => query.from({ p: projectsCollection }));
@@ -24,6 +54,7 @@ export function TaskList() {
   const [deletingTask, setDeletingTask] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  type TaskItem = NonNullable<typeof tasks>[number];
 
   const sortedTasks = tasks
     ? [...tasks].toSorted((a, b) => {
@@ -34,6 +65,24 @@ export function TaskList() {
         return a.id.localeCompare(b.id);
       })
     : tasks;
+  const groupedTaskSections = sortedTasks
+    ? Array.from(
+        sortedTasks.reduce((groups, task) => {
+          const statusKey = toRunStatusGroup(task.status);
+          const tasksForStatus = groups.get(statusKey) ?? [];
+          tasksForStatus.push(task);
+          groups.set(statusKey, tasksForStatus);
+          return groups;
+        }, new Map<string, TaskItem[]>()),
+      ).toSorted(([statusA], [statusB]) => {
+        const statusOrderA = TASK_RUN_STATUS_ORDER[statusA] ?? Number.MAX_SAFE_INTEGER;
+        const statusOrderB = TASK_RUN_STATUS_ORDER[statusB] ?? Number.MAX_SAFE_INTEGER;
+        if (statusOrderA !== statusOrderB) {
+          return statusOrderA - statusOrderB;
+        }
+        return statusA.localeCompare(statusB);
+      })
+    : sortedTasks;
   const sortedProjects = projects
     ? [...projects].toSorted((a, b) => {
         const createdDiff = b.createdAt - a.createdAt;
@@ -125,50 +174,57 @@ export function TaskList() {
           <div className="flex items-center justify-center py-6 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
           </div>
-        ) : !sortedTasks || sortedTasks.length === 0 ? (
+        ) : !groupedTaskSections || groupedTaskSections.length === 0 ? (
           <div className="px-2 py-6 text-center">
             <p className="text-xs text-muted-foreground">No tasks yet</p>
           </div>
         ) : (
-          sortedTasks.map((task) => {
-            const isActive = pathname === `/tasks/${task.id}`;
-            return (
-              <div
-                key={task.id}
-                className={cn(
-                  "group flex items-center gap-1 rounded-md transition-colors",
-                  isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                )}
-              >
-                <Link
-                  to="/tasks/$taskId"
-                  params={{ taskId: task.id }}
-                  className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-sm"
-                >
-                  <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">{task.title}</span>
-                </Link>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  className={cn(
-                    "mr-1 shrink-0 text-muted-foreground hover:text-destructive",
-                    isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-                  )}
-                  onClick={() => {
-                    setTaskToDelete({ id: task.id, title: task.title });
-                    setDeleteError(null);
-                  }}
-                  title={`Delete ${task.title}`}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            );
-          })
+          groupedTaskSections.map(([status, tasksForStatus]) => (
+            <div key={status} className="space-y-0.5">
+              <p className="px-2.5 pt-2 pb-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                {formatTaskStatusLabel(status)}
+              </p>
+              {tasksForStatus.map((task) => {
+                const isActive = pathname === `/tasks/${task.id}`;
+                return (
+                  <div
+                    key={task.id}
+                    className={cn(
+                      "group flex items-center gap-1 rounded-md transition-colors",
+                      isActive
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                    )}
+                  >
+                    <Link
+                      to="/tasks/$taskId"
+                      params={{ taskId: task.id }}
+                      className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-sm"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{task.title}</span>
+                    </Link>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      className={cn(
+                        "mr-1 shrink-0 text-muted-foreground hover:text-destructive",
+                        isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+                      )}
+                      onClick={() => {
+                        setTaskToDelete({ id: task.id, title: task.title });
+                        setDeleteError(null);
+                      }}
+                      title={`Delete ${task.title}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          ))
         )}
       </nav>
 

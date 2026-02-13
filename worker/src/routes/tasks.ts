@@ -417,6 +417,10 @@ tasks.post("/:taskId/runs", async (c) => {
     };
 
     await db.insert(schema.taskRuns).values(run);
+    await db
+      .update(schema.tasks)
+      .set({ status: "queued", updatedAt: now })
+      .where(eq(schema.tasks.id, taskId));
     await db.insert(schema.taskRunEvents).values({
       id: crypto.randomUUID(),
       runId: run.id,
