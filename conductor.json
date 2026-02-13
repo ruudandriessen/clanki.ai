@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "setup": "bun i && cd frontend && mkdir dist && cd .. && cp $CONDUCTOR_ROOT_PATH/.dev.vars .dev.vars && cp $CONDUCTOR_ROOT_PATH/.env .env",
+    "setup": "bun i && cd frontend && mkdir dist && cd .. && cp $CONDUCTOR_ROOT_PATH/.env .env",
     "run": "bun run dev",
     "archive": "rm -rf "
   }
