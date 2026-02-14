@@ -11,12 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  createTaskRun,
-  fetchTaskRuns,
-  getTaskEventStreamUrl,
-  type TaskStreamEvent,
-} from "../lib/api";
+import { createTaskRun, getTaskEventStreamUrl, type TaskStreamEvent } from "../lib/api";
 import { projectsCollection, taskMessagesCollection, tasksCollection } from "../lib/collections";
 
 export function TaskPage() {
@@ -93,49 +88,6 @@ export function TaskPage() {
   useEffect(() => {
     activeRunIdRef.current = activeRunId;
   }, [activeRunId]);
-
-  useEffect(() => {
-    if (!taskId) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const loadLatestRun = async () => {
-      try {
-        const runs = await fetchTaskRuns(taskId);
-        if (cancelled) {
-          return;
-        }
-
-        const latestRun = runs[0];
-        if (!latestRun) {
-          setActiveRunId(null);
-          setRunStatus(null);
-          setRunSandboxId(null);
-          setRunError(null);
-          setRunEvents([]);
-          return;
-        }
-
-        setActiveRunId(latestRun.id);
-        setRunStatus(latestRun.status);
-        setRunSandboxId(latestRun.sandboxId);
-        setRunError(latestRun.error ?? null);
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-        setRunError(error instanceof Error ? error.message : "Failed to load task runs");
-      }
-    };
-
-    void loadLatestRun();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [taskId]);
 
   useEffect(() => {
     if (!taskId) {
