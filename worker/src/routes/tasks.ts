@@ -13,7 +13,6 @@ import {
   isSupportedOpencodeProvider,
 } from "../lib/opencode";
 import { openTaskEventsSse } from "../lib/durable-streams";
-import { appendTaskRunEvent } from "../lib/task-run-events";
 import { executeTaskRun } from "../lib/task-runs";
 
 type Env = {
@@ -556,15 +555,6 @@ tasks.post("/:taskId/runs", async (c) => {
     };
 
     await db.insert(schema.taskRuns).values(run);
-    await appendTaskRunEvent({
-      env: c.env,
-      organizationId: orgId,
-      taskId,
-      runId: run.id,
-      kind: "status",
-      payload: "queued",
-      createdAt: now,
-    });
 
     const project = task.projectId
       ? await db.query.projects.findFirst({

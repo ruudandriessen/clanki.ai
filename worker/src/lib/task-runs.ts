@@ -75,16 +75,6 @@ export async function executeTaskRun(args: {
       })
       .where(eq(schema.taskRuns.id, runId));
 
-    await appendRunEvent({
-      env,
-      runId,
-      taskId,
-      organizationId,
-      kind: "status",
-      payload: "running",
-      createdAt: startedAt,
-    });
-
     // Scope sandbox by task+user+provider+model to avoid cross-user/provider leakage.
     const sandboxId = buildTaskRunSandboxId({
       taskId,
@@ -98,14 +88,6 @@ export async function executeTaskRun(args: {
       .update(schema.taskRuns)
       .set({ sandboxId, updatedAt: Date.now() })
       .where(eq(schema.taskRuns.id, runId));
-    await appendRunEvent({
-      env,
-      runId,
-      taskId,
-      organizationId,
-      kind: "sandbox",
-      payload: sandboxId,
-    });
 
     // Generate a fresh installation token (needed for clone, push, and gh CLI)
     const repoDir = "/home/user/repo";
@@ -176,16 +158,6 @@ export async function executeTaskRun(args: {
         updatedAt: runUpdatedAt,
       })
       .where(eq(schema.taskRuns.id, runId));
-    await appendRunEvent({
-      env,
-      runId,
-      taskId,
-      organizationId,
-      kind: "session",
-      payload: sessionId,
-      createdAt: runUpdatedAt,
-    });
-
     const streamAbortController = new AbortController();
     const assistantStreamCapture = createAssistantStreamCapture();
     const streamPromise = streamSessionEvents({
@@ -237,7 +209,7 @@ export async function executeTaskRun(args: {
         taskId,
         content: assistantOutput,
       });
-      await appendRunEvent({
+      await appendTaskRunEvent({
         env,
         runId,
         taskId,
@@ -262,22 +234,11 @@ export async function executeTaskRun(args: {
       .where(eq(schema.taskRuns.id, runId));
 
     await db.update(schema.tasks).set({ updatedAt: finishedAt }).where(eq(schema.tasks.id, taskId));
-
-    await appendRunEvent({
-      env,
-      runId,
-      taskId,
-      organizationId,
-      kind: "status",
-      payload: "succeeded",
-    });
   } catch (error) {
     await markRunFailed({
       db,
-      env,
       runId,
       taskId,
-      organizationId,
       message: getErrorMessage(error),
     });
   }
@@ -368,16 +329,6 @@ async function streamSessionEvents(args: {
         message: getErrorMessage(error),
       });
 
-      try {
-        await appendRunEvent({
-          env,
-          runId,
-          taskId,
-          organizationId,
-          kind: "warning",
-          payload: `Failed to subscribe to OpenCode event stream: ${getErrorMessage(error)}`,
-        });
-      } catch {}
       return;
     }
   }
@@ -480,7 +431,7 @@ async function consumeSessionEventStream(args: {
             persistedTaskMessageId,
           });
         }
-        await appendRunEvent({
+        await appendTaskRunEvent({
           env,
           runId,
           taskId,
@@ -503,26 +454,6 @@ async function consumeSessionEventStream(args: {
     } catch {}
     reader.releaseLock();
   }
-}
-
-async function appendRunEvent(args: {
-  env: TaskRunEnv;
-  runId: string;
-  taskId: string;
-  organizationId: string;
-  kind: string;
-  payload: string;
-  createdAt?: number;
-}): Promise<void> {
-  await appendTaskRunEvent({
-    env: args.env,
-    organizationId: args.organizationId,
-    taskId: args.taskId,
-    runId: args.runId,
-    kind: args.kind,
-    payload: args.payload,
-    createdAt: args.createdAt,
-  });
 }
 
 function getErrorMessage(error: unknown): string {
@@ -658,7 +589,7 @@ async function persistCompletedAssistantMessage(args: {
   capture.lastPersistedTaskMessageId = taskMessageId;
   capture.persistedAssistantMessageCount += 1;
 
-  await appendRunEvent({
+  await appendTaskRunEvent({
     env,
     runId,
     taskId,
@@ -821,13 +752,11 @@ async function getNextTaskMessageTimestamp(db: AppDb, taskId: string): Promise<n
 
 async function markRunFailed(args: {
   db: AppDb;
-  env: TaskRunEnv;
   runId: string;
   taskId: string;
-  organizationId: string;
   message: string;
 }): Promise<void> {
-  const { db, env, runId, taskId, organizationId, message } = args;
+  const { db, runId, taskId, message } = args;
   const finishedAt = Date.now();
 
   try {
@@ -844,25 +773,5 @@ async function markRunFailed(args: {
 
   try {
     await db.update(schema.tasks).set({ updatedAt: finishedAt }).where(eq(schema.tasks.id, taskId));
-  } catch {}
-
-  try {
-    await appendRunEvent({
-      env,
-      runId,
-      taskId,
-      organizationId,
-      kind: "error",
-      payload: message,
-      createdAt: finishedAt,
-    });
-    await appendRunEvent({
-      env,
-      runId,
-      taskId,
-      organizationId,
-      kind: "status",
-      payload: "failed",
-    });
   } catch {}
 }
