@@ -278,27 +278,6 @@ tasks.get("/messages/shape", async (c) => {
   return result;
 });
 
-tasks.get("/:taskId/messages/shape", async (c) => {
-  const db = c.get("db");
-  const { taskId } = c.req.param();
-  const orgId = getOrgId(c);
-
-  if (!orgId) {
-    return c.json({ error: "No active organization" }, 400);
-  }
-
-  const task = await getTaskForOrg(db, taskId, orgId);
-  if (!task) {
-    return c.json({ error: "Task not found" }, 404);
-  }
-
-  return electricFn({
-    request: c.req.raw,
-    table: "task_messages",
-    where: clauseToString(eq(schema.taskMessages.taskId, taskId)),
-  });
-});
-
 // POST /api/tasks/:taskId/messages — add a message
 tasks.post("/:taskId/messages", async (c) => {
   const db = c.get("db");

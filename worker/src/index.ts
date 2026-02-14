@@ -4,12 +4,10 @@ import type { Sandbox } from "@cloudflare/sandbox";
 import type { AppDb } from "./db/client";
 import { getDb } from "./db/client";
 import { createAuth } from "./auth";
-import { handleAnalysisResults } from "./api/snapshot-results";
 import { requireAuth } from "./middleware/requireAuth";
 import { installations } from "./routes/installations";
 import { projects } from "./routes/projects";
 import { settings } from "./routes/settings";
-import { snapshots } from "./routes/snapshots";
 import { tasks } from "./routes/tasks";
 import { handleGitHubWebhook } from "./webhook/github";
 
@@ -66,12 +64,6 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => {
   return auth.handler(c.req.raw);
 });
 
-app.get("/api/health", (c) => {
-  return c.json({ status: "ok" });
-});
-
-app.post("/api/analysis/results", (c) => handleAnalysisResults(c));
-
 // Auth guard for data API routes
 app.use("/api/installations/*", requireAuth);
 app.use("/api/projects/*", requireAuth);
@@ -82,7 +74,6 @@ app.use("/api/settings/*", requireAuth);
 // Data API routes
 app.route("/api/installations", installations);
 app.route("/api/projects", projects);
-app.route("/api/projects/:projectId/snapshots", snapshots);
 app.route("/api/tasks", tasks);
 app.route("/api/settings", settings);
 
