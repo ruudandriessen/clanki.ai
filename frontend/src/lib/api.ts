@@ -206,14 +206,6 @@ export interface TaskRun {
   updatedAt: number;
 }
 
-export interface TaskRunEvent {
-  id: string;
-  runId: string;
-  kind: string;
-  payload: string;
-  createdAt: number;
-}
-
 export interface TaskStreamEvent {
   id: string;
   taskId: string;
@@ -276,15 +268,6 @@ export function createTaskRun(
 
 export function fetchTaskRuns(taskId: string) {
   return fetchJson<TaskRun[]>(`/tasks/${taskId}/runs`);
-}
-
-export function fetchTaskRun(runId: string) {
-  return fetchJson<TaskRun>(`/tasks/runs/${runId}`);
-}
-
-export function fetchTaskRunEvents(runId: string, after?: number) {
-  const query = after !== undefined ? `?after=${after}` : "";
-  return fetchJson<TaskRunEvent[]>(`/tasks/runs/${runId}/events${query}`);
 }
 
 export function getTaskEventStreamUrl(taskId: string, offset: string) {

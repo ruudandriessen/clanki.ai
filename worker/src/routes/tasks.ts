@@ -1,4 +1,4 @@
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Sandbox } from "@cloudflare/sandbox";
 import type { AppDb } from "../db/client";
@@ -68,7 +68,22 @@ function parseOptionalTimestamp(value: unknown): number | undefined {
 }
 
 function isValidStreamOffset(value: string): boolean {
-  return /^(-1|now|[0-9]+_[0-9]+)$/.test(value);
+  if (value === "-1" || value === "now") {
+    return true;
+  }
+
+  if (value.length === 0 || value.length > 512) {
+    return false;
+  }
+
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    if ((code >= 0 && code <= 31) || code === 127) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 async function getTaskForOrg(
@@ -542,7 +557,6 @@ tasks.post("/:taskId/runs", async (c) => {
 
     await db.insert(schema.taskRuns).values(run);
     await appendTaskRunEvent({
-      db,
       env: c.env,
       organizationId: orgId,
       taskId,
@@ -619,42 +633,6 @@ tasks.get("/runs/:runId", async (c) => {
   }
 
   return c.json(run);
-});
-
-// GET /api/tasks/runs/:runId/events — run events (optionally after timestamp)
-tasks.get("/runs/:runId/events", async (c) => {
-  const db = c.get("db");
-  const { runId } = c.req.param();
-  const orgId = getOrgId(c);
-
-  if (!orgId) {
-    return c.json({ error: "No active organization" }, 400);
-  }
-
-  const runRef = await ensureRunForOrg(db, orgId, runId);
-  if (!runRef) {
-    return c.json({ error: "Run not found" }, 404);
-  }
-
-  const afterParam = c.req.query("after");
-  const hasAfter = typeof afterParam === "string" && afterParam.length > 0;
-  const after = hasAfter ? Number(afterParam) : null;
-
-  if (hasAfter && (!Number.isFinite(after) || after === null)) {
-    return c.json({ error: "after must be a number" }, 400);
-  }
-
-  const whereClause =
-    after === null
-      ? eq(schema.taskRunEvents.runId, runRef.id)
-      : and(eq(schema.taskRunEvents.runId, runRef.id), gte(schema.taskRunEvents.createdAt, after));
-
-  const events = await db.query.taskRunEvents.findMany({
-    where: whereClause,
-    orderBy: schema.taskRunEvents.createdAt,
-  });
-
-  return c.json(events);
 });
 
 export { tasks };

@@ -76,7 +76,6 @@ export async function executeTaskRun(args: {
       .where(eq(schema.taskRuns.id, runId));
 
     await appendRunEvent({
-      db,
       env,
       runId,
       taskId,
@@ -100,7 +99,6 @@ export async function executeTaskRun(args: {
       .set({ sandboxId, updatedAt: Date.now() })
       .where(eq(schema.taskRuns.id, runId));
     await appendRunEvent({
-      db,
       env,
       runId,
       taskId,
@@ -179,7 +177,6 @@ export async function executeTaskRun(args: {
       })
       .where(eq(schema.taskRuns.id, runId));
     await appendRunEvent({
-      db,
       env,
       runId,
       taskId,
@@ -241,7 +238,6 @@ export async function executeTaskRun(args: {
         content: assistantOutput,
       });
       await appendRunEvent({
-        db,
         env,
         runId,
         taskId,
@@ -268,7 +264,6 @@ export async function executeTaskRun(args: {
     await db.update(schema.tasks).set({ updatedAt: finishedAt }).where(eq(schema.tasks.id, taskId));
 
     await appendRunEvent({
-      db,
       env,
       runId,
       taskId,
@@ -375,7 +370,6 @@ async function streamSessionEvents(args: {
 
       try {
         await appendRunEvent({
-          db,
           env,
           runId,
           taskId,
@@ -487,7 +481,6 @@ async function consumeSessionEventStream(args: {
           });
         }
         await appendRunEvent({
-          db,
           env,
           runId,
           taskId,
@@ -513,7 +506,6 @@ async function consumeSessionEventStream(args: {
 }
 
 async function appendRunEvent(args: {
-  db: AppDb;
   env: TaskRunEnv;
   runId: string;
   taskId: string;
@@ -523,7 +515,6 @@ async function appendRunEvent(args: {
   createdAt?: number;
 }): Promise<void> {
   await appendTaskRunEvent({
-    db: args.db,
     env: args.env,
     organizationId: args.organizationId,
     taskId: args.taskId,
@@ -668,7 +659,6 @@ async function persistCompletedAssistantMessage(args: {
   capture.persistedAssistantMessageCount += 1;
 
   await appendRunEvent({
-    db,
     env,
     runId,
     taskId,
@@ -858,7 +848,6 @@ async function markRunFailed(args: {
 
   try {
     await appendRunEvent({
-      db,
       env,
       runId,
       taskId,
@@ -868,7 +857,6 @@ async function markRunFailed(args: {
       createdAt: finishedAt,
     });
     await appendRunEvent({
-      db,
       env,
       runId,
       taskId,

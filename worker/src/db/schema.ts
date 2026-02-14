@@ -429,21 +429,3 @@ export const taskRuns = pgTable(
     index("task_run_user").on(t.initiatedByUserId, t.createdAt),
   ],
 );
-
-// ---------------------------------------------------------------------------
-// Task run events
-// ---------------------------------------------------------------------------
-
-export const taskRunEvents = pgTable(
-  "task_run_events",
-  {
-    id: text("id").primaryKey(),
-    runId: text("run_id")
-      .notNull()
-      .references(() => taskRuns.id, { onDelete: "cascade" }),
-    kind: text("kind").notNull(),
-    payload: text("payload").notNull(),
-    createdAt: msTimestamp("created_at").notNull(),
-  },
-  (t) => [index("task_run_event_run").on(t.runId, t.createdAt)],
-);

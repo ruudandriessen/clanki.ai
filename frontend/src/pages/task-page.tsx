@@ -10,7 +10,6 @@ import {
   createTaskRun,
   fetchTaskRuns,
   getTaskEventStreamUrl,
-  type TaskRunEvent,
   type TaskStreamEvent,
 } from "../lib/api";
 import { projectsCollection, taskMessagesCollection, tasksCollection } from "../lib/collections";
@@ -21,7 +20,7 @@ export function TaskPage() {
   const [sending, setSending] = useState(false);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [runStatus, setRunStatus] = useState<string | null>(null);
-  const [runEvents, setRunEvents] = useState<TaskRunEvent[]>([]);
+  const [runEvents, setRunEvents] = useState<TaskStreamEvent[]>([]);
   const [runError, setRunError] = useState<string | null>(null);
   const [runSandboxId, setRunSandboxId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -31,7 +30,6 @@ export function TaskPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
-  const mountedRef = useRef(true);
   const activeRunIdRef = useRef<string | null>(null);
 
   const { data: tasks } = useLiveQuery((q) => q.from({ t: tasksCollection }));
@@ -56,12 +54,6 @@ export function TaskPage() {
     .filter((entry): entry is string => entry !== null);
 
   useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, runEvents]);
 
@@ -79,6 +71,7 @@ export function TaskPage() {
     setTitleError(null);
   }, [taskId]);
 
+  console.log("runEvents", runEvents)
   useEffect(() => {
     activeRunIdRef.current = activeRunId;
   }, [activeRunId]);
@@ -93,7 +86,7 @@ export function TaskPage() {
     const loadLatestRun = async () => {
       try {
         const runs = await fetchTaskRuns(taskId);
-        if (cancelled || !mountedRef.current) {
+        if (cancelled) {
           return;
         }
 
@@ -112,7 +105,7 @@ export function TaskPage() {
         setRunSandboxId(latestRun.sandboxId);
         setRunError(latestRun.error ?? null);
       } catch (error) {
-        if (cancelled || !mountedRef.current) {
+        if (cancelled) {
           return;
         }
         setRunError(error instanceof Error ? error.message : "Failed to load task runs");
@@ -154,7 +147,7 @@ export function TaskPage() {
         setRunError(null);
       }
 
-      setRunEvents((prev) => [...prev, toRunEvent(event)]);
+      setRunEvents((prev) => [...prev, event]);
 
       if (event.kind === "status") {
         setRunStatus(event.payload);
@@ -181,7 +174,7 @@ export function TaskPage() {
 
         reconnectDelayMs = 500;
         for (const event of events) {
-          if (!mountedRef.current || cancelled) {
+          if (cancelled) {
             return;
           }
           applyEvent(event);
@@ -501,16 +494,6 @@ export function TaskPage() {
   );
 }
 
-function toRunEvent(event: TaskStreamEvent): TaskRunEvent {
-  return {
-    id: event.id,
-    runId: event.runId,
-    kind: event.kind,
-    payload: event.payload,
-    createdAt: event.createdAt,
-  };
-}
-
 function getTaskStreamOffsetStorageKey(taskId: string): string {
   return `task-stream-offset:${taskId}`;
 }
@@ -607,7 +590,7 @@ function parseTaskStreamControlEvent(
   }
 }
 
-function formatRunEvent(event: TaskRunEvent): string | null {
+function formatRunEvent(event: TaskStreamEvent): string | null {
   if (!event.kind.startsWith("opencode.")) {
     return `${event.kind}: ${event.payload}`;
   }
