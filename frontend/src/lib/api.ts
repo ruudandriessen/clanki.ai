@@ -266,10 +266,6 @@ export function createTaskRun(
   return postJson<TaskRun>(`/tasks/${taskId}/runs`, body);
 }
 
-export function fetchTaskRuns(taskId: string) {
-  return fetchJson<TaskRun[]>(`/tasks/${taskId}/runs`);
-}
-
 export function getTaskEventStreamUrl(taskId: string) {
   return `${globalThis.location.origin}/api/tasks/${taskId}/stream`;
 }

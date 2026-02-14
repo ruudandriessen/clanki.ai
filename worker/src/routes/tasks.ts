@@ -96,32 +96,6 @@ async function getTaskForOrg(
   });
 }
 
-async function ensureRunForOrg(
-  db: AppDb,
-  orgId: string,
-  runId: string,
-): Promise<{ id: string; taskId: string } | undefined> {
-  const run = await db.query.taskRuns.findFirst({
-    where: eq(schema.taskRuns.id, runId),
-    columns: { id: true, taskId: true },
-  });
-
-  if (!run) {
-    return undefined;
-  }
-
-  const task = await db.query.tasks.findFirst({
-    where: and(eq(schema.tasks.id, run.taskId), eq(schema.tasks.organizationId, orgId)),
-    columns: { id: true },
-  });
-
-  if (!task) {
-    return undefined;
-  }
-
-  return run;
-}
-
 async function getLatestTaskMessageTimestamp(db: AppDb, taskId: string): Promise<number | null> {
   const latest = await db.query.taskMessages.findFirst({
     where: eq(schema.taskMessages.taskId, taskId),
@@ -383,29 +357,6 @@ tasks.post("/:taskId/messages", async (c) => {
   return withTxid(c.json(result.message, 201), result.txid);
 });
 
-// GET /api/tasks/:taskId/runs — list runs for a task
-tasks.get("/:taskId/runs", async (c) => {
-  const db = c.get("db");
-  const { taskId } = c.req.param();
-  const orgId = getOrgId(c);
-
-  if (!orgId) {
-    return c.json({ error: "No active organization" }, 400);
-  }
-
-  const task = await getTaskForOrg(db, taskId, orgId);
-  if (!task) {
-    return c.json({ error: "Task not found" }, 404);
-  }
-
-  const runs = await db.query.taskRuns.findMany({
-    where: eq(schema.taskRuns.taskId, taskId),
-    orderBy: desc(schema.taskRuns.createdAt),
-  });
-
-  return c.json(runs);
-});
-
 // GET /api/tasks/:taskId/stream — live durable stream for task events
 tasks.get("/:taskId/stream", async (c) => {
   const db = c.get("db");
@@ -600,32 +551,6 @@ tasks.post("/:taskId/runs", async (c) => {
     });
     return c.json({ error: message }, 500);
   }
-});
-
-// GET /api/tasks/runs/:runId — single run
-tasks.get("/runs/:runId", async (c) => {
-  const db = c.get("db");
-  const { runId } = c.req.param();
-  const orgId = getOrgId(c);
-
-  if (!orgId) {
-    return c.json({ error: "No active organization" }, 400);
-  }
-
-  const runRef = await ensureRunForOrg(db, orgId, runId);
-  if (!runRef) {
-    return c.json({ error: "Run not found" }, 404);
-  }
-
-  const run = await db.query.taskRuns.findFirst({
-    where: eq(schema.taskRuns.id, runRef.id),
-  });
-
-  if (!run) {
-    return c.json({ error: "Run not found" }, 404);
-  }
-
-  return c.json(run);
 });
 
 export { tasks };
