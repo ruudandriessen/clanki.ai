@@ -15,7 +15,7 @@ export interface TaskEventStreamMessage {
 const DURABLE_STREAMS_BASE_URL = "https://api.electric-sql.cloud";
 const TASK_EVENTS_CONTENT_TYPE = "application/json";
 
-export function isDurableStreamsConfigured(env: DurableStreamsEnv): boolean {
+function isDurableStreamsConfigured(env: DurableStreamsEnv): boolean {
   return (
     typeof env.DURABLE_STREAMS_SERVICE_ID === "string" &&
     env.DURABLE_STREAMS_SERVICE_ID.trim().length > 0 &&
@@ -24,10 +24,7 @@ export function isDurableStreamsConfigured(env: DurableStreamsEnv): boolean {
   );
 }
 
-export function buildTaskEventsStreamPath(args: {
-  organizationId: string;
-  taskId: string;
-}): string {
+function buildTaskEventsStreamPath(args: { organizationId: string; taskId: string }): string {
   const { organizationId, taskId } = args;
   return `org/${organizationId}/tasks/${taskId}/events`;
 }

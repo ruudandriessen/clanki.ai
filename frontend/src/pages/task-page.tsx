@@ -148,7 +148,7 @@ export function TaskPage() {
     let resetOffsetAttempted = false;
     const seenEventIds = new Set<string>();
     const offsetStorageKey = getTaskStreamOffsetStorageKey(taskId);
-    let currentOffset = readTaskStreamOffset(offsetStorageKey) ?? "-1";
+    let currentOffset = "-1";
 
     const applyEvent = (event: TaskStreamEvent) => {
       if (seenEventIds.has(event.id)) {
@@ -161,7 +161,6 @@ export function TaskPage() {
       if (switchedRun) {
         activeRunIdRef.current = event.runId;
         setActiveRunId(event.runId);
-        setRunEvents([]);
         setRunSandboxId(null);
         setRunError(null);
       }
@@ -238,7 +237,8 @@ export function TaskPage() {
       });
     };
 
-    open(currentOffset);
+    clearTaskStreamOffset(offsetStorageKey);
+    open("-1");
 
     return () => {
       cancelled = true;
@@ -269,7 +269,6 @@ export function TaskPage() {
     setSending(true);
     setInput("");
     setRunError(null);
-    setRunEvents([]);
     setRunStatus("queued");
     setRunSandboxId(null);
 
@@ -519,24 +518,15 @@ function getTaskStreamOffsetStorageKey(taskId: string): string {
   return `task-stream-offset:${taskId}`;
 }
 
-function readTaskStreamOffset(key: string): string | null {
-  try {
-    const value = localStorage.getItem(key);
-    return typeof value === "string" && value.length > 0 ? value : null;
-  } catch {
-    return null;
-  }
-}
-
 function storeTaskStreamOffset(key: string, offset: string): void {
   try {
-    localStorage.setItem(key, offset);
+    sessionStorage.setItem(key, offset);
   } catch {}
 }
 
 function clearTaskStreamOffset(key: string): void {
   try {
-    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
   } catch {}
 }
 
@@ -886,7 +876,7 @@ function toTaskStreamActivityItem(event: TaskStreamEvent): ChronologicalActivity
     if (event.payload === "succeeded") {
       return {
         id: event.id,
-        stateKey: "run-status",
+        stateKey: `run-status:${event.runId}`,
         icon: "success",
         label: "Run completed",
         tone: "success",
@@ -897,7 +887,7 @@ function toTaskStreamActivityItem(event: TaskStreamEvent): ChronologicalActivity
     if (event.payload === "failed") {
       return {
         id: event.id,
-        stateKey: "run-status",
+        stateKey: `run-status:${event.runId}`,
         icon: "error",
         label: "Run failed",
         tone: "error",
@@ -908,7 +898,7 @@ function toTaskStreamActivityItem(event: TaskStreamEvent): ChronologicalActivity
     if (event.payload === "queued" || event.payload === "running") {
       return {
         id: event.id,
-        stateKey: "run-status",
+        stateKey: `run-status:${event.runId}`,
         icon: "status",
         label: event.payload === "queued" ? "Queued" : "Running",
         tone: "muted",
@@ -919,7 +909,7 @@ function toTaskStreamActivityItem(event: TaskStreamEvent): ChronologicalActivity
 
     return {
       id: event.id,
-      stateKey: "run-status",
+      stateKey: `run-status:${event.runId}`,
       icon: "status",
       label: `Status: ${event.payload}`,
       tone: "muted",
@@ -931,7 +921,7 @@ function toTaskStreamActivityItem(event: TaskStreamEvent): ChronologicalActivity
   if (event.kind === "sandbox") {
     return {
       id: event.id,
-      stateKey: "run-sandbox",
+      stateKey: `run-sandbox:${event.runId}`,
       icon: "terminal",
       label: `Sandbox: ${event.payload}`,
       tone: "muted",
@@ -942,7 +932,7 @@ function toTaskStreamActivityItem(event: TaskStreamEvent): ChronologicalActivity
   if (event.kind === "error") {
     return {
       id: event.id,
-      stateKey: "run-error",
+      stateKey: `run-error:${event.runId}`,
       icon: "error",
       label: event.payload,
       tone: "error",
