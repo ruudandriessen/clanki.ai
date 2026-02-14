@@ -36,6 +36,13 @@
       "when": 1771096360634,
       "tag": "0004_hard_shadow_king",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1771300800001,
+      "tag": "0005_catch_up_setup_command",
+      "breakpoints": true
     }
   ]
 }
