@@ -1,10 +1,9 @@
 import { getSandbox } from "@cloudflare/sandbox";
 import { createOpencode } from "@cloudflare/sandbox/opencode";
 import type { Sandbox } from "@cloudflare/sandbox";
-import type { Config, OpencodeClient } from "@opencode-ai/sdk";
+import { OpencodeClient, type Config } from "@opencode-ai/sdk";
 
 const SANDBOX_SLEEP_AFTER = "15m";
-const OPENCODE_COMMAND = "opencode serve --port 4096 --hostname 0.0.0.0";
 
 export type SandboxEnv = {
   Sandbox: DurableObjectNamespace<Sandbox>;
@@ -19,13 +18,7 @@ export function getTaskSandbox(env: SandboxEnv, sandboxId: string) {
 }
 
 /** Start (or connect to) the OpenCode server inside the sandbox and return a typed client. */
-export async function getOpenCodeClient(
-  sandbox: Sandbox,
-  directory: string,
-  config?: Config,
-  options?: { restartServer?: boolean },
-) {
-  const restartServer = options?.restartServer ?? true;
+export async function getOpenCodeClient(sandbox: Sandbox, directory: string, config?: Config) {
   const mergedConfig: Config = {
     ...config,
     permission: {
@@ -34,21 +27,5 @@ export async function getOpenCodeClient(
     },
   };
 
-  if (restartServer) {
-    await restartOpenCodeServer(sandbox);
-  }
   return createOpencode<OpencodeClient>(sandbox, { directory, config: mergedConfig });
-}
-
-async function restartOpenCodeServer(sandbox: Sandbox): Promise<void> {
-  const processes = await sandbox.listProcesses();
-  for (const process of processes) {
-    if (!process.command.includes(OPENCODE_COMMAND)) {
-      continue;
-    }
-
-    try {
-      await process.kill("SIGTERM");
-    } catch {}
-  }
 }
