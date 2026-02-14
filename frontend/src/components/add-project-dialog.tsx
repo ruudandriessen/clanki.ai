@@ -109,9 +109,8 @@ export function AddProjectDialog({
       }
 
       const tx = projectsCollection.insert(selectedRepos);
-      await tx.isPersisted.promise;
-
       onClose();
+      await tx.isPersisted.promise;
     } catch {
       setError("Failed to create projects.");
     } finally {

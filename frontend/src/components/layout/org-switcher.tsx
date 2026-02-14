@@ -8,6 +8,7 @@ import { useOrganization } from "./use-organization";
 export function OrgSwitcher() {
   const activeOrg = useOrganization();
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -21,15 +22,24 @@ export function OrgSwitcher() {
   const org = activeOrg.data;
   if (!org) return null;
 
-  const handleSave = async () => {
+  const handleSave = () => {
     const trimmed = name.trim();
-    if (trimmed && trimmed !== org.name) {
-      await authClient.organization.update({
+    setEditing(false);
+
+    if (!trimmed || trimmed === org.name || saving) {
+      return;
+    }
+
+    setSaving(true);
+    void authClient.organization
+      .update({
         data: { name: trimmed },
         organizationId: org.id,
+      })
+      .catch(() => {})
+      .finally(() => {
+        setSaving(false);
       });
-    }
-    setEditing(false);
   };
 
   if (editing) {

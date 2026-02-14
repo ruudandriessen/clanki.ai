@@ -202,9 +202,8 @@ export function TaskPage() {
         draft.title = nextTitle;
         draft.updated_at = BigInt(Date.now());
       });
-      await tx.isPersisted.promise;
-
       setEditingTitle(false);
+      await tx.isPersisted.promise;
     } catch (error) {
       setTitleError(error instanceof Error ? error.message : "Failed to update task title");
     } finally {

@@ -47,9 +47,8 @@ export function TaskList() {
       };
 
       const tx = tasksCollection.insert(task);
-      await tx.isPersisted.promise;
-
       navigate({ to: "/tasks/$taskId", params: { taskId: task.id } });
+      await tx.isPersisted.promise;
     } finally {
       setCreating(false);
     }
