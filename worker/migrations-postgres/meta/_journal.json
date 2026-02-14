@@ -43,6 +43,13 @@
       "when": 1771300800001,
       "tag": "0005_catch_up_setup_command",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1771098422480,
+      "tag": "0006_greedy_misty_knight",
+      "breakpoints": true
     }
   ]
 }
