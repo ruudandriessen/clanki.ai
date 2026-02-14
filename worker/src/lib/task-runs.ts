@@ -1,4 +1,5 @@
 import { and, desc, eq, isNull, not } from "drizzle-orm";
+import type { Event as OpencodeEvent, OpencodeClient } from "@opencode-ai/sdk";
 import type { AppDb } from "../db/client";
 import * as schema from "../db/schema";
 import { createInstallationToken, buildAuthenticatedCloneUrl, type GitHubAppEnv } from "./github";
@@ -131,13 +132,65 @@ export async function executeTaskRun(args: {
       }
     }
 
-    // Send the prompt and wait for a response
-    const { data: response } = await client.session.prompt({
-      path: { id: sessionId },
-      body: {
-        parts: [{ type: "text", text: prompt }],
+    const runUpdatedAt = Date.now();
+    await db
+      .update(schema.taskRuns)
+      .set({
+        sessionId,
+        sandboxId,
+        updatedAt: runUpdatedAt,
+      })
+      .where(eq(schema.taskRuns.id, runId));
+    await appendRunEvent(db, runId, "session", sessionId, runUpdatedAt);
+
+    const sseStream = await client.event.subscribe({
+      onSseEvent: (event) => {
+        console.warn("Global - New sse event", event.event, event.data);
+      },
+      onSseError: (error) => {
+        console.warn("Global - OpenCode event stream error", {
+          runId,
+          sessionId,
+          message: getErrorMessage(error),
+        });
       },
     });
+    // const streamAbortController = new AbortController();
+    // const streamPromise = streamSessionEvents({
+    //   db,
+    //   client,
+    //   runId,
+    //   sessionId,
+    //   directory: repoDir,
+    //   signal: streamAbortController.signal,
+    // });
+
+    let response: { parts?: unknown } | undefined;
+    try {
+      console.warn("Sending prompt to OpenCode");
+      // Send the prompt and wait for a response while events are captured via /event SSE.
+      const result = await client.session.prompt({
+        path: { id: sessionId },
+        responseStyle: "data",
+        body: {
+          parts: [{ type: "text", text: prompt }],
+        },
+        onSseEvent: (event) => {
+          console.warn("New sse event", event.event, event.data);
+        },
+        onSseError: (error) => {
+          console.warn("OpenCode event stream error", {
+            runId,
+            sessionId,
+            message: getErrorMessage(error),
+          });
+        },
+      });
+      response = result.data;
+    } finally {
+      // streamAbortController.abort();
+      // await streamPromise;
+    }
 
     // Persist the latest auth payload in case provider refresh tokens rotated.
     try {
@@ -207,6 +260,90 @@ function extractTextFromParts(parts: unknown): string {
   return chunks.join("\n\n");
 }
 
+async function streamSessionEvents(args: {
+  db: AppDb;
+  client: OpencodeClient;
+  runId: string;
+  sessionId: string;
+  directory: string;
+  signal: AbortSignal;
+}): Promise<void> {
+  const { db, client, runId, sessionId, directory, signal } = args;
+  let loggedTransientDisconnect = false;
+
+  try {
+    const { stream } = await client.event.subscribe({
+      query: { directory },
+      signal,
+      sseMaxRetryAttempts: 2,
+      onSseEvent: (event) => {
+        console.warn("New sse event", event.event, event.data);
+      },
+      onSseError: (error) => {
+        if (signal.aborted || isAbortError(error)) {
+          return;
+        }
+
+        if (isTransientNetworkDisconnect(error)) {
+          if (!loggedTransientDisconnect) {
+            console.warn("OpenCode event stream disconnected; retrying", {
+              runId,
+              sessionId,
+              message: getErrorMessage(error),
+            });
+            loggedTransientDisconnect = true;
+          }
+          return;
+        }
+
+        console.error("OpenCode event stream error", {
+          runId,
+          sessionId,
+          message: getErrorMessage(error),
+        });
+      },
+    });
+
+    for await (const rawEvent of stream) {
+      console.log("new event", rawEvent.type);
+      if (signal.aborted) {
+        return;
+      }
+      if (!isOpencodeEvent(rawEvent)) {
+        continue;
+      }
+      if (!eventBelongsToSession(rawEvent, sessionId)) {
+        continue;
+      }
+
+      await appendRunEvent(db, runId, `opencode.${rawEvent.type}`, safeJsonStringify(rawEvent));
+
+      if (isSessionIdleEvent(rawEvent, sessionId)) {
+        return;
+      }
+    }
+  } catch (error) {
+    if (signal.aborted || isAbortError(error)) {
+      return;
+    }
+
+    console.error("Failed to subscribe to OpenCode event stream", {
+      runId,
+      sessionId,
+      message: getErrorMessage(error),
+    });
+
+    try {
+      await appendRunEvent(
+        db,
+        runId,
+        "warning",
+        `Failed to subscribe to OpenCode event stream: ${getErrorMessage(error)}`,
+      );
+    } catch {}
+  }
+}
+
 async function appendRunEvent(
   db: AppDb,
   runId: string,
@@ -229,6 +366,91 @@ function getErrorMessage(error: unknown): string {
   }
 
   return "Unknown task run failure";
+}
+
+function isOpencodeEvent(value: unknown): value is OpencodeEvent {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  if (!("type" in value) || typeof value.type !== "string") {
+    return false;
+  }
+
+  return "properties" in value;
+}
+
+function eventBelongsToSession(event: OpencodeEvent, sessionId: string): boolean {
+  return extractEventSessionId(event) === sessionId;
+}
+
+function isSessionIdleEvent(event: OpencodeEvent, sessionId: string): boolean {
+  if (event.type !== "session.idle") {
+    return false;
+  }
+
+  const eventSessionId = extractEventSessionId(event);
+  return eventSessionId === sessionId;
+}
+
+function extractEventSessionId(event: OpencodeEvent): string | null {
+  const properties = toRecord(event.properties);
+  if (!properties) {
+    return null;
+  }
+
+  const directSessionId = toStringOrNull(properties.sessionID);
+  if (directSessionId) {
+    return directSessionId;
+  }
+
+  const info = toRecord(properties.info);
+  const infoSessionId = toStringOrNull(info?.sessionID);
+  if (infoSessionId) {
+    return infoSessionId;
+  }
+  if (event.type.startsWith("session.")) {
+    const infoId = toStringOrNull(info?.id);
+    if (infoId) {
+      return infoId;
+    }
+  }
+
+  const part = toRecord(properties.part);
+  const partSessionId = toStringOrNull(part?.sessionID);
+  if (partSessionId) {
+    return partSessionId;
+  }
+
+  return null;
+}
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function toStringOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function safeJsonStringify(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
+function isTransientNetworkDisconnect(error: unknown): boolean {
+  const message = getErrorMessage(error).toLowerCase();
+  return message.includes("network connection lost");
 }
 
 async function getNextTaskMessageTimestamp(db: AppDb, taskId: string): Promise<number> {

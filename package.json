@@ -28,7 +28,7 @@
     "@cloudflare/sandbox": "^0.7.2",
     "@electric-sql/client": "^1.5.4",
     "@octokit/webhooks": "^14.2.0",
-    "@opencode-ai/sdk": "^1.1.63",
+    "@opencode-ai/sdk": "^1.2.1",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/electric-db-collection": "^0.2.33",
     "@tanstack/react-db": "0.1.70",

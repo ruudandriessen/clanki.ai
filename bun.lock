@@ -8,7 +8,7 @@
         "@cloudflare/sandbox": "^0.7.2",
         "@electric-sql/client": "^1.5.4",
         "@octokit/webhooks": "^14.2.0",
-        "@opencode-ai/sdk": "^1.1.63",
+        "@opencode-ai/sdk": "^1.2.1",
         "@tailwindcss/vite": "^4.1.18",
         "@tanstack/electric-db-collection": "^0.2.33",
         "@tanstack/react-db": "0.1.70",
@@ -367,7 +367,7 @@
 
     "@open-draft/until": ["@open-draft/until@2.1.0", "", {}, "sha512-U69T3ItWHvLwGg5eJ0n3I62nWuE6ilHlmz7zM0npLBRvPRd7e6NYmg54vvRtP5mZG7kZqZCFVdsTWo7BPtBujg=="],
 
-    "@opencode-ai/sdk": ["@opencode-ai/sdk@1.1.63", "", {}, "sha512-9452K0G04slXOsYoVVRVGl0qwXdKhQ1RdvutslaA+b+TtA8y0nbm2iDzDpU74uM1paLXXNPCVCTWWUpnLiAcCA=="],
+    "@opencode-ai/sdk": ["@opencode-ai/sdk@1.2.1", "", {}, "sha512-K5e15mIXTyAykBw0GX+8O28IJHlPMw1jI/m3SDu+hgUHjmg2refqLPqyuqv8hE2nRcuGi8HajhpDJjkO7H2S0A=="],
 
     "@oxc-resolver/binding-android-arm-eabi": ["@oxc-resolver/binding-android-arm-eabi@11.17.0", "", { "os": "android", "cpu": "arm" }, "sha512-kVnY21v0GyZ/+LG6EIO48wK3mE79BUuakHUYLIqobO/Qqq4mJsjuYXMSn3JtLcKZpN1HDVit4UHpGJHef1lrlw=="],
 
