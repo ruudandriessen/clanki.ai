@@ -25,6 +25,8 @@ type Bindings = {
   GITHUB_CLIENT_SECRET: string;
   GITHUB_WEBHOOK_SECRET: string;
   CREDENTIALS_ENCRYPTION_KEY: string;
+  DURABLE_STREAMS_SERVICE_ID?: string;
+  DURABLE_STREAMS_SECRET?: string;
   Sandbox: DurableObjectNamespace<Sandbox>;
   GITHUB_APP_ID?: string;
   GITHUB_APP_PRIVATE_KEY?: string;

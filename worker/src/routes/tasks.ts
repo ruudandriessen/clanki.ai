@@ -1,4 +1,4 @@
-import { and, desc, eq, gt } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Sandbox } from "@cloudflare/sandbox";
 import type { AppDb } from "../db/client";
@@ -12,6 +12,8 @@ import {
   DEFAULT_OPENCODE_PROVIDER,
   isSupportedOpencodeProvider,
 } from "../lib/opencode";
+import { openTaskEventsSse } from "../lib/durable-streams";
+import { appendTaskRunEvent } from "../lib/task-run-events";
 import { executeTaskRun } from "../lib/task-runs";
 
 type Env = {
@@ -21,6 +23,8 @@ type Env = {
     GITHUB_APP_ID?: string;
     GITHUB_APP_PRIVATE_KEY?: string;
     CREDENTIALS_ENCRYPTION_KEY: string;
+    DURABLE_STREAMS_SERVICE_ID?: string;
+    DURABLE_STREAMS_SECRET?: string;
   };
   Variables: {
     db: AppDb;
@@ -61,6 +65,10 @@ function parseOptionalTimestamp(value: unknown): number | undefined {
   }
 
   return Math.trunc(value);
+}
+
+function isValidStreamOffset(value: string): boolean {
+  return /^(-1|now|[0-9]+_[0-9]+)$/.test(value);
 }
 
 async function getTaskForOrg(
@@ -384,6 +392,70 @@ tasks.get("/:taskId/runs", async (c) => {
   return c.json(runs);
 });
 
+// GET /api/tasks/:taskId/stream — live durable stream for task events
+tasks.get("/:taskId/stream", async (c) => {
+  const db = c.get("db");
+  const { taskId } = c.req.param();
+  const orgId = getOrgId(c);
+
+  if (!orgId) {
+    return c.json({ error: "No active organization" }, 400);
+  }
+
+  const task = await getTaskForOrg(db, taskId, orgId);
+  if (!task) {
+    return c.json({ error: "Task not found" }, 404);
+  }
+
+  const offset = c.req.query("offset")?.trim() ?? "-1";
+  if (!isValidStreamOffset(offset)) {
+    return c.json({ error: "offset must be -1, now, or a durable stream offset" }, 400);
+  }
+
+  try {
+    const upstream = await openTaskEventsSse({
+      env: c.env,
+      organizationId: orgId,
+      taskId,
+      offset,
+    });
+
+    if (!upstream.ok || !upstream.body) {
+      const details = (await upstream.text()).trim();
+      const status: 400 | 404 | 502 =
+        upstream.status === 404 ? 404 : upstream.status >= 400 && upstream.status < 500 ? 400 : 502;
+      return c.json(
+        {
+          error: `Failed to open durable task stream (${upstream.status} ${upstream.statusText})${
+            details.length > 0 ? `: ${details}` : ""
+          }`,
+        },
+        status,
+      );
+    }
+
+    const headers = new Headers();
+    headers.set("Content-Type", upstream.headers.get("content-type") ?? "text/event-stream");
+    headers.set("Cache-Control", "no-cache, no-transform");
+    headers.set("Connection", "keep-alive");
+
+    return new Response(upstream.body, {
+      status: 200,
+      headers,
+    });
+  } catch (error) {
+    return c.json(
+      {
+        error:
+          error instanceof Error && error.message.trim().length > 0
+            ? error.message
+            : "Failed to connect to durable stream",
+      },
+      502,
+    );
+  }
+});
+
 // POST /api/tasks/:taskId/runs — create an OpenCode run from a user message
 tasks.post("/:taskId/runs", async (c) => {
   const db = c.get("db");
@@ -469,8 +541,11 @@ tasks.post("/:taskId/runs", async (c) => {
     };
 
     await db.insert(schema.taskRuns).values(run);
-    await db.insert(schema.taskRunEvents).values({
-      id: crypto.randomUUID(),
+    await appendTaskRunEvent({
+      db,
+      env: c.env,
+      organizationId: orgId,
+      taskId,
       runId: run.id,
       kind: "status",
       payload: "queued",
@@ -572,7 +647,7 @@ tasks.get("/runs/:runId/events", async (c) => {
   const whereClause =
     after === null
       ? eq(schema.taskRunEvents.runId, runRef.id)
-      : and(eq(schema.taskRunEvents.runId, runRef.id), gt(schema.taskRunEvents.createdAt, after));
+      : and(eq(schema.taskRunEvents.runId, runRef.id), gte(schema.taskRunEvents.createdAt, after));
 
   const events = await db.query.taskRunEvents.findMany({
     where: whereClause,

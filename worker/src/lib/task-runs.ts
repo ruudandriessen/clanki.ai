@@ -1,5 +1,5 @@
 import { and, desc, eq, isNull, not } from "drizzle-orm";
-import type { Event as OpencodeEvent, OpencodeClient } from "@opencode-ai/sdk";
+import type { Event as OpencodeEvent } from "@opencode-ai/sdk";
 import type { AppDb } from "../db/client";
 import * as schema from "../db/schema";
 import { createInstallationToken, buildAuthenticatedCloneUrl, type GitHubAppEnv } from "./github";
@@ -12,8 +12,27 @@ import {
 import { getDecryptedProviderAuth, upsertProviderAuthCredential } from "./provider-credentials";
 import { getTaskSandbox, getOpenCodeClient, type SandboxEnv } from "./sandbox";
 import type { SecretCryptoEnv } from "./secret-crypto";
+import { type DurableStreamsEnv } from "./durable-streams";
+import { appendTaskRunEvent } from "./task-run-events";
 
-type TaskRunEnv = SandboxEnv & GitHubAppEnv & SecretCryptoEnv;
+type TaskRunEnv = SandboxEnv & GitHubAppEnv & SecretCryptoEnv & DurableStreamsEnv;
+type EventStreamSandbox = {
+  containerFetch(
+    requestOrUrl: Request | string | URL,
+    portOrInit?: number | RequestInit,
+    portParam?: number,
+  ): Promise<Response>;
+};
+type AssistantStreamCapture = {
+  textPartsByMessageId: Map<string, Map<string, string>>;
+  persistedAssistantMessageIds: Set<string>;
+  lastPersistedTaskMessageId: string | null;
+  persistedAssistantMessageCount: number;
+};
+
+const OPENCODE_SERVER_PORT = 4096;
+const MAX_EVENT_STREAM_RETRY_ATTEMPTS = 4;
+const EVENT_STREAM_RETRY_BASE_DELAY_MS = 500;
 
 export async function executeTaskRun(args: {
   db: AppDb;
@@ -56,7 +75,16 @@ export async function executeTaskRun(args: {
       })
       .where(eq(schema.taskRuns.id, runId));
 
-    await appendRunEvent(db, runId, "status", "running", startedAt);
+    await appendRunEvent({
+      db,
+      env,
+      runId,
+      taskId,
+      organizationId,
+      kind: "status",
+      payload: "running",
+      createdAt: startedAt,
+    });
 
     // Scope sandbox by task+user+provider+model to avoid cross-user/provider leakage.
     const sandboxId = buildTaskRunSandboxId({
@@ -71,6 +99,15 @@ export async function executeTaskRun(args: {
       .update(schema.taskRuns)
       .set({ sandboxId, updatedAt: Date.now() })
       .where(eq(schema.taskRuns.id, runId));
+    await appendRunEvent({
+      db,
+      env,
+      runId,
+      taskId,
+      organizationId,
+      kind: "sandbox",
+      payload: sandboxId,
+    });
 
     // Generate a fresh installation token (needed for clone, push, and gh CLI)
     const repoDir = "/home/user/repo";
@@ -141,55 +178,45 @@ export async function executeTaskRun(args: {
         updatedAt: runUpdatedAt,
       })
       .where(eq(schema.taskRuns.id, runId));
-    await appendRunEvent(db, runId, "session", sessionId, runUpdatedAt);
-
-    const sseStream = await client.event.subscribe({
-      onSseEvent: (event) => {
-        console.warn("Global - New sse event", event.event, event.data);
-      },
-      onSseError: (error) => {
-        console.warn("Global - OpenCode event stream error", {
-          runId,
-          sessionId,
-          message: getErrorMessage(error),
-        });
-      },
+    await appendRunEvent({
+      db,
+      env,
+      runId,
+      taskId,
+      organizationId,
+      kind: "session",
+      payload: sessionId,
+      createdAt: runUpdatedAt,
     });
-    // const streamAbortController = new AbortController();
-    // const streamPromise = streamSessionEvents({
-    //   db,
-    //   client,
-    //   runId,
-    //   sessionId,
-    //   directory: repoDir,
-    //   signal: streamAbortController.signal,
-    // });
+
+    const streamAbortController = new AbortController();
+    const assistantStreamCapture = createAssistantStreamCapture();
+    const streamPromise = streamSessionEvents({
+      db,
+      env,
+      sandbox,
+      runId,
+      taskId,
+      organizationId,
+      sessionId,
+      directory: repoDir,
+      signal: streamAbortController.signal,
+      capture: assistantStreamCapture,
+    });
 
     let response: { parts?: unknown } | undefined;
     try {
-      console.warn("Sending prompt to OpenCode");
       // Send the prompt and wait for a response while events are captured via /event SSE.
       const result = await client.session.prompt({
         path: { id: sessionId },
-        responseStyle: "data",
         body: {
           parts: [{ type: "text", text: prompt }],
-        },
-        onSseEvent: (event) => {
-          console.warn("New sse event", event.event, event.data);
-        },
-        onSseError: (error) => {
-          console.warn("OpenCode event stream error", {
-            runId,
-            sessionId,
-            message: getErrorMessage(error),
-          });
         },
       });
       response = result.data;
     } finally {
-      // streamAbortController.abort();
-      // await streamPromise;
+      streamAbortController.abort();
+      await streamPromise;
     }
 
     // Persist the latest auth payload in case provider refresh tokens rotated.
@@ -200,21 +227,29 @@ export async function executeTaskRun(args: {
       }
     } catch {}
 
-    // Extract text from the response parts
+    // Extract text from the response parts. If no assistant message was persisted
+    // from live events, persist this as a fallback output message.
     const output = extractTextFromParts(response?.parts).trim();
     const assistantOutput = output.length > 0 ? output : "OpenCode completed without text output.";
+    let assistantMessageId = assistantStreamCapture.lastPersistedTaskMessageId;
 
-    const assistantMessageId = crypto.randomUUID();
-    const assistantCreatedAt = await getNextTaskMessageTimestamp(db, taskId);
-
-    await db.insert(schema.taskMessages).values({
-      id: assistantMessageId,
-      organizationId,
-      taskId,
-      role: "assistant",
-      content: assistantOutput,
-      createdAt: assistantCreatedAt,
-    });
+    if (!assistantMessageId) {
+      assistantMessageId = await insertAssistantTaskMessage({
+        db,
+        organizationId,
+        taskId,
+        content: assistantOutput,
+      });
+      await appendRunEvent({
+        db,
+        env,
+        runId,
+        taskId,
+        organizationId,
+        kind: "assistant",
+        payload: assistantOutput,
+      });
+    }
 
     const finishedAt = Date.now();
     await db
@@ -232,10 +267,24 @@ export async function executeTaskRun(args: {
 
     await db.update(schema.tasks).set({ updatedAt: finishedAt }).where(eq(schema.tasks.id, taskId));
 
-    await appendRunEvent(db, runId, "assistant", assistantOutput);
-    await appendRunEvent(db, runId, "status", "succeeded");
+    await appendRunEvent({
+      db,
+      env,
+      runId,
+      taskId,
+      organizationId,
+      kind: "status",
+      payload: "succeeded",
+    });
   } catch (error) {
-    await markRunFailed(db, runId, taskId, getErrorMessage(error));
+    await markRunFailed({
+      db,
+      env,
+      runId,
+      taskId,
+      organizationId,
+      message: getErrorMessage(error),
+    });
   }
 }
 
@@ -262,101 +311,226 @@ function extractTextFromParts(parts: unknown): string {
 
 async function streamSessionEvents(args: {
   db: AppDb;
-  client: OpencodeClient;
+  env: TaskRunEnv;
+  sandbox: EventStreamSandbox;
   runId: string;
+  taskId: string;
+  organizationId: string;
   sessionId: string;
   directory: string;
   signal: AbortSignal;
+  capture: AssistantStreamCapture;
 }): Promise<void> {
-  const { db, client, runId, sessionId, directory, signal } = args;
-  let loggedTransientDisconnect = false;
+  const { db, env, sandbox, runId, taskId, organizationId, sessionId, directory, signal, capture } =
+    args;
 
-  try {
-    const { stream } = await client.event.subscribe({
-      query: { directory },
-      signal,
-      sseMaxRetryAttempts: 2,
-      onSseEvent: (event) => {
-        console.warn("New sse event", event.event, event.data);
-      },
-      onSseError: (error) => {
-        if (signal.aborted || isAbortError(error)) {
-          return;
-        }
-
-        if (isTransientNetworkDisconnect(error)) {
-          if (!loggedTransientDisconnect) {
-            console.warn("OpenCode event stream disconnected; retrying", {
-              runId,
-              sessionId,
-              message: getErrorMessage(error),
-            });
-            loggedTransientDisconnect = true;
-          }
-          return;
-        }
-
-        console.error("OpenCode event stream error", {
-          runId,
-          sessionId,
-          message: getErrorMessage(error),
-        });
-      },
-    });
-
-    for await (const rawEvent of stream) {
-      console.log("new event", rawEvent.type);
-      if (signal.aborted) {
-        return;
-      }
-      if (!isOpencodeEvent(rawEvent)) {
-        continue;
-      }
-      if (!eventBelongsToSession(rawEvent, sessionId)) {
-        continue;
-      }
-
-      await appendRunEvent(db, runId, `opencode.${rawEvent.type}`, safeJsonStringify(rawEvent));
-
-      if (isSessionIdleEvent(rawEvent, sessionId)) {
-        return;
-      }
-    }
-  } catch (error) {
-    if (signal.aborted || isAbortError(error)) {
+  for (let attempt = 1; attempt <= MAX_EVENT_STREAM_RETRY_ATTEMPTS; attempt++) {
+    if (signal.aborted) {
       return;
     }
 
-    console.error("Failed to subscribe to OpenCode event stream", {
-      runId,
-      sessionId,
-      message: getErrorMessage(error),
-    });
-
     try {
-      await appendRunEvent(
+      const sawSessionIdle = await consumeSessionEventStream({
         db,
+        sandbox,
         runId,
-        "warning",
-        `Failed to subscribe to OpenCode event stream: ${getErrorMessage(error)}`,
-      );
-    } catch {}
+        taskId,
+        organizationId,
+        env,
+        sessionId,
+        directory,
+        signal,
+        capture,
+      });
+
+      if (sawSessionIdle || signal.aborted) {
+        return;
+      }
+
+      throw new Error("OpenCode event stream ended before session completed");
+    } catch (error) {
+      if (signal.aborted || isAbortError(error)) {
+        return;
+      }
+
+      const transient = isTransientNetworkDisconnect(error);
+      const hasRemainingAttempts = attempt < MAX_EVENT_STREAM_RETRY_ATTEMPTS;
+
+      if (transient && hasRemainingAttempts) {
+        console.warn("OpenCode event stream disconnected; retrying", {
+          runId,
+          sessionId,
+          attempt,
+          message: getErrorMessage(error),
+        });
+        await sleepWithAbort(EVENT_STREAM_RETRY_BASE_DELAY_MS * Math.max(1, attempt), signal);
+        continue;
+      }
+
+      console.error("Failed to subscribe to OpenCode event stream", {
+        runId,
+        sessionId,
+        message: getErrorMessage(error),
+      });
+
+      try {
+        await appendRunEvent({
+          db,
+          env,
+          runId,
+          taskId,
+          organizationId,
+          kind: "warning",
+          payload: `Failed to subscribe to OpenCode event stream: ${getErrorMessage(error)}`,
+        });
+      } catch {}
+      return;
+    }
   }
 }
 
-async function appendRunEvent(
-  db: AppDb,
-  runId: string,
-  kind: string,
-  payload: string,
-  createdAt = Date.now(),
-): Promise<void> {
-  await db.insert(schema.taskRunEvents).values({
-    id: crypto.randomUUID(),
-    runId,
-    kind,
-    payload,
-    createdAt,
+async function consumeSessionEventStream(args: {
+  db: AppDb;
+  env: TaskRunEnv;
+  sandbox: EventStreamSandbox;
+  runId: string;
+  taskId: string;
+  organizationId: string;
+  sessionId: string;
+  directory: string;
+  signal: AbortSignal;
+  capture: AssistantStreamCapture;
+}): Promise<boolean> {
+  const { db, env, sandbox, runId, taskId, organizationId, sessionId, directory, signal, capture } =
+    args;
+
+  const query = new URLSearchParams({ directory }).toString();
+  const url = `https://sandbox/event${query.length > 0 ? `?${query}` : ""}`;
+
+  const response = await sandbox.containerFetch(
+    url,
+    {
+      method: "GET",
+      headers: {
+        Accept: "text/event-stream",
+        "Cache-Control": "no-cache",
+      },
+    },
+    OPENCODE_SERVER_PORT,
+  );
+
+  if (!response.ok) {
+    const details = (await response.text()).trim();
+    throw new Error(
+      `OpenCode /event failed (${response.status} ${response.statusText})${
+        details.length > 0 ? `: ${details}` : ""
+      }`,
+    );
+  }
+
+  if (!response.body) {
+    throw new Error("OpenCode /event returned no response body");
+  }
+
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  const onAbort = () => {
+    void reader.cancel().catch(() => {});
+  };
+  signal.addEventListener("abort", onAbort);
+  let buffer = "";
+
+  try {
+    while (true) {
+      if (signal.aborted) {
+        return false;
+      }
+
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      buffer += value;
+      const chunks = buffer.split(/\r?\n\r?\n/);
+      buffer = chunks.pop() ?? "";
+
+      for (const chunk of chunks) {
+        const parsed = parseSseEventData(chunk);
+        if (!isOpencodeEvent(parsed)) {
+          continue;
+        }
+        if (!eventBelongsToSession(parsed, sessionId)) {
+          continue;
+        }
+
+        collectAssistantTextPart(parsed, capture);
+        if (isCompletedAssistantMessageEvent(parsed)) {
+          const completedMessageId = getMessageIdFromEvent(parsed);
+          const persistedTaskMessageId =
+            completedMessageId === null
+              ? null
+              : await persistCompletedAssistantMessage({
+                  db,
+                  env,
+                  runId,
+                  taskId,
+                  organizationId,
+                  opencodeMessageId: completedMessageId,
+                  capture,
+                });
+
+          console.info("OpenCode assistant message completed", {
+            runId,
+            sessionId,
+            messageId: completedMessageId,
+            persistedTaskMessageId,
+          });
+        }
+        await appendRunEvent({
+          db,
+          env,
+          runId,
+          taskId,
+          organizationId,
+          kind: `opencode.${parsed.type}`,
+          payload: safeJsonStringify(parsed),
+        });
+
+        if (isSessionIdleEvent(parsed, sessionId)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+    try {
+      await reader.cancel();
+    } catch {}
+    reader.releaseLock();
+  }
+}
+
+async function appendRunEvent(args: {
+  db: AppDb;
+  env: TaskRunEnv;
+  runId: string;
+  taskId: string;
+  organizationId: string;
+  kind: string;
+  payload: string;
+  createdAt?: number;
+}): Promise<void> {
+  await appendTaskRunEvent({
+    db: args.db,
+    env: args.env,
+    organizationId: args.organizationId,
+    taskId: args.taskId,
+    runId: args.runId,
+    kind: args.kind,
+    payload: args.payload,
+    createdAt: args.createdAt,
   });
 }
 
@@ -391,6 +565,141 @@ function isSessionIdleEvent(event: OpencodeEvent, sessionId: string): boolean {
 
   const eventSessionId = extractEventSessionId(event);
   return eventSessionId === sessionId;
+}
+
+function isCompletedAssistantMessageEvent(event: OpencodeEvent): boolean {
+  if (event.type !== "message.updated") {
+    return false;
+  }
+
+  const properties = toRecord(event.properties);
+  const info = toRecord(properties?.info);
+  if (!info) {
+    return false;
+  }
+
+  if (toStringOrNull(info.role) !== "assistant") {
+    return false;
+  }
+
+  const time = toRecord(info.time);
+  return typeof time?.completed === "number";
+}
+
+function getMessageIdFromEvent(event: OpencodeEvent): string | null {
+  const properties = toRecord(event.properties);
+  const info = toRecord(properties?.info);
+  return toStringOrNull(info?.id);
+}
+
+function createAssistantStreamCapture(): AssistantStreamCapture {
+  return {
+    textPartsByMessageId: new Map(),
+    persistedAssistantMessageIds: new Set(),
+    lastPersistedTaskMessageId: null,
+    persistedAssistantMessageCount: 0,
+  };
+}
+
+function collectAssistantTextPart(event: OpencodeEvent, capture: AssistantStreamCapture): void {
+  if (event.type !== "message.part.updated") {
+    return;
+  }
+
+  const properties = toRecord(event.properties);
+  const part = toRecord(properties?.part);
+  if (!part || toStringOrNull(part.type) !== "text") {
+    return;
+  }
+
+  const messageId = toStringOrNull(part.messageID);
+  const partId = toStringOrNull(part.id);
+  if (!messageId || !partId) {
+    return;
+  }
+
+  const text = toStringOrNull(part.text) ?? "";
+  const parts = capture.textPartsByMessageId.get(messageId) ?? new Map<string, string>();
+  parts.set(partId, text);
+  capture.textPartsByMessageId.set(messageId, parts);
+}
+
+function getAssistantTextForMessage(
+  capture: AssistantStreamCapture,
+  opencodeMessageId: string,
+): string | null {
+  const parts = capture.textPartsByMessageId.get(opencodeMessageId);
+  if (!parts) {
+    return null;
+  }
+
+  const text = Array.from(parts.values()).join("").trim();
+  return text.length > 0 ? text : null;
+}
+
+async function persistCompletedAssistantMessage(args: {
+  db: AppDb;
+  env: TaskRunEnv;
+  runId: string;
+  taskId: string;
+  organizationId: string;
+  opencodeMessageId: string;
+  capture: AssistantStreamCapture;
+}): Promise<string | null> {
+  const { db, env, runId, taskId, organizationId, opencodeMessageId, capture } = args;
+
+  if (capture.persistedAssistantMessageIds.has(opencodeMessageId)) {
+    return null;
+  }
+
+  const content = getAssistantTextForMessage(capture, opencodeMessageId);
+  if (!content) {
+    return null;
+  }
+
+  const taskMessageId = await insertAssistantTaskMessage({
+    db,
+    organizationId,
+    taskId,
+    content,
+  });
+  capture.persistedAssistantMessageIds.add(opencodeMessageId);
+  capture.lastPersistedTaskMessageId = taskMessageId;
+  capture.persistedAssistantMessageCount += 1;
+
+  await appendRunEvent({
+    db,
+    env,
+    runId,
+    taskId,
+    organizationId,
+    kind: "assistant",
+    payload: content,
+  });
+  return taskMessageId;
+}
+
+async function insertAssistantTaskMessage(args: {
+  db: AppDb;
+  organizationId: string;
+  taskId: string;
+  content: string;
+}): Promise<string> {
+  const { db, organizationId, taskId, content } = args;
+
+  const taskMessageId = crypto.randomUUID();
+  const createdAt = await getNextTaskMessageTimestamp(db, taskId);
+
+  await db.insert(schema.taskMessages).values({
+    id: taskMessageId,
+    organizationId,
+    taskId,
+    role: "assistant",
+    content,
+    createdAt,
+  });
+
+  return taskMessageId;
 }
 
 function extractEventSessionId(event: OpencodeEvent): string | null {
@@ -450,7 +759,59 @@ function isAbortError(error: unknown): boolean {
 
 function isTransientNetworkDisconnect(error: unknown): boolean {
   const message = getErrorMessage(error).toLowerCase();
-  return message.includes("network connection lost");
+  return (
+    message.includes("network connection lost") ||
+    message.includes("container suddenly disconnected") ||
+    message.includes("stream ended before session completed")
+  );
+}
+
+function parseSseEventData(chunk: string): unknown {
+  const lines = chunk.split(/\r?\n/);
+  const dataLines: string[] = [];
+
+  for (const line of lines) {
+    if (!line.startsWith("data:")) {
+      continue;
+    }
+    dataLines.push(line.replace(/^data:\s?/, ""));
+  }
+
+  if (dataLines.length === 0) {
+    return null;
+  }
+
+  const data = dataLines.join("\n").trim();
+  if (data.length === 0 || data === "[DONE]") {
+    return null;
+  }
+
+  try {
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+}
+
+async function sleepWithAbort(ms: number, signal: AbortSignal): Promise<void> {
+  if (ms <= 0 || signal.aborted) {
+    return;
+  }
+
+  await new Promise<void>((resolve) => {
+    const timeoutId = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+
+    const onAbort = () => {
+      clearTimeout(timeoutId);
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    };
+
+    signal.addEventListener("abort", onAbort);
+  });
 }
 
 async function getNextTaskMessageTimestamp(db: AppDb, taskId: string): Promise<number> {
@@ -468,12 +829,15 @@ async function getNextTaskMessageTimestamp(db: AppDb, taskId: string): Promise<n
   return latest.createdAt >= now ? latest.createdAt + 1 : now;
 }
 
-async function markRunFailed(
-  db: AppDb,
-  runId: string,
-  taskId: string,
-  message: string,
-): Promise<void> {
+async function markRunFailed(args: {
+  db: AppDb;
+  env: TaskRunEnv;
+  runId: string;
+  taskId: string;
+  organizationId: string;
+  message: string;
+}): Promise<void> {
+  const { db, env, runId, taskId, organizationId, message } = args;
   const finishedAt = Date.now();
 
   try {
@@ -493,7 +857,24 @@ async function markRunFailed(
   } catch {}
 
   try {
-    await appendRunEvent(db, runId, "error", message, finishedAt);
-    await appendRunEvent(db, runId, "status", "failed");
+    await appendRunEvent({
+      db,
+      env,
+      runId,
+      taskId,
+      organizationId,
+      kind: "error",
+      payload: message,
+      createdAt: finishedAt,
+    });
+    await appendRunEvent({
+      db,
+      env,
+      runId,
+      taskId,
+      organizationId,
+      kind: "status",
+      payload: "failed",
+    });
   } catch {}
 }

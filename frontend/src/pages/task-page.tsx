@@ -6,10 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { createTaskRun, fetchTaskRun, fetchTaskRunEvents, type TaskRunEvent } from "../lib/api";
+import {
+  createTaskRun,
+  fetchTaskRuns,
+  getTaskEventStreamUrl,
+  type TaskRunEvent,
+  type TaskStreamEvent,
+} from "../lib/api";
 import { projectsCollection, taskMessagesCollection, tasksCollection } from "../lib/collections";
-
-const RUN_TERMINAL_STATUSES = new Set(["succeeded", "failed"]);
 
 export function TaskPage() {
   const { taskId } = useParams({ from: "/_layout/tasks/$taskId" });
@@ -28,6 +32,7 @@ export function TaskPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const mountedRef = useRef(true);
+  const activeRunIdRef = useRef<string | null>(null);
 
   const { data: tasks } = useLiveQuery((q) => q.from({ t: tasksCollection }));
   const { data: projects } = useLiveQuery((q) => q.from({ p: projectsCollection }));
@@ -46,6 +51,9 @@ export function TaskPage() {
   );
 
   const hasRunFeedback = activeRunId !== null || runStatus !== null || runError !== null;
+  const displayRunEvents = runEvents
+    .map(formatRunEvent)
+    .filter((entry): entry is string => entry !== null);
 
   useEffect(() => {
     return () => {
@@ -69,6 +77,154 @@ export function TaskPage() {
     setRunSandboxId(null);
     setEditingTitle(false);
     setTitleError(null);
+  }, [taskId]);
+
+  useEffect(() => {
+    activeRunIdRef.current = activeRunId;
+  }, [activeRunId]);
+
+  useEffect(() => {
+    if (!taskId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadLatestRun = async () => {
+      try {
+        const runs = await fetchTaskRuns(taskId);
+        if (cancelled || !mountedRef.current) {
+          return;
+        }
+
+        const latestRun = runs[0];
+        if (!latestRun) {
+          setActiveRunId(null);
+          setRunStatus(null);
+          setRunSandboxId(null);
+          setRunError(null);
+          setRunEvents([]);
+          return;
+        }
+
+        setActiveRunId(latestRun.id);
+        setRunStatus(latestRun.status);
+        setRunSandboxId(latestRun.sandboxId);
+        setRunError(latestRun.error ?? null);
+      } catch (error) {
+        if (cancelled || !mountedRef.current) {
+          return;
+        }
+        setRunError(error instanceof Error ? error.message : "Failed to load task runs");
+      }
+    };
+
+    void loadLatestRun();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [taskId]);
+
+  useEffect(() => {
+    if (!taskId) {
+      return;
+    }
+
+    let cancelled = false;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let source: EventSource | null = null;
+    let reconnectDelayMs = 500;
+    const seenEventIds = new Set<string>();
+    const offsetStorageKey = getTaskStreamOffsetStorageKey(taskId);
+
+    const applyEvent = (event: TaskStreamEvent) => {
+      if (seenEventIds.has(event.id)) {
+        return;
+      }
+      seenEventIds.add(event.id);
+
+      const previousRunId = activeRunIdRef.current;
+      const switchedRun = previousRunId !== event.runId;
+      if (switchedRun) {
+        activeRunIdRef.current = event.runId;
+        setActiveRunId(event.runId);
+        setRunEvents([]);
+        setRunSandboxId(null);
+        setRunError(null);
+      }
+
+      setRunEvents((prev) => [...prev, toRunEvent(event)]);
+
+      if (event.kind === "status") {
+        setRunStatus(event.payload);
+        if (event.payload !== "failed") {
+          setRunError(null);
+        }
+      } else if (event.kind === "sandbox") {
+        setRunSandboxId(event.payload);
+      } else if (event.kind === "error") {
+        setRunStatus("failed");
+        setRunError(event.payload);
+      }
+    };
+
+    const open = (offset: string) => {
+      const streamUrl = getTaskEventStreamUrl(taskId, offset);
+      source = new EventSource(streamUrl, { withCredentials: true });
+
+      source.addEventListener("data", (rawEvent) => {
+        const events = parseTaskStreamDataEvent((rawEvent as MessageEvent).data);
+        if (events.length === 0) {
+          return;
+        }
+
+        reconnectDelayMs = 500;
+        for (const event of events) {
+          if (!mountedRef.current || cancelled) {
+            return;
+          }
+          applyEvent(event);
+        }
+      });
+
+      source.addEventListener("control", (rawEvent) => {
+        const control = parseTaskStreamControlEvent((rawEvent as MessageEvent).data);
+        if (!control) {
+          return;
+        }
+
+        if (typeof control.streamNextOffset === "string" && control.streamNextOffset.length > 0) {
+          storeTaskStreamOffset(offsetStorageKey, control.streamNextOffset);
+        }
+      });
+
+      source.addEventListener("error", () => {
+        source?.close();
+        if (cancelled) {
+          return;
+        }
+
+        const nextOffset = readTaskStreamOffset(offsetStorageKey) ?? "-1";
+        const delay = reconnectDelayMs;
+        reconnectDelayMs = Math.min(reconnectDelayMs * 2, 8000);
+        reconnectTimeout = setTimeout(() => {
+          if (!cancelled) {
+            open(nextOffset);
+          }
+        }, delay);
+      });
+    };
+
+    open(readTaskStreamOffset(offsetStorageKey) ?? "-1");
+
+    return () => {
+      cancelled = true;
+      source?.close();
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+    };
   }, [taskId]);
 
   useEffect(() => {
@@ -109,48 +265,12 @@ export function TaskPage() {
       const run = await createTaskRun(taskId, userMessage.id);
       setActiveRunId(run.id);
       setRunStatus(run.status);
-
-      await monitorRun(run.id);
     } catch (error) {
       setRunStatus("failed");
       setRunError(error instanceof Error ? error.message : "Failed to run OpenCode");
     } finally {
       setSending(false);
       inputRef.current?.focus();
-    }
-  }
-
-  async function monitorRun(runId: string) {
-    let after: number | undefined;
-
-    while (mountedRef.current) {
-      const [run, events] = await Promise.all([
-        fetchTaskRun(runId),
-        fetchTaskRunEvents(runId, after),
-      ]);
-
-      if (!mountedRef.current) {
-        return;
-      }
-
-      if (events.length > 0) {
-        setRunEvents((prev) => [...prev, ...events]);
-        after = events[events.length - 1]?.createdAt;
-      }
-
-      if (run.sandboxId) {
-        setRunSandboxId(run.sandboxId);
-      }
-      setRunStatus(run.status);
-
-      if (RUN_TERMINAL_STATUSES.has(run.status)) {
-        if (run.error) {
-          setRunError(run.error);
-        }
-        return;
-      }
-
-      await sleep(1000);
     }
   }
 
@@ -332,9 +452,12 @@ export function TaskPage() {
                   {runSandboxId ? (
                     <p className="text-xs text-muted-foreground">sandbox: {runSandboxId}</p>
                   ) : null}
-                  {runEvents.slice(-4).map((event) => (
-                    <p key={event.id} className="text-xs whitespace-pre-wrap text-muted-foreground">
-                      {event.kind}: {event.payload}
+                  {displayRunEvents.map((entry, index) => (
+                    <p
+                      key={`${activeRunId ?? "run"}-${index}-${entry}`}
+                      className="text-xs whitespace-pre-wrap text-muted-foreground"
+                    >
+                      {entry}
                     </p>
                   ))}
                   {runError ? <p className="text-xs text-destructive">error: {runError}</p> : null}
@@ -378,8 +501,222 @@ export function TaskPage() {
   );
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
+function toRunEvent(event: TaskStreamEvent): TaskRunEvent {
+  return {
+    id: event.id,
+    runId: event.runId,
+    kind: event.kind,
+    payload: event.payload,
+    createdAt: event.createdAt,
+  };
+}
+
+function getTaskStreamOffsetStorageKey(taskId: string): string {
+  return `task-stream-offset:${taskId}`;
+}
+
+function readTaskStreamOffset(key: string): string | null {
+  try {
+    const value = localStorage.getItem(key);
+    return typeof value === "string" && value.length > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeTaskStreamOffset(key: string, offset: string): void {
+  try {
+    localStorage.setItem(key, offset);
+  } catch {}
+}
+
+function parseTaskStreamDataEvent(raw: unknown): TaskStreamEvent[] {
+  if (typeof raw !== "string" || raw.trim().length === 0) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map(toTaskStreamEvent)
+        .filter((event): event is TaskStreamEvent => event !== null);
+    }
+
+    const single = toTaskStreamEvent(parsed);
+    return single ? [single] : [];
+  } catch {
+    return [];
+  }
+}
+
+function toTaskStreamEvent(value: unknown): TaskStreamEvent | null {
+  const record = toRecord(value);
+  if (!record) {
+    return null;
+  }
+
+  const id = toStringOrNull(record.id);
+  const taskId = toStringOrNull(record.taskId);
+  const runId = toStringOrNull(record.runId);
+  const kind = toStringOrNull(record.kind);
+  const payload = toStringOrNull(record.payload);
+  const createdAt = record.createdAt;
+  if (
+    !id ||
+    !taskId ||
+    !runId ||
+    !kind ||
+    payload === null ||
+    typeof createdAt !== "number" ||
+    !Number.isFinite(createdAt)
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    taskId,
+    runId,
+    kind,
+    payload,
+    createdAt,
+  };
+}
+
+function parseTaskStreamControlEvent(
+  raw: unknown,
+): { streamNextOffset?: string; upToDate?: boolean; streamClosed?: boolean } | null {
+  if (typeof raw !== "string" || raw.trim().length === 0) {
+    return null;
+  }
+
+  try {
+    const record = toRecord(JSON.parse(raw));
+    if (!record) {
+      return null;
+    }
+
+    return {
+      streamNextOffset: toStringOrNull(record.streamNextOffset) ?? undefined,
+      upToDate: typeof record.upToDate === "boolean" ? record.upToDate : undefined,
+      streamClosed: typeof record.streamClosed === "boolean" ? record.streamClosed : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function formatRunEvent(event: TaskRunEvent): string | null {
+  if (!event.kind.startsWith("opencode.")) {
+    return `${event.kind}: ${event.payload}`;
+  }
+
+  const payload = parseRunEventPayload(event.payload);
+  if (!payload) {
+    return event.kind;
+  }
+
+  if (event.kind === "opencode.message.part.updated") {
+    const properties = toRecord(payload.properties);
+    const part = toRecord(properties?.part);
+    if (!part) {
+      return "message part updated";
+    }
+
+    const partType = toStringOrNull(part.type);
+    if (partType === "tool") {
+      const toolName = toStringOrNull(part.tool) ?? "unknown";
+      const state = toRecord(part.state);
+      const status = toStringOrNull(state?.status) ?? "updated";
+      const title = toStringOrNull(state?.title);
+      return title ? `tool ${toolName}: ${status} (${title})` : `tool ${toolName}: ${status}`;
+    }
+
+    if (partType === "step-start") {
+      return "assistant step started";
+    }
+    if (partType === "step-finish") {
+      return "assistant step finished";
+    }
+
+    return null;
+  }
+
+  if (event.kind === "opencode.message.updated") {
+    const properties = toRecord(payload.properties);
+    const info = toRecord(properties?.info);
+    const role = toStringOrNull(info?.role);
+    const time = toRecord(info?.time);
+    if (role === "assistant" && typeof time?.completed === "number") {
+      return "assistant message completed";
+    }
+    return null;
+  }
+
+  if (event.kind === "opencode.session.status") {
+    const properties = toRecord(payload.properties);
+    const status = toRecord(properties?.status);
+    const statusType = toStringOrNull(status?.type) ?? "unknown";
+    return `session status: ${statusType}`;
+  }
+
+  if (event.kind === "opencode.session.idle") {
+    return "session idle";
+  }
+
+  if (event.kind === "opencode.session.error") {
+    const properties = toRecord(payload.properties);
+    const error = toRecord(properties?.error);
+    const data = toRecord(error?.data);
+    const message = toStringOrNull(data?.message) ?? "unknown session error";
+    return `session error: ${message}`;
+  }
+
+  if (event.kind === "opencode.command.executed") {
+    const properties = toRecord(payload.properties);
+    const name = toStringOrNull(properties?.name) ?? "unknown";
+    const args = toStringOrNull(properties?.arguments);
+    return args ? `command ${name}: ${args}` : `command ${name}`;
+  }
+
+  if (event.kind === "opencode.permission.updated") {
+    const properties = toRecord(payload.properties);
+    const title = toStringOrNull(properties?.title) ?? "permission request";
+    return `permission: ${title}`;
+  }
+
+  if (event.kind === "opencode.permission.replied") {
+    const properties = toRecord(payload.properties);
+    const response = toStringOrNull(properties?.response) ?? "unknown";
+    return `permission response: ${response}`;
+  }
+
+  if (event.kind === "opencode.todo.updated") {
+    const properties = toRecord(payload.properties);
+    const todos = Array.isArray(properties?.todos) ? properties.todos.length : 0;
+    return `todo list updated (${todos})`;
+  }
+
+  return event.kind.replace("opencode.", "");
+}
+
+function parseRunEventPayload(payload: string): Record<string, unknown> | null {
+  try {
+    const value = JSON.parse(payload) as unknown;
+    return toRecord(value);
+  } catch {
+    return null;
+  }
+}
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function toStringOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
 }

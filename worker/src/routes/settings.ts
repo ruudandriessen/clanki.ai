@@ -90,9 +90,7 @@ settings.post("/providers/:provider/oauth/start", async (c) => {
 
   const sandboxId = buildProviderAuthSandboxId({ userId, provider });
   const sandbox = getTaskSandbox(c.env, sandboxId);
-  const { client } = await getOpenCodeClient(sandbox, OAUTH_WORKDIR, undefined, {
-    restartServer: false,
-  });
+  const { client } = await getOpenCodeClient(sandbox, OAUTH_WORKDIR);
 
   const methodsResponse = await client.provider.auth();
   const methods = methodsResponse.data?.[provider] ?? [];
@@ -228,9 +226,7 @@ settings.post("/providers/:provider/oauth/complete", async (c) => {
   });
 
   const sandbox = getTaskSandbox(c.env, attempt.sandboxId);
-  const { client } = await getOpenCodeClient(sandbox, OAUTH_WORKDIR, undefined, {
-    restartServer: false,
-  });
+  const { client } = await getOpenCodeClient(sandbox, OAUTH_WORKDIR);
 
   let callbackResponse: Awaited<ReturnType<typeof client.provider.oauth.callback>>;
   try {
