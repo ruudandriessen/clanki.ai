@@ -30,7 +30,6 @@
     "@orpc/client": "^1.13.5",
     "@orpc/contract": "^1.13.5",
     "@orpc/server": "^1.13.5",
-    "@orpc/zod": "^1.13.5",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/electric-db-collection": "^0.2.33",
     "@tanstack/react-db": "0.1.70",

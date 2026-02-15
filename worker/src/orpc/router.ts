@@ -44,7 +44,7 @@ type SessionContext = {
   user: { id: string; name: string; email: string; image?: string | null };
 };
 
-export type OrpcContext = {
+type OrpcContext = {
   db: AppDb;
   env: Bindings;
   session: SessionContext;
