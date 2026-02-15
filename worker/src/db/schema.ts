@@ -278,6 +278,7 @@ export const taskRuns = pgTable(
       onDelete: "set null",
     }),
     sandboxId: text("sandbox_id"),
+    branch: text("branch"),
     sessionId: text("session_id"),
     initiatedByUserId: text("initiated_by_user_id").references(() => user.id, {
       onDelete: "set null",

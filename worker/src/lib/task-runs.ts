@@ -126,6 +126,21 @@ export async function executeTaskRun(args: {
       await sandbox.exec(`git -C ${repoDir} remote set-url origin '${freshUrl}'`);
     }
 
+    // Detect and emit the current git branch
+    let lastKnownBranch: string | null = null;
+    try {
+      lastKnownBranch = await detectAndEmitBranch({
+        sandbox,
+        db,
+        env,
+        runId,
+        taskId,
+        organizationId,
+        repoDir,
+        lastKnown: null,
+      });
+    } catch {}
+
     const providerAuth = await getDecryptedProviderAuth(db, env, initiatedByUserId, provider);
     if (!providerAuth) {
       throw new Error(`No ${provider} credentials configured. Add them in Settings first.`);
@@ -190,6 +205,22 @@ export async function executeTaskRun(args: {
       capture: assistantStreamCapture,
     });
 
+    // Poll for branch changes while the run is active
+    const branchPollInterval = setInterval(async () => {
+      try {
+        lastKnownBranch = await detectAndEmitBranch({
+          sandbox,
+          db,
+          env,
+          runId,
+          taskId,
+          organizationId,
+          repoDir,
+          lastKnown: lastKnownBranch,
+        });
+      } catch {}
+    }, 5000);
+
     let response: { parts?: unknown } | undefined;
     try {
       // Send the prompt and wait for a response while events are captured via /event SSE.
@@ -201,6 +232,7 @@ export async function executeTaskRun(args: {
       });
       response = result.data;
     } finally {
+      clearInterval(branchPollInterval);
       streamAbortController.abort();
       await streamPromise;
     }
@@ -211,6 +243,20 @@ export async function executeTaskRun(args: {
       if (refreshedAuth) {
         await upsertProviderAuthCredential(db, env, initiatedByUserId, provider, refreshedAuth);
       }
+    } catch {}
+
+    // Final branch check after the run completes
+    try {
+      lastKnownBranch = await detectAndEmitBranch({
+        sandbox,
+        db,
+        env,
+        runId,
+        taskId,
+        organizationId,
+        repoDir,
+        lastKnown: lastKnownBranch,
+      });
     } catch {}
 
     // Extract text from the response parts. If no assistant message was persisted
@@ -267,6 +313,39 @@ export async function executeTaskRun(args: {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+async function detectAndEmitBranch(args: {
+  sandbox: { exec(command: string): Promise<{ exitCode: number; stdout: string }> };
+  db: AppDb;
+  env: DurableStreamsEnv;
+  runId: string;
+  taskId: string;
+  organizationId: string;
+  repoDir: string;
+  lastKnown: string | null;
+}): Promise<string | null> {
+  const result = await args.sandbox.exec(`git -C ${args.repoDir} rev-parse --abbrev-ref HEAD`);
+  const branch = result.stdout.trim();
+  if (result.exitCode !== 0 || branch.length === 0 || branch === args.lastKnown) {
+    return args.lastKnown;
+  }
+
+  await args.db
+    .update(schema.taskRuns)
+    .set({ branch, updatedAt: Date.now() })
+    .where(eq(schema.taskRuns.id, args.runId));
+
+  await appendTaskRunEvent({
+    env: args.env,
+    runId: args.runId,
+    taskId: args.taskId,
+    organizationId: args.organizationId,
+    kind: "branch",
+    payload: branch,
+  });
+
+  return branch;
+}
 
 function extractTextFromParts(parts: unknown): string {
   if (!Array.isArray(parts)) {

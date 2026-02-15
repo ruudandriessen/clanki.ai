@@ -203,6 +203,7 @@ export interface TaskRun {
   inputMessageId: string | null;
   outputMessageId: string | null;
   sandboxId: string | null;
+  branch: string | null;
   sessionId: string | null;
   initiatedByUserId: string | null;
   provider: string;

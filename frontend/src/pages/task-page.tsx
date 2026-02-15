@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLiveQuery, eq } from "@tanstack/react-db";
 import { useParams } from "@tanstack/react-router";
 import { stream } from "@durable-streams/client";
-import { Check, Loader2, Pencil, Send, X } from "lucide-react";
+import { Check, GitBranch, Loader2, Pencil, Send, X } from "lucide-react";
 import {
   TaskStreamActivity,
   type TaskStreamActivityIcon,
@@ -23,6 +23,7 @@ export function TaskPage() {
   const [runEvents, setRunEvents] = useState<TaskStreamEvent[]>([]);
   const [runError, setRunError] = useState<string | null>(null);
   const [runSandboxId, setRunSandboxId] = useState<string | null>(null);
+  const [runBranch, setRunBranch] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState("");
   const [savingTitle, setSavingTitle] = useState(false);
@@ -81,6 +82,7 @@ export function TaskPage() {
     setRunEvents([]);
     setRunError(null);
     setRunSandboxId(null);
+    setRunBranch(null);
     setEditingTitle(false);
     setTitleError(null);
   }, [taskId]);
@@ -109,6 +111,7 @@ export function TaskPage() {
         activeRunIdRef.current = event.runId;
         setActiveRunId(event.runId);
         setRunSandboxId(null);
+        setRunBranch(null);
         setRunError(null);
       }
 
@@ -121,6 +124,8 @@ export function TaskPage() {
         }
       } else if (event.kind === "sandbox") {
         setRunSandboxId(event.payload);
+      } else if (event.kind === "branch") {
+        setRunBranch(event.payload);
       } else if (event.kind === "error") {
         setRunStatus("failed");
         setRunError(event.payload);
@@ -170,6 +175,7 @@ export function TaskPage() {
     setRunError(null);
     setRunStatus("queued");
     setRunSandboxId(null);
+    setRunBranch(null);
 
     try {
       const userMessage = {
@@ -328,6 +334,12 @@ export function TaskPage() {
             </div>
             {taskProject ? (
               <p className="truncate text-xs text-muted-foreground">{taskProject.name}</p>
+            ) : null}
+            {runBranch ? (
+              <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                <GitBranch className="h-3 w-3 shrink-0" />
+                {runBranch}
+              </p>
             ) : null}
           </div>
         )}
