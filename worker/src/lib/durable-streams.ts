@@ -92,6 +92,7 @@ export async function appendTaskEventToDurableStream(args: {
     const handle = new DurableStream({
       url,
       headers: buildHeaders(env),
+      contentType: "application/json",
       batching: false,
     });
     await handle.append(JSON.stringify(event));

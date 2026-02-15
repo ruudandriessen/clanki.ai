@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { createTaskRun, getTaskEventStreamUrl, type TaskStreamEvent } from "../lib/api";
+import { createTaskPrompt, getTaskEventStreamUrl, type TaskStreamEvent } from "../lib/api";
 import { projectsCollection, taskMessagesCollection, tasksCollection } from "../lib/collections";
 
 export function TaskPage() {
@@ -182,9 +182,9 @@ export function TaskPage() {
       const messageTx = taskMessagesCollection.insert(userMessage);
       await messageTx.isPersisted.promise;
 
-      const run = await createTaskRun(taskId, userMessage.id);
-      setActiveRunId(run.id);
-      setRunStatus(run.status);
+      const result = await createTaskPrompt(taskId, userMessage.id);
+      setActiveRunId(result.executionId);
+      setRunStatus(result.status);
     } catch (error) {
       setRunStatus("failed");
       setRunError(error instanceof Error ? error.message : "Failed to run OpenCode");

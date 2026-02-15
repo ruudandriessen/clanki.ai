@@ -20,13 +20,8 @@ export function toProviderModelRef(provider: string, model: string): string {
   return `${provider}/${model}`;
 }
 
-export function buildTaskRunSandboxId(args: {
-  taskId: string;
-  userId: string;
-  provider: string;
-  model: string;
-}): string {
-  return buildBoundedSandboxId("task-run", [args.taskId, args.userId, args.provider, args.model]);
+export function buildTaskSandboxId(args: { taskId: string }): string {
+  return buildBoundedSandboxId("task", [args.taskId]);
 }
 
 export function buildProviderAuthSandboxId(args: { userId: string; provider: string }): string {

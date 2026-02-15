@@ -4,16 +4,16 @@ import {
   type TaskEventStreamMessage,
 } from "./durable-streams";
 
-export async function appendTaskRunEvent(args: {
+export async function appendTaskEvent(args: {
   env: DurableStreamsEnv;
   organizationId: string;
   taskId: string;
-  runId: string;
+  executionId: string;
   kind: string;
   payload: string;
   createdAt?: number;
 }): Promise<string> {
-  const { env, organizationId, taskId, runId, kind, payload } = args;
+  const { env, organizationId, taskId, executionId, kind, payload } = args;
   const createdAt = args.createdAt ?? Date.now();
 
   const id = crypto.randomUUID();
@@ -21,7 +21,7 @@ export async function appendTaskRunEvent(args: {
   const streamEvent: TaskEventStreamMessage = {
     id,
     taskId,
-    runId,
+    runId: executionId,
     kind,
     payload,
     createdAt,
@@ -35,8 +35,8 @@ export async function appendTaskRunEvent(args: {
       event: streamEvent,
     });
   } catch (error) {
-    console.warn("Failed to mirror run event into durable stream", {
-      runId,
+    console.warn("Failed to append task event to durable stream", {
+      executionId,
       taskId,
       kind,
       message: error instanceof Error ? error.message : String(error),

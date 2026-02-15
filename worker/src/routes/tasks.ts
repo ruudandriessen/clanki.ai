@@ -13,7 +13,7 @@ import {
   isSupportedOpencodeProvider,
 } from "../lib/opencode";
 import { openTaskEventsSse } from "../lib/durable-streams";
-import { executeTaskRun } from "../lib/task-runs";
+import { executeTaskPrompt } from "../lib/task-execution";
 
 type Env = {
   Bindings: {
@@ -399,8 +399,8 @@ tasks.get("/:taskId/stream", async (c) => {
   }
 });
 
-// POST /api/tasks/:taskId/runs — create an OpenCode run from a user message
-tasks.post("/:taskId/runs", async (c) => {
+// POST /api/tasks/:taskId/prompt — execute a prompt against the task's sandbox
+tasks.post("/:taskId/prompt", async (c) => {
   const db = c.get("db");
   const { taskId } = c.req.param();
   const orgId = getOrgId(c);
@@ -463,32 +463,6 @@ tasks.post("/:taskId/runs", async (c) => {
       return c.json({ error: "No user message found for this task" }, 400);
     }
 
-    const now = Date.now();
-    const run = {
-      id: crypto.randomUUID(),
-      taskId,
-      tool: "opencode",
-      status: "queued",
-      inputMessageId: inputMessage.id,
-      outputMessageId: null,
-      sandboxId: null,
-      sessionId: null,
-      initiatedByUserId: userId,
-      provider: providerInput,
-      model,
-      error: null,
-      startedAt: null,
-      finishedAt: null,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await db.insert(schema.taskRuns).values(run);
-    await db
-      .update(schema.tasks)
-      .set({ status: "running", updatedAt: now })
-      .where(eq(schema.tasks.id, taskId));
-
     const project = task.projectId
       ? await db.query.projects.findFirst({
           where: and(
@@ -503,11 +477,19 @@ tasks.post("/:taskId/runs", async (c) => {
       return c.json({ error: "Task's project has no repository URL configured" }, 400);
     }
 
+    const executionId = crypto.randomUUID();
+    const now = Date.now();
+
+    await db
+      .update(schema.tasks)
+      .set({ status: "running", error: null, updatedAt: now })
+      .where(eq(schema.tasks.id, taskId));
+
     c.executionCtx.waitUntil(
-      executeTaskRun({
+      executeTaskPrompt({
         db: getDb(c.env),
         env: c.env,
-        runId: run.id,
+        executionId,
         taskId,
         taskTitle: task.title,
         prompt: inputMessage.content,
@@ -521,10 +503,10 @@ tasks.post("/:taskId/runs", async (c) => {
       }),
     );
 
-    return c.json(run, 202);
+    return c.json({ executionId, status: "queued" }, 202);
   } catch (error) {
     const message = getErrorMessage(error);
-    console.error("Failed to create task run", {
+    console.error("Failed to execute task prompt", {
       taskId,
       userId,
       message,
@@ -540,5 +522,5 @@ function getErrorMessage(error: unknown): string {
     return error.message;
   }
 
-  return "Failed to create task run";
+  return "Failed to execute task prompt";
 }

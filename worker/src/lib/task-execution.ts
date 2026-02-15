@@ -1,21 +1,17 @@
-import { and, desc, eq, isNull, not } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { Event as OpencodeEvent } from "@opencode-ai/sdk";
 import type { AppDb } from "../db/client";
 import * as schema from "../db/schema";
 import { createInstallationToken, buildAuthenticatedCloneUrl, type GitHubAppEnv } from "./github";
 import { readProviderAuthFromSandbox } from "./opencode-auth";
-import {
-  buildTaskRunSandboxId,
-  toProviderModelRef,
-  type SupportedOpencodeProvider,
-} from "./opencode";
+import { buildTaskSandboxId, toProviderModelRef, type SupportedOpencodeProvider } from "./opencode";
 import { getDecryptedProviderAuth, upsertProviderAuthCredential } from "./provider-credentials";
 import { getTaskSandbox, getOpenCodeClient, type SandboxEnv } from "./sandbox";
 import type { SecretCryptoEnv } from "./secret-crypto";
 import { type DurableStreamsEnv } from "./durable-streams";
-import { appendTaskRunEvent } from "./task-run-events";
+import { appendTaskEvent } from "./task-run-events";
 
-type TaskRunEnv = SandboxEnv & GitHubAppEnv & SecretCryptoEnv & DurableStreamsEnv;
+type TaskExecutionEnv = SandboxEnv & GitHubAppEnv & SecretCryptoEnv & DurableStreamsEnv;
 type EventStreamSandbox = {
   containerFetch(
     requestOrUrl: Request | string | URL,
@@ -34,10 +30,10 @@ const OPENCODE_SERVER_PORT = 4096;
 const MAX_EVENT_STREAM_RETRY_ATTEMPTS = 4;
 const EVENT_STREAM_RETRY_BASE_DELAY_MS = 500;
 
-export async function executeTaskRun(args: {
+export async function executeTaskPrompt(args: {
   db: AppDb;
-  env: TaskRunEnv;
-  runId: string;
+  env: TaskExecutionEnv;
+  executionId: string;
   taskId: string;
   organizationId: string;
   taskTitle: string;
@@ -52,7 +48,7 @@ export async function executeTaskRun(args: {
   const {
     db,
     env,
-    runId,
+    executionId,
     taskId,
     organizationId,
     taskTitle,
@@ -66,30 +62,13 @@ export async function executeTaskRun(args: {
   } = args;
 
   try {
-    const startedAt = Date.now();
-    await db
-      .update(schema.taskRuns)
-      .set({
-        status: "running",
-        startedAt,
-        updatedAt: startedAt,
-        error: null,
-      })
-      .where(eq(schema.taskRuns.id, runId));
-
-    // Scope sandbox by task+user+provider+model to avoid cross-user/provider leakage.
-    const sandboxId = buildTaskRunSandboxId({
-      taskId,
-      userId: initiatedByUserId,
-      provider,
-      model,
-    });
+    const sandboxId = buildTaskSandboxId({ taskId });
     const sandbox = getTaskSandbox(env, sandboxId);
 
     await db
-      .update(schema.taskRuns)
-      .set({ sandboxId, updatedAt: Date.now() })
-      .where(eq(schema.taskRuns.id, runId));
+      .update(schema.tasks)
+      .set({ sandboxId, status: "running", updatedAt: Date.now() })
+      .where(eq(schema.tasks.id, taskId));
 
     // Generate a fresh installation token (needed for clone, push, and gh CLI)
     const repoDir = "/home/user/repo";
@@ -141,21 +120,13 @@ export async function executeTaskRun(args: {
       body: providerAuth,
     });
 
-    // Reuse an existing OpenCode session from a previous run, or create a new one
-    const previousRun = await db.query.taskRuns.findFirst({
-      where: and(
-        eq(schema.taskRuns.taskId, taskId),
-        eq(schema.taskRuns.tool, "opencode"),
-        eq(schema.taskRuns.initiatedByUserId, initiatedByUserId),
-        eq(schema.taskRuns.provider, provider),
-        eq(schema.taskRuns.model, model),
-        not(isNull(schema.taskRuns.sessionId)),
-      ),
+    // Reuse an existing OpenCode session or create a new one
+    const task = await db.query.tasks.findFirst({
+      where: eq(schema.tasks.id, taskId),
       columns: { sessionId: true },
-      orderBy: desc(schema.taskRuns.createdAt),
     });
 
-    let sessionId = previousRun?.sessionId ?? null;
+    let sessionId = task?.sessionId ?? null;
     if (!sessionId) {
       const { data: session } = await client.session.create({
         body: { title: taskTitle },
@@ -166,22 +137,22 @@ export async function executeTaskRun(args: {
       }
     }
 
-    const runUpdatedAt = Date.now();
     await db
-      .update(schema.taskRuns)
+      .update(schema.tasks)
       .set({
         sessionId,
         sandboxId,
-        updatedAt: runUpdatedAt,
+        updatedAt: Date.now(),
       })
-      .where(eq(schema.taskRuns.id, runId));
+      .where(eq(schema.tasks.id, taskId));
+
     const streamAbortController = new AbortController();
     const assistantStreamCapture = createAssistantStreamCapture();
     const streamPromise = streamSessionEvents({
       db,
       env,
       sandbox,
-      runId,
+      executionId,
       taskId,
       organizationId,
       sessionId,
@@ -217,18 +188,17 @@ export async function executeTaskRun(args: {
     // from live events, persist this as a fallback output message.
     const output = extractTextFromParts(response?.parts).trim();
     const assistantOutput = output.length > 0 ? output : "OpenCode completed without text output.";
-    let assistantMessageId = assistantStreamCapture.lastPersistedTaskMessageId;
 
-    if (!assistantMessageId) {
-      assistantMessageId = await insertAssistantTaskMessage({
+    if (!assistantStreamCapture.lastPersistedTaskMessageId) {
+      await insertAssistantTaskMessage({
         db,
         organizationId,
         taskId,
         content: assistantOutput,
       });
-      await appendTaskRunEvent({
+      await appendTaskEvent({
         env,
-        runId,
+        executionId,
         taskId,
         organizationId,
         kind: "assistant",
@@ -238,27 +208,16 @@ export async function executeTaskRun(args: {
 
     const finishedAt = Date.now();
     await db
-      .update(schema.taskRuns)
-      .set({
-        status: "succeeded",
-        sessionId,
-        sandboxId,
-        outputMessageId: assistantMessageId,
-        finishedAt,
-        updatedAt: finishedAt,
-        error: null,
-      })
-      .where(eq(schema.taskRuns.id, runId));
-
-    await db
       .update(schema.tasks)
-      .set({ status: "open", updatedAt: finishedAt })
+      .set({ status: "open", error: null, updatedAt: finishedAt })
       .where(eq(schema.tasks.id, taskId));
   } catch (error) {
-    await markRunFailed({
+    await markTaskFailed({
       db,
-      runId,
+      env,
+      executionId,
       taskId,
+      organizationId,
       message: getErrorMessage(error),
     });
   }
@@ -312,9 +271,9 @@ function formatSetupCommandFailure(args: {
 
 async function streamSessionEvents(args: {
   db: AppDb;
-  env: TaskRunEnv;
+  env: TaskExecutionEnv;
   sandbox: EventStreamSandbox;
-  runId: string;
+  executionId: string;
   taskId: string;
   organizationId: string;
   sessionId: string;
@@ -322,8 +281,18 @@ async function streamSessionEvents(args: {
   signal: AbortSignal;
   capture: AssistantStreamCapture;
 }): Promise<void> {
-  const { db, env, sandbox, runId, taskId, organizationId, sessionId, directory, signal, capture } =
-    args;
+  const {
+    db,
+    env,
+    sandbox,
+    executionId,
+    taskId,
+    organizationId,
+    sessionId,
+    directory,
+    signal,
+    capture,
+  } = args;
 
   for (let attempt = 1; attempt <= MAX_EVENT_STREAM_RETRY_ATTEMPTS; attempt++) {
     if (signal.aborted) {
@@ -334,7 +303,7 @@ async function streamSessionEvents(args: {
       const sawSessionIdle = await consumeSessionEventStream({
         db,
         sandbox,
-        runId,
+        executionId,
         taskId,
         organizationId,
         env,
@@ -359,7 +328,7 @@ async function streamSessionEvents(args: {
 
       if (transient && hasRemainingAttempts) {
         console.warn("OpenCode event stream disconnected; retrying", {
-          runId,
+          executionId,
           sessionId,
           attempt,
           message: getErrorMessage(error),
@@ -369,7 +338,7 @@ async function streamSessionEvents(args: {
       }
 
       console.error("Failed to subscribe to OpenCode event stream", {
-        runId,
+        executionId,
         sessionId,
         message: getErrorMessage(error),
       });
@@ -381,9 +350,9 @@ async function streamSessionEvents(args: {
 
 async function consumeSessionEventStream(args: {
   db: AppDb;
-  env: TaskRunEnv;
+  env: TaskExecutionEnv;
   sandbox: EventStreamSandbox;
-  runId: string;
+  executionId: string;
   taskId: string;
   organizationId: string;
   sessionId: string;
@@ -391,8 +360,18 @@ async function consumeSessionEventStream(args: {
   signal: AbortSignal;
   capture: AssistantStreamCapture;
 }): Promise<boolean> {
-  const { db, env, sandbox, runId, taskId, organizationId, sessionId, directory, signal, capture } =
-    args;
+  const {
+    db,
+    env,
+    sandbox,
+    executionId,
+    taskId,
+    organizationId,
+    sessionId,
+    directory,
+    signal,
+    capture,
+  } = args;
 
   const query = new URLSearchParams({ directory }).toString();
   const url = `https://sandbox/event${query.length > 0 ? `?${query}` : ""}`;
@@ -462,7 +441,7 @@ async function consumeSessionEventStream(args: {
               : await persistCompletedAssistantMessage({
                   db,
                   env,
-                  runId,
+                  executionId,
                   taskId,
                   organizationId,
                   opencodeMessageId: completedMessageId,
@@ -470,15 +449,15 @@ async function consumeSessionEventStream(args: {
                 });
 
           console.info("OpenCode assistant message completed", {
-            runId,
+            executionId,
             sessionId,
             messageId: completedMessageId,
             persistedTaskMessageId,
           });
         }
-        await appendTaskRunEvent({
+        await appendTaskEvent({
           env,
-          runId,
+          executionId,
           taskId,
           organizationId,
           kind: `opencode.${parsed.type}`,
@@ -506,7 +485,7 @@ function getErrorMessage(error: unknown): string {
     return error.message;
   }
 
-  return "Unknown task run failure";
+  return "Unknown task execution failure";
 }
 
 function isOpencodeEvent(value: unknown): value is OpencodeEvent {
@@ -606,14 +585,14 @@ function getAssistantTextForMessage(
 
 async function persistCompletedAssistantMessage(args: {
   db: AppDb;
-  env: TaskRunEnv;
-  runId: string;
+  env: TaskExecutionEnv;
+  executionId: string;
   taskId: string;
   organizationId: string;
   opencodeMessageId: string;
   capture: AssistantStreamCapture;
 }): Promise<string | null> {
-  const { db, env, runId, taskId, organizationId, opencodeMessageId, capture } = args;
+  const { db, env, executionId, taskId, organizationId, opencodeMessageId, capture } = args;
 
   if (capture.persistedAssistantMessageIds.has(opencodeMessageId)) {
     return null;
@@ -634,9 +613,9 @@ async function persistCompletedAssistantMessage(args: {
   capture.lastPersistedTaskMessageId = taskMessageId;
   capture.persistedAssistantMessageCount += 1;
 
-  await appendTaskRunEvent({
+  await appendTaskEvent({
     env,
-    runId,
+    executionId,
     taskId,
     organizationId,
     kind: "assistant",
@@ -795,31 +774,22 @@ async function getNextTaskMessageTimestamp(db: AppDb, taskId: string): Promise<n
   return latest.createdAt >= now ? latest.createdAt + 1 : now;
 }
 
-async function markRunFailed(args: {
+async function markTaskFailed(args: {
   db: AppDb;
-  runId: string;
   taskId: string;
   message: string;
 }): Promise<void> {
-  const { db, runId, taskId, message } = args;
+  const { db, taskId, message } = args;
   const finishedAt = Date.now();
 
   try {
     await db
-      .update(schema.taskRuns)
-      .set({
-        status: "failed",
-        finishedAt,
-        updatedAt: finishedAt,
-        error: message,
-      })
-      .where(eq(schema.taskRuns.id, runId));
-  } catch {}
-
-  try {
-    await db
       .update(schema.tasks)
-      .set({ status: "open", updatedAt: finishedAt })
+      .set({
+        status: "open",
+        error: message,
+        updatedAt: finishedAt,
+      })
       .where(eq(schema.tasks.id, taskId));
   } catch {}
 }

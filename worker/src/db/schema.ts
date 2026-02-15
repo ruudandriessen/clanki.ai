@@ -228,6 +228,10 @@ export const tasks = pgTable(
     projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
     title: text("title").notNull(),
     status: text("status").notNull().default("open"),
+    sandboxId: text("sandbox_id"),
+    sessionId: text("session_id"),
+    streamId: text("stream_id"),
+    error: text("error"),
     createdAt: msTimestamp("created_at").notNull(),
     updatedAt: msTimestamp("updated_at").notNull(),
   },
@@ -255,44 +259,5 @@ export const taskMessages = pgTable(
   (t) => [
     index("task_message_org").on(t.organizationId, t.createdAt),
     index("task_message_task").on(t.taskId, t.createdAt),
-  ],
-);
-
-// ---------------------------------------------------------------------------
-// Task runs
-// ---------------------------------------------------------------------------
-
-export const taskRuns = pgTable(
-  "task_runs",
-  {
-    id: text("id").primaryKey(),
-    taskId: text("task_id")
-      .notNull()
-      .references(() => tasks.id, { onDelete: "cascade" }),
-    tool: text("tool").notNull().default("opencode"),
-    status: text("status").notNull().default("queued"),
-    inputMessageId: text("input_message_id").references(() => taskMessages.id, {
-      onDelete: "set null",
-    }),
-    outputMessageId: text("output_message_id").references(() => taskMessages.id, {
-      onDelete: "set null",
-    }),
-    sandboxId: text("sandbox_id"),
-    sessionId: text("session_id"),
-    initiatedByUserId: text("initiated_by_user_id").references(() => user.id, {
-      onDelete: "set null",
-    }),
-    provider: text("provider").notNull().default("openai"),
-    model: text("model").notNull().default("gpt-5.3-codex"),
-    error: text("error"),
-    startedAt: msTimestamp("started_at"),
-    finishedAt: msTimestamp("finished_at"),
-    createdAt: msTimestamp("created_at").notNull(),
-    updatedAt: msTimestamp("updated_at").notNull(),
-  },
-  (t) => [
-    index("task_run_task").on(t.taskId, t.createdAt),
-    index("task_run_status").on(t.status, t.createdAt),
-    index("task_run_user").on(t.initiatedByUserId, t.createdAt),
   ],
 );
