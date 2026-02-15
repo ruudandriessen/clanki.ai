@@ -42,6 +42,8 @@ export async function executeTaskPrompt(args: {
   installationId: number | null;
   setupCommand: string | null;
   initiatedByUserId: string;
+  initiatedByUserName: string;
+  initiatedByUserEmail: string;
   provider: SupportedOpencodeProvider;
   model: string;
 }): Promise<void> {
@@ -57,6 +59,8 @@ export async function executeTaskPrompt(args: {
     installationId,
     setupCommand,
     initiatedByUserId,
+    initiatedByUserName,
+    initiatedByUserEmail,
     provider,
     model,
   } = args;
@@ -77,6 +81,29 @@ export async function executeTaskPrompt(args: {
       gitToken = await createInstallationToken(env, installationId);
       // Expose the token so OpenCode can use `gh` CLI for PRs, issues, etc.
       await sandbox.setEnvVars({ GITHUB_TOKEN: gitToken });
+    }
+
+    const gitIdentity = resolveGitIdentity({
+      userId: initiatedByUserId,
+      userName: initiatedByUserName,
+      userEmail: initiatedByUserEmail,
+    });
+    const gitConfigResult = await sandbox.exec(
+      [
+        `git config --global user.name ${shellQuote(gitIdentity.name)}`,
+        `git config --global user.email ${shellQuote(gitIdentity.email)}`,
+      ].join(" && "),
+    );
+    if (!gitConfigResult.success) {
+      throw new Error(
+        formatGitConfigFailure({
+          name: gitIdentity.name,
+          email: gitIdentity.email,
+          exitCode: gitConfigResult.exitCode,
+          stdout: gitConfigResult.stdout,
+          stderr: gitConfigResult.stderr,
+        }),
+      );
     }
 
     // Clone repo on first use (gitCheckout is a no-op if dir already exists on a warm sandbox)
@@ -264,6 +291,41 @@ function formatSetupCommandFailure(args: {
   }
 
   return `Project setup command failed (exit code ${args.exitCode}): ${args.command}\n${output}`;
+}
+
+function resolveGitIdentity(args: { userId: string; userName: string; userEmail: string }): {
+  name: string;
+  email: string;
+} {
+  const name = args.userName.trim().length > 0 ? args.userName.trim() : "Clanki User";
+  const email =
+    args.userEmail.trim().length > 0
+      ? args.userEmail.trim()
+      : `user+${args.userId.slice(0, 12)}@users.noreply.github.com`;
+  return { name, email };
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'"'"'`)}'`;
+}
+
+function formatGitConfigFailure(args: {
+  name: string;
+  email: string;
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}): string {
+  const stdout = truncateCommandOutput(args.stdout.trim());
+  const stderr = truncateCommandOutput(args.stderr.trim());
+  const output = [stderr, stdout].filter((part) => part.length > 0).join("\n\n");
+  const base = `Failed to configure git identity (${args.name} <${args.email}>) (exit code ${args.exitCode})`;
+
+  if (output.length === 0) {
+    return base;
+  }
+
+  return `${base}\n${output}`;
 }
 
 async function streamSessionEvents(args: {

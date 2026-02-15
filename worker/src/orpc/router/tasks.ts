@@ -320,6 +320,8 @@ export const tasksRouter = {
           setupCommand: project.setupCommand ?? null,
           prompt: inputMessage.content,
           initiatedByUserId: userId,
+          initiatedByUserName: context.session.user.name,
+          initiatedByUserEmail: context.session.user.email,
           organizationId: orgId,
           provider: providerInput,
           model,

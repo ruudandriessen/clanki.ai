@@ -407,6 +407,7 @@ tasks.post("/:taskId/prompt", async (c) => {
   const { taskId } = c.req.param();
   const orgId = getOrgId(c);
   const userId = getUserId(c);
+  const sessionUser = c.get("session").user;
 
   try {
     if (!orgId) {
@@ -504,6 +505,8 @@ tasks.post("/:taskId/prompt", async (c) => {
         installationId: project.installationId ?? null,
         setupCommand: project.setupCommand ?? null,
         initiatedByUserId: userId,
+        initiatedByUserName: sessionUser.name,
+        initiatedByUserEmail: sessionUser.email,
         organizationId: orgId,
         provider: providerInput,
         model,
