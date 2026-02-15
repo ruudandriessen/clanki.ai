@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useLiveQuery, eq } from "@tanstack/react-db";
-import { useParams } from "@tanstack/react-router";
 import { stream } from "@durable-streams/client";
 import { Check, Loader2, Pencil, Send, X } from "lucide-react";
 import {
@@ -12,17 +11,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { createTaskPrompt, getTaskEventStreamUrl, type TaskStreamEvent } from "../lib/api";
-import { projectsCollection, taskMessagesCollection, tasksCollection } from "../lib/collections";
+import { taskMessagesCollection, tasksCollection } from "../lib/collections";
 
-export function TaskPage() {
-  const { taskId } = useParams({ from: "/_layout/tasks/$taskId" });
+interface TaskPageProps {
+  taskId: string;
+  projectName: string;
+  title: string;
+}
+
+export function TaskPage({ taskId, title, projectName }: TaskPageProps) {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [activeRunId, setActiveRunId] = useState<string | null>(null);
-  const [runStatus, setRunStatus] = useState<string | null>(null);
   const [runEvents, setRunEvents] = useState<TaskStreamEvent[]>([]);
-  const [runError, setRunError] = useState<string | null>(null);
-  const [runSandboxId, setRunSandboxId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState("");
   const [savingTitle, setSavingTitle] = useState(false);
@@ -30,14 +30,6 @@ export function TaskPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
-  const activeRunIdRef = useRef<string | null>(null);
-
-  const { data: tasks } = useLiveQuery((q) => q.from({ t: tasksCollection }));
-  const { data: projects } = useLiveQuery((q) => q.from({ p: projectsCollection }));
-  const task = tasks?.find((t) => t.id === taskId);
-  const taskProject = task?.project_id
-    ? projects.find((project) => project.id === task.project_id)
-    : null;
 
   const { data: messages, isLoading } = useLiveQuery(
     (q) =>
@@ -51,17 +43,9 @@ export function TaskPage() {
   const persistedAssistantMessage = getLatestAssistantMessage(messages);
   const streamAssistantPreview = getLatestStreamAssistantPreview(runEvents);
   const streamActivityItems = buildTaskStreamActivityItems(runEvents);
-  const fallbackRunItems =
-    runEvents.length === 0
-      ? buildRunFallbackActivityItems({
-          runStatus,
-          runError,
-          runSandboxId,
-        })
-      : [];
   const timelineEntries = buildChronologicalTimeline({
     messages,
-    activityItems: [...fallbackRunItems, ...streamActivityItems].slice(-14),
+    activityItems: streamActivityItems,
     streamAssistantPreview,
     persistedAssistantMessage,
   });
@@ -76,24 +60,6 @@ export function TaskPage() {
   }, [taskId]);
 
   useEffect(() => {
-    setActiveRunId(null);
-    setRunStatus(null);
-    setRunEvents([]);
-    setRunError(null);
-    setRunSandboxId(null);
-    setEditingTitle(false);
-    setTitleError(null);
-  }, [taskId]);
-
-  useEffect(() => {
-    activeRunIdRef.current = activeRunId;
-  }, [activeRunId]);
-
-  useEffect(() => {
-    if (!taskId) {
-      return;
-    }
-
     const abortController = new AbortController();
     const seenEventIds = new Set<string>();
 
@@ -103,28 +69,7 @@ export function TaskPage() {
       }
       seenEventIds.add(event.id);
 
-      const previousRunId = activeRunIdRef.current;
-      const switchedRun = previousRunId !== event.runId;
-      if (switchedRun) {
-        activeRunIdRef.current = event.runId;
-        setActiveRunId(event.runId);
-        setRunSandboxId(null);
-        setRunError(null);
-      }
-
       setRunEvents((prev) => [...prev, event]);
-
-      if (event.kind === "status") {
-        setRunStatus(event.payload);
-        if (event.payload !== "failed") {
-          setRunError(null);
-        }
-      } else if (event.kind === "sandbox") {
-        setRunSandboxId(event.payload);
-      } else if (event.kind === "error") {
-        setRunStatus("failed");
-        setRunError(event.payload);
-      }
     };
 
     const streamUrl = getTaskEventStreamUrl(taskId);
@@ -150,9 +95,9 @@ export function TaskPage() {
 
   useEffect(() => {
     if (!editingTitle) {
-      setTitleInput(task?.title ?? "");
+      setTitleInput(title ?? "");
     }
-  }, [task?.title, editingTitle]);
+  }, [title, editingTitle]);
 
   useEffect(() => {
     if (editingTitle) {
@@ -167,9 +112,6 @@ export function TaskPage() {
 
     setSending(true);
     setInput("");
-    setRunError(null);
-    setRunStatus("queued");
-    setRunSandboxId(null);
 
     try {
       const userMessage = {
@@ -182,12 +124,7 @@ export function TaskPage() {
       const messageTx = taskMessagesCollection.insert(userMessage);
       await messageTx.isPersisted.promise;
 
-      const result = await createTaskPrompt(taskId, userMessage.id);
-      setActiveRunId(result.executionId);
-      setRunStatus(result.status);
-    } catch (error) {
-      setRunStatus("failed");
-      setRunError(error instanceof Error ? error.message : "Failed to run OpenCode");
+      await createTaskPrompt(taskId, userMessage.id);
     } finally {
       setSending(false);
       inputRef.current?.focus();
@@ -202,23 +139,19 @@ export function TaskPage() {
   }
 
   function handleTitleEditStart() {
-    if (!task) {
-      return;
-    }
-
     setEditingTitle(true);
-    setTitleInput(task.title);
+    setTitleInput(title);
     setTitleError(null);
   }
 
   function handleTitleEditCancel() {
     setEditingTitle(false);
-    setTitleInput(task?.title ?? "");
+    setTitleInput(title);
     setTitleError(null);
   }
 
   async function handleTitleEditSave() {
-    if (!task || !taskId || savingTitle) {
+    if (savingTitle) {
       return;
     }
 
@@ -228,7 +161,7 @@ export function TaskPage() {
       return;
     }
 
-    if (nextTitle === task.title) {
+    if (nextTitle === title) {
       setEditingTitle(false);
       setTitleError(null);
       return;
@@ -314,7 +247,7 @@ export function TaskPage() {
         ) : (
           <div className="min-w-0">
             <div className="flex min-h-8 min-w-0 items-center gap-2">
-              <h2 className="m-0 truncate text-sm font-medium">{task?.title ?? "Task"}</h2>
+              <h2 className="m-0 truncate text-sm font-medium">{title}</h2>
               <Button
                 type="button"
                 variant="ghost"
@@ -326,9 +259,7 @@ export function TaskPage() {
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
             </div>
-            {taskProject ? (
-              <p className="truncate text-xs text-muted-foreground">{taskProject.name}</p>
-            ) : null}
+            <p className="truncate text-xs text-muted-foreground">{projectName}</p>
           </div>
         )}
         {titleError ? <p className="mt-1 text-xs text-destructive">{titleError}</p> : null}
@@ -512,60 +443,6 @@ function getLatestStreamAssistantPreview(
   }
 
   return latest;
-}
-
-function buildRunFallbackActivityItems(args: {
-  runStatus: string | null;
-  runError: string | null;
-  runSandboxId: string | null;
-}): ChronologicalActivityItem[] {
-  const createdAt = Date.now();
-  const items: ChronologicalActivityItem[] = [];
-
-  if (args.runStatus === "queued" || args.runStatus === "running") {
-    items.push({
-      id: `run-status-${args.runStatus}`,
-      stateKey: "run-status",
-      icon: "status",
-      label: args.runStatus === "queued" ? "Queued" : "Running",
-      tone: "muted",
-      spinning: true,
-      createdAt,
-    });
-  } else if (args.runStatus === "failed") {
-    items.push({
-      id: "run-status-failed",
-      stateKey: "run-status",
-      icon: "error",
-      label: "Run failed",
-      tone: "error",
-      createdAt,
-    });
-  }
-
-  if (args.runSandboxId) {
-    items.push({
-      id: `run-sandbox-${args.runSandboxId}`,
-      stateKey: "run-sandbox",
-      icon: "terminal",
-      label: `Sandbox: ${args.runSandboxId}`,
-      tone: "muted",
-      createdAt,
-    });
-  }
-
-  if (args.runError) {
-    items.push({
-      id: `run-error-${args.runError}`,
-      stateKey: "run-error",
-      icon: "error",
-      label: args.runError,
-      tone: "error",
-      createdAt,
-    });
-  }
-
-  return items;
 }
 
 function buildTaskStreamActivityItems(events: TaskStreamEvent[]): ChronologicalActivityItem[] {
