@@ -3,11 +3,10 @@ import type {
   Installation,
   ProviderCredentialStatus,
   ProviderOauthStart,
-  TaskStreamEvent,
 } from "../../../shared/orpc/contract";
 import { apiClient } from "./orpc-client";
 
-export type { Installation, GitHubRepo, TaskStreamEvent };
+export type { Installation, GitHubRepo };
 
 export function fetchInstallations() {
   return apiClient.installations.list();

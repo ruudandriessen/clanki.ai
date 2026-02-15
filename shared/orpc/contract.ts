@@ -34,11 +34,9 @@ export {
   taskMessageSchema,
   taskRunSchema,
   taskSchema,
-  taskStreamEventSchema,
   type CreateTaskInput,
   type CreateTaskMessageInput,
   type Task,
   type TaskMessage,
   type TaskRun,
-  type TaskStreamEvent,
 } from "./contract/tasks";

@@ -37,15 +37,6 @@ export const taskRunSchema = z.object({
   updatedAt: z.number(),
 });
 
-export const taskStreamEventSchema = z.object({
-  id: z.string(),
-  taskId: z.string(),
-  runId: z.string(),
-  kind: z.string(),
-  payload: z.string(),
-  createdAt: z.number(),
-});
-
 export const createTaskInputSchema = z.object({
   id: z.string().optional(),
   title: z.string(),
@@ -106,6 +97,5 @@ export const tasksContract = {
 export type Task = z.infer<typeof taskSchema>;
 export type TaskMessage = z.infer<typeof taskMessageSchema>;
 export type TaskRun = z.infer<typeof taskRunSchema>;
-export type TaskStreamEvent = z.infer<typeof taskStreamEventSchema>;
 export type CreateTaskInput = z.infer<typeof createTaskInputSchema>;
 export type CreateTaskMessageInput = z.infer<typeof createTaskMessageInputSchema>;

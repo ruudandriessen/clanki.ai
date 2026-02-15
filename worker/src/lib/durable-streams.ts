@@ -1,18 +1,10 @@
 import { DurableStream, DurableStreamError } from "@durable-streams/client";
+import type { TaskStreamEventBase, TaskStreamEventKind } from "../../../shared/task-stream-events";
 
 export type DurableStreamsEnv = {
   DURABLE_STREAMS_SERVICE_ID?: string;
   DURABLE_STREAMS_SECRET?: string;
 };
-
-export interface TaskEventStreamMessage {
-  id: string;
-  taskId: string;
-  runId: string;
-  kind: string;
-  payload: string;
-  createdAt: number;
-}
 
 const DURABLE_STREAMS_BASE_URL = "https://api.electric-sql.cloud";
 
@@ -72,7 +64,7 @@ export async function appendTaskEventToDurableStream(args: {
   env: DurableStreamsEnv;
   organizationId: string;
   taskId: string;
-  event: TaskEventStreamMessage;
+  event: TaskStreamEventBase & { kind: TaskStreamEventKind; payload: string };
 }): Promise<void> {
   const { env, organizationId, taskId, event } = args;
 

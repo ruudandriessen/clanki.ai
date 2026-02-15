@@ -10,7 +10,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { createTaskPrompt, getTaskEventStreamUrl, type TaskStreamEvent } from "../lib/api";
+import type { Event as OpenCodeEvent } from "@opencode-ai/sdk";
+import {
+  parseOpenCodeEventPayload,
+  type TaskStreamEvent,
+} from "../../../shared/task-stream-events";
+import { createTaskPrompt, getTaskEventStreamUrl } from "../lib/api";
 import { taskMessagesCollection, tasksCollection } from "../lib/collections";
 
 interface TaskPageProps {
@@ -408,36 +413,32 @@ function getLatestStreamAssistantPreview(
       continue;
     }
 
-    if (event.kind === "opencode.message.updated") {
-      const payload = parseRunEventPayload(event.payload);
-      const properties = toRecord(payload?.properties);
-      const info = toRecord(properties?.info);
-      const messageId = toStringOrNull(info?.id);
-      const role = toStringOrNull(info?.role);
-      if (messageId && role) {
-        messageRoleById.set(messageId, role);
+    const parsed = parseOpenCodeEventPayload(event);
+    if (!parsed) {
+      continue;
+    }
+
+    if (parsed.type === "message.updated") {
+      const { info } = parsed.properties;
+      if (info.id && info.role) {
+        messageRoleById.set(info.id, info.role);
       }
       continue;
     }
 
-    if (event.kind === "opencode.message.part.updated") {
-      const payload = parseRunEventPayload(event.payload);
-      const properties = toRecord(payload?.properties);
-      const part = toRecord(properties?.part);
-      const partType = toStringOrNull(part?.type);
-      if (partType !== "text") {
+    if (parsed.type === "message.part.updated") {
+      const { part } = parsed.properties;
+      if (part.type !== "text") {
         continue;
       }
 
-      const messageId = toStringOrNull(part?.messageID);
-      const role = messageId ? messageRoleById.get(messageId) : null;
+      const role = messageRoleById.get(part.messageID);
       if (role !== "assistant") {
         continue;
       }
 
-      const text = toStringOrNull(part?.text);
-      if (text) {
-        latest = { content: text, createdAt: event.createdAt };
+      if (part.text) {
+        latest = { content: part.text, createdAt: event.createdAt };
       }
     }
   }
@@ -554,150 +555,24 @@ function toTaskStreamActivityItem(event: TaskStreamEvent): ChronologicalActivity
     return null;
   }
 
-  if (event.kind === "status") {
-    if (event.payload === "succeeded") {
-      return {
-        id: event.id,
-        stateKey: `run-status:${event.runId}`,
-        icon: "success",
-        label: "Run completed",
-        tone: "success",
-        createdAt: event.createdAt,
-      };
-    }
-
-    if (event.payload === "failed") {
-      return {
-        id: event.id,
-        stateKey: `run-status:${event.runId}`,
-        icon: "error",
-        label: "Run failed",
-        tone: "error",
-        createdAt: event.createdAt,
-      };
-    }
-
-    if (event.payload === "queued" || event.payload === "running") {
-      return {
-        id: event.id,
-        stateKey: `run-status:${event.runId}`,
-        icon: "status",
-        label: event.payload === "queued" ? "Queued" : "Running",
-        tone: "muted",
-        spinning: true,
-        createdAt: event.createdAt,
-      };
-    }
-
-    return {
-      id: event.id,
-      stateKey: `run-status:${event.runId}`,
-      icon: "status",
-      label: `Status: ${event.payload}`,
-      tone: "muted",
-      spinning: true,
-      createdAt: event.createdAt,
-    };
-  }
-
-  if (event.kind === "sandbox") {
-    return {
-      id: event.id,
-      stateKey: `run-sandbox:${event.runId}`,
-      icon: "terminal",
-      label: `Sandbox: ${event.payload}`,
-      tone: "muted",
-      createdAt: event.createdAt,
-    };
-  }
-
-  if (event.kind === "error") {
-    return {
-      id: event.id,
-      stateKey: `run-error:${event.runId}`,
-      icon: "error",
-      label: event.payload,
-      tone: "error",
-      createdAt: event.createdAt,
-    };
-  }
-
-  if (!event.kind.startsWith("opencode.")) {
-    return {
-      id: event.id,
-      stateKey: `event:${event.kind}`,
-      icon: "tool",
-      label: `${event.kind}: ${event.payload}`,
-      tone: "muted",
-      createdAt: event.createdAt,
-    };
-  }
-
-  const payload = parseRunEventPayload(event.payload);
-  if (!payload) {
+  const parsed = parseOpenCodeEventPayload(event);
+  if (!parsed) {
     return null;
   }
 
-  if (event.kind === "opencode.message.part.updated") {
-    const properties = toRecord(payload.properties);
-    const part = toRecord(properties?.part);
-    const partType = toStringOrNull(part?.type);
-    if (!part || !partType) {
-      return null;
-    }
+  return openCodeEventToActivityItem(event, parsed);
+}
 
-    if (partType === "reasoning") {
-      const partId = toStringOrNull(part.id) ?? toStringOrNull(part.messageID) ?? event.id;
-      const time = toRecord(part.time);
-      const isComplete = typeof time?.end === "number";
-      return {
-        id: event.id,
-        stateKey: `reasoning:${partId}`,
-        icon: "thinking",
-        label: isComplete ? "Thought complete" : "Thinking",
-        tone: "muted",
-        spinning: !isComplete,
-        createdAt: event.createdAt,
-      };
-    }
-
-    if (partType === "step-start" || partType === "step-finish") {
-      const stepKey = toStringOrNull(part.snapshot) ?? toStringOrNull(part.messageID) ?? event.id;
-      return {
-        id: event.id,
-        stateKey: `step:${stepKey}`,
-        icon: "thinking",
-        label: partType === "step-finish" ? "Step complete" : "Working on next step",
-        tone: "muted",
-        createdAt: event.createdAt,
-      };
-    }
-
-    if (partType === "tool") {
-      const toolName = toStringOrNull(part.tool) ?? "tool";
-      const state = toRecord(part.state);
-      const status = toStringOrNull(state?.status) ?? "updated";
-      const title = toStringOrNull(state?.title);
-      const callId = toStringOrNull(part.callID) ?? toStringOrNull(part.id) ?? toolName;
-
-      return {
-        id: event.id,
-        stateKey: `tool:${callId}`,
-        icon: getToolActivityIcon(toolName),
-        label: title ? `${toolName}: ${status} (${title})` : `${toolName}: ${status}`,
-        tone: status === "error" ? "error" : status === "completed" ? "success" : "muted",
-        spinning: status === "running",
-        createdAt: event.createdAt,
-      };
-    }
-
-    return null;
+function openCodeEventToActivityItem(
+  event: TaskStreamEvent,
+  parsed: OpenCodeEvent,
+): ChronologicalActivityItem | null {
+  if (parsed.type === "message.part.updated") {
+    return messagePartToActivityItem(event, parsed);
   }
 
-  if (event.kind === "opencode.command.executed") {
-    const properties = toRecord(payload.properties);
-    const name = toStringOrNull(properties?.name) ?? "command";
-    const args = toStringOrNull(properties?.arguments);
+  if (parsed.type === "command.executed") {
+    const { name, arguments: args } = parsed.properties;
     return {
       id: event.id,
       stateKey: `command:${event.id}`,
@@ -708,31 +583,26 @@ function toTaskStreamActivityItem(event: TaskStreamEvent): ChronologicalActivity
     };
   }
 
-  if (event.kind === "opencode.session.status") {
-    const properties = toRecord(payload.properties);
-    const sessionId = toStringOrNull(properties?.sessionID) ?? "default";
-    const status = toRecord(properties?.status);
-    const statusType = toStringOrNull(status?.type) ?? "unknown";
+  if (parsed.type === "session.status") {
+    const { sessionID, status } = parsed.properties;
     return {
       id: event.id,
-      stateKey: `session:${sessionId}`,
-      icon: statusType === "idle" ? "success" : "status",
-      label: statusType === "idle" ? "Session idle" : `Session ${statusType}`,
+      stateKey: `session:${sessionID}`,
+      icon: status.type === "idle" ? "success" : "status",
+      label: status.type === "idle" ? "Session idle" : `Session ${status.type}`,
       tone: "muted",
-      spinning: statusType === "busy",
+      spinning: status.type === "busy",
       createdAt: event.createdAt,
     };
   }
 
-  if (event.kind === "opencode.session.error") {
-    const properties = toRecord(payload.properties);
-    const sessionId = toStringOrNull(properties?.sessionID) ?? "default";
-    const error = toRecord(properties?.error);
-    const data = toRecord(error?.data);
-    const message = toStringOrNull(data?.message) ?? "Session error";
+  if (parsed.type === "session.error") {
+    const { sessionID, error } = parsed.properties;
+    const rawMessage = error?.data && "message" in error.data ? error.data.message : undefined;
+    const message = typeof rawMessage === "string" ? rawMessage : "Session error";
     return {
       id: event.id,
-      stateKey: `session:${sessionId}`,
+      stateKey: `session:${sessionID ?? "default"}`,
       icon: "error",
       label: message,
       tone: "error",
@@ -740,37 +610,89 @@ function toTaskStreamActivityItem(event: TaskStreamEvent): ChronologicalActivity
     };
   }
 
-  if (
-    event.kind === "opencode.permission.updated" ||
-    event.kind === "opencode.permission.replied"
-  ) {
-    const properties = toRecord(payload.properties);
-    const permissionId =
-      toStringOrNull(properties?.id) ??
-      toStringOrNull(properties?.requestID) ??
-      toStringOrNull(properties?.title) ??
-      "default";
-    const response = toStringOrNull(properties?.response);
-    const title = toStringOrNull(properties?.title);
+  if (parsed.type === "permission.updated") {
+    const permission = parsed.properties;
     return {
       id: event.id,
-      stateKey: `permission:${permissionId}`,
+      stateKey: `permission:${permission.id ?? permission.title ?? "default"}`,
       icon: "permission",
-      label: response ? `Permission: ${response}` : (title ?? "Permission requested"),
+      label: permission.title ?? "Permission requested",
       tone: "muted",
       createdAt: event.createdAt,
     };
   }
 
-  if (event.kind === "opencode.todo.updated") {
-    const properties = toRecord(payload.properties);
-    const todos = Array.isArray(properties?.todos) ? properties.todos.length : 0;
+  if (parsed.type === "permission.replied") {
+    const { permissionID, response } = parsed.properties;
+    return {
+      id: event.id,
+      stateKey: `permission:${permissionID ?? "default"}`,
+      icon: "permission",
+      label: `Permission: ${response}`,
+      tone: "muted",
+      createdAt: event.createdAt,
+    };
+  }
+
+  if (parsed.type === "todo.updated") {
+    const { todos } = parsed.properties;
     return {
       id: event.id,
       stateKey: "todo-list",
       icon: "tool",
-      label: `Todo list updated (${todos})`,
+      label: `Todo list updated (${todos.length})`,
       tone: "muted",
+      createdAt: event.createdAt,
+    };
+  }
+
+  return null;
+}
+
+function messagePartToActivityItem(
+  event: TaskStreamEvent,
+  parsed: Extract<OpenCodeEvent, { type: "message.part.updated" }>,
+): ChronologicalActivityItem | null {
+  const { part } = parsed.properties;
+
+  if (part.type === "reasoning") {
+    const isComplete = typeof part.time.end === "number";
+    return {
+      id: event.id,
+      stateKey: `reasoning:${part.id ?? part.messageID}`,
+      icon: "thinking",
+      label: isComplete ? "Thought complete" : "Thinking",
+      tone: "muted",
+      spinning: !isComplete,
+      createdAt: event.createdAt,
+    };
+  }
+
+  if (part.type === "step-start" || part.type === "step-finish") {
+    const stepKey = part.snapshot ?? part.messageID;
+    return {
+      id: event.id,
+      stateKey: `step:${stepKey}`,
+      icon: "thinking",
+      label: part.type === "step-finish" ? "Step complete" : "Working on next step",
+      tone: "muted",
+      createdAt: event.createdAt,
+    };
+  }
+
+  if (part.type === "tool") {
+    const toolName = part.tool;
+    const status = part.state.status;
+    const title = "title" in part.state ? part.state.title : undefined;
+    const callId = part.callID ?? part.id;
+
+    return {
+      id: event.id,
+      stateKey: `tool:${callId}`,
+      icon: getToolActivityIcon(toolName),
+      label: title ? `${toolName}: ${status} (${title})` : `${toolName}: ${status}`,
+      tone: status === "error" ? "error" : status === "completed" ? "success" : "muted",
+      spinning: status === "running",
       createdAt: event.createdAt,
     };
   }
@@ -806,26 +728,6 @@ function getToolActivityIcon(toolName: string): TaskStreamActivityIcon {
   }
 
   return "tool";
-}
-
-function parseRunEventPayload(payload: string): Record<string, unknown> | null {
-  try {
-    const value = JSON.parse(payload) as unknown;
-    return toRecord(value);
-  } catch {
-    return null;
-  }
-}
-
-function toRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-  return value as Record<string, unknown>;
-}
-
-function toStringOrNull(value: unknown): string | null {
-  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 function toTimestampOrNull(value: unknown): number | null {

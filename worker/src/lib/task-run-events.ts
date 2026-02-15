@@ -1,15 +1,12 @@
-import {
-  appendTaskEventToDurableStream,
-  type DurableStreamsEnv,
-  type TaskEventStreamMessage,
-} from "./durable-streams";
+import type { TaskStreamEventKind } from "../../../shared/task-stream-events";
+import { appendTaskEventToDurableStream, type DurableStreamsEnv } from "./durable-streams";
 
 export async function appendTaskEvent(args: {
   env: DurableStreamsEnv;
   organizationId: string;
   taskId: string;
   executionId: string;
-  kind: string;
+  kind: TaskStreamEventKind;
   payload: string;
   createdAt?: number;
 }): Promise<string> {
@@ -18,7 +15,7 @@ export async function appendTaskEvent(args: {
 
   const id = crypto.randomUUID();
 
-  const streamEvent: TaskEventStreamMessage = {
+  const streamEvent = {
     id,
     taskId,
     runId: executionId,
