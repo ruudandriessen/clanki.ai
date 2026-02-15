@@ -9,7 +9,8 @@ import {
   DEFAULT_OPENCODE_PROVIDER,
   isSupportedOpencodeProvider,
 } from "../../lib/opencode";
-import { executeTaskRun } from "../../lib/task-runs";
+import { buildTaskEventsStreamId } from "../../lib/durable-streams";
+import { executeTaskPrompt } from "../../lib/task-execution";
 import { getErrorMessage, getOrgId, parseOptionalId, parseOptionalTimestamp } from "./common";
 import { badRequest, internalError, notFound } from "./errors";
 import { os } from "./context";
@@ -68,13 +69,15 @@ export const tasksRouter = {
         typeof input.status === "string" && input.status.trim().length > 0
           ? input.status.trim()
           : "open";
+      const taskId = parseOptionalId(input.id) ?? crypto.randomUUID();
 
       const task = {
-        id: parseOptionalId(input.id) ?? crypto.randomUUID(),
+        id: taskId,
         organizationId: orgId,
         projectId: input.projectId,
         title: input.title.trim(),
         status,
+        streamId: buildTaskEventsStreamId({ organizationId: orgId, taskId }),
         createdAt,
         updatedAt,
       };
@@ -281,10 +284,14 @@ export const tasksRouter = {
         updatedAt: now,
       };
 
-      await db.insert(schema.taskRuns).values(run);
       await db
         .update(schema.tasks)
-        .set({ status: "running", updatedAt: now })
+        .set({
+          status: "running",
+          streamId: buildTaskEventsStreamId({ organizationId: orgId, taskId }),
+          error: null,
+          updatedAt: now,
+        })
         .where(eq(schema.tasks.id, taskId));
 
       const project = task.projectId
@@ -302,16 +309,16 @@ export const tasksRouter = {
       }
 
       context.executionCtx.waitUntil(
-        executeTaskRun({
+        executeTaskPrompt({
           db: getDb(context.env),
           env: context.env,
-          runId: run.id,
+          executionId: run.id,
           taskId,
           taskTitle: task.title,
-          prompt: inputMessage.content,
           repoUrl: project.repoUrl,
           installationId: project.installationId ?? null,
           setupCommand: project.setupCommand ?? null,
+          prompt: inputMessage.content,
           initiatedByUserId: userId,
           organizationId: orgId,
           provider: providerInput,

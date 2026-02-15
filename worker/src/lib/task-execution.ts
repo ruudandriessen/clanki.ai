@@ -214,10 +214,7 @@ export async function executeTaskPrompt(args: {
   } catch (error) {
     await markTaskFailed({
       db,
-      env,
-      executionId,
       taskId,
-      organizationId,
       message: getErrorMessage(error),
     });
   }
@@ -774,11 +771,7 @@ async function getNextTaskMessageTimestamp(db: AppDb, taskId: string): Promise<n
   return latest.createdAt >= now ? latest.createdAt + 1 : now;
 }
 
-async function markTaskFailed(args: {
-  db: AppDb;
-  taskId: string;
-  message: string;
-}): Promise<void> {
+async function markTaskFailed(args: { db: AppDb; taskId: string; message: string }): Promise<void> {
   const { db, taskId, message } = args;
   const finishedAt = Date.now();
 

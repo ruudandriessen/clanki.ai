@@ -12,7 +12,7 @@ import {
   DEFAULT_OPENCODE_PROVIDER,
   isSupportedOpencodeProvider,
 } from "../lib/opencode";
-import { openTaskEventsSse } from "../lib/durable-streams";
+import { buildTaskEventsStreamId, openTaskEventsSse } from "../lib/durable-streams";
 import { executeTaskPrompt } from "../lib/task-execution";
 
 type Env = {
@@ -168,12 +168,14 @@ tasks.post("/", async (c) => {
       typeof body.status === "string" && body.status.trim().length > 0
         ? body.status.trim()
         : "open";
+    const taskId = parseOptionalId(body.id) ?? crypto.randomUUID();
     const task = {
-      id: parseOptionalId(body.id) ?? crypto.randomUUID(),
+      id: taskId,
       organizationId: orgId,
       projectId: body.projectId,
       title: body.title.trim(),
       status,
+      streamId: buildTaskEventsStreamId({ organizationId: orgId, taskId }),
       createdAt,
       updatedAt,
     };
@@ -482,7 +484,12 @@ tasks.post("/:taskId/prompt", async (c) => {
 
     await db
       .update(schema.tasks)
-      .set({ status: "running", error: null, updatedAt: now })
+      .set({
+        status: "running",
+        streamId: buildTaskEventsStreamId({ organizationId: orgId, taskId }),
+        error: null,
+        updatedAt: now,
+      })
       .where(eq(schema.tasks.id, taskId));
 
     c.executionCtx.waitUntil(

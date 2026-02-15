@@ -47,7 +47,7 @@ function buildHeaders(env: DurableStreamsEnv): Record<string, string> {
   return { Authorization: `Bearer ${secret}` };
 }
 
-function buildTaskEventsStreamPath(args: { organizationId: string; taskId: string }): string {
+export function buildTaskEventsStreamId(args: { organizationId: string; taskId: string }): string {
   return `org/${args.organizationId}/tasks/${args.taskId}/events`;
 }
 
@@ -80,7 +80,7 @@ export async function appendTaskEventToDurableStream(args: {
     return;
   }
 
-  const streamPath = buildTaskEventsStreamPath({ organizationId, taskId });
+  const streamPath = buildTaskEventsStreamId({ organizationId, taskId });
   const url = buildStreamUrl(env, streamPath);
 
   const ensured = await ensureStream(env, url);
@@ -117,7 +117,7 @@ export async function openTaskEventsSse(args: {
     throw new Error("Durable Streams is not configured");
   }
 
-  const streamPath = buildTaskEventsStreamPath({ organizationId, taskId });
+  const streamPath = buildTaskEventsStreamId({ organizationId, taskId });
   const url = buildStreamUrl(env, streamPath);
 
   await ensureStream(env, url);

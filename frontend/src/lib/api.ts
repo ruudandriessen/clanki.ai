@@ -21,7 +21,7 @@ export function updateProjectSetupCommand(projectId: string, setupCommand: strin
   return apiClient.projects.updateSetupCommand({ projectId, setupCommand });
 }
 
-export function createTaskRun(
+function createTaskRun(
   taskId: string,
   messageId?: string,
   options?: { provider?: string; model?: string },
