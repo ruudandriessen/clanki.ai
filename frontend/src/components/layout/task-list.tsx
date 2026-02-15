@@ -14,6 +14,15 @@ import {
 import { cn } from "../../lib/utils";
 import { projectsCollection, tasksCollection } from "../../lib/collections";
 
+function getTaskLabel(task: { title: string; branch?: string | null }): string {
+  const branch = task.branch?.trim();
+  if (branch && branch.length > 0) {
+    return branch;
+  }
+
+  return task.title;
+}
+
 export function TaskList() {
   const { data: tasks, isLoading } = useLiveQuery((query) =>
     query.from({ t: tasksCollection }).orderBy(({ t }) => t.updated_at, "desc"),
@@ -25,7 +34,7 @@ export function TaskList() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [creating, setCreating] = useState(false);
   const [deletingTask, setDeletingTask] = useState(false);
-  const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<{ id: string; label: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [defaultProject] = projects;
@@ -41,6 +50,7 @@ export function TaskList() {
         organization_id: defaultProject.organization_id,
         project_id: defaultProject.id,
         title: "New task",
+        branch: null,
         status: "open",
         created_at: BigInt(now),
         updated_at: BigInt(now),
@@ -127,6 +137,7 @@ export function TaskList() {
           tasks.map((task) => {
             const isActive = pathname === `/tasks/${task.id}`;
             const projectName = task.project_id ? projectsById.get(task.project_id)?.name : null;
+            const taskLabel = getTaskLabel(task);
             return (
               <div
                 key={task.id}
@@ -148,7 +159,7 @@ export function TaskList() {
                     <MessageSquare className="mt-0.5 w-3.5 h-3.5 shrink-0" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate">{task.title}</p>
+                    <p className="truncate">{taskLabel}</p>
                     {projectName ? (
                       <p
                         className={cn(
@@ -170,10 +181,10 @@ export function TaskList() {
                     isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100",
                   )}
                   onClick={() => {
-                    setTaskToDelete({ id: task.id, title: task.title });
+                    setTaskToDelete({ id: task.id, label: taskLabel });
                     setDeleteError(null);
                   }}
-                  title={`Delete ${task.title}`}
+                  title={`Delete ${taskLabel}`}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
@@ -190,7 +201,7 @@ export function TaskList() {
             <DialogDescription>
               This will permanently remove{" "}
               <span className="font-medium text-foreground">
-                {taskToDelete?.title ?? "this task"}
+                {taskToDelete?.label ?? "this task"}
               </span>{" "}
               and all related messages and runs.
             </DialogDescription>

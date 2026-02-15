@@ -14,6 +14,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { createTaskPrompt, getTaskEventStreamUrl, type TaskStreamEvent } from "../lib/api";
 import { projectsCollection, taskMessagesCollection, tasksCollection } from "../lib/collections";
 
+function getTaskLabel(task: { title: string; branch?: string | null } | undefined): string {
+  const branch = task?.branch?.trim();
+  if (branch && branch.length > 0) {
+    return branch;
+  }
+
+  return task?.title ?? "Task";
+}
+
 export function TaskPage() {
   const { taskId } = useParams({ from: "/_layout/tasks/$taskId" });
   const [input, setInput] = useState("");
@@ -35,6 +44,8 @@ export function TaskPage() {
   const { data: tasks } = useLiveQuery((q) => q.from({ t: tasksCollection }));
   const { data: projects } = useLiveQuery((q) => q.from({ p: projectsCollection }));
   const task = tasks?.find((t) => t.id === taskId);
+  const taskLabel = getTaskLabel(task);
+  const hasBranchLabel = (task?.branch?.trim().length ?? 0) > 0;
   const taskProject = task?.project_id
     ? projects.find((project) => project.id === task.project_id)
     : null;
@@ -149,6 +160,12 @@ export function TaskPage() {
   }, [taskId]);
 
   useEffect(() => {
+    if (hasBranchLabel) {
+      setEditingTitle(false);
+    }
+  }, [hasBranchLabel]);
+
+  useEffect(() => {
     if (!editingTitle) {
       setTitleInput(task?.title ?? "");
     }
@@ -202,7 +219,7 @@ export function TaskPage() {
   }
 
   function handleTitleEditStart() {
-    if (!task) {
+    if (!task || hasBranchLabel) {
       return;
     }
 
@@ -314,17 +331,19 @@ export function TaskPage() {
         ) : (
           <div className="min-w-0">
             <div className="flex min-h-8 min-w-0 items-center gap-2">
-              <h2 className="m-0 truncate text-sm font-medium">{task?.title ?? "Task"}</h2>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                onClick={handleTitleEditStart}
-                className="text-muted-foreground"
-                title="Edit task name"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
+              <h2 className="m-0 truncate text-sm font-medium">{taskLabel}</h2>
+              {!hasBranchLabel ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={handleTitleEditStart}
+                  className="text-muted-foreground"
+                  title="Edit task name"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              ) : null}
             </div>
             {taskProject ? (
               <p className="truncate text-xs text-muted-foreground">{taskProject.name}</p>

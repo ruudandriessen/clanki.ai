@@ -430,6 +430,17 @@ async function consumeSessionEventStream(args: {
         }
 
         collectAssistantTextPart(parsed, capture);
+        const nextBranch = extractBranchFromEvent(parsed);
+        if (nextBranch) {
+          await db
+            .update(schema.tasks)
+            .set({
+              branch: nextBranch,
+              updatedAt: Date.now(),
+            })
+            .where(eq(schema.tasks.id, taskId));
+        }
+
         if (isCompletedAssistantMessageEvent(parsed)) {
           const completedMessageId = getMessageIdFromEvent(parsed);
           const persistedTaskMessageId =
@@ -674,6 +685,15 @@ function extractEventSessionId(event: OpencodeEvent): string | null {
   }
 
   return null;
+}
+
+function extractBranchFromEvent(event: OpencodeEvent): string | null {
+  if (event.type !== "vcs.branch.updated") {
+    return null;
+  }
+
+  const properties = toRecord(event.properties);
+  return toStringOrNull(properties?.branch)?.trim() ?? null;
 }
 
 function toRecord(value: unknown): Record<string, unknown> | null {
