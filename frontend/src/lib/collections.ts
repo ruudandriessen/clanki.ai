@@ -1,7 +1,7 @@
 import { createCollection } from "@tanstack/react-db";
 import { electricCollectionOptions } from "@tanstack/electric-db-collection";
 import { z } from "zod";
-import { createProjects, createTask, createTaskMessage, deleteTask, updateTask } from "./api";
+import { apiClient } from "./orpc-client";
 
 const BASE_URL = globalThis.location?.origin;
 
@@ -76,7 +76,7 @@ export const projectsCollection = createCollection(
         };
       });
 
-      const { txid } = await createProjects(repos);
+      const { txid } = await apiClient.projects.create({ repos });
       return txid !== undefined ? { txid } : undefined;
     },
     onUpdate: async () => {
@@ -106,7 +106,7 @@ export const tasksCollection = createCollection(
           throw new Error("Task project is required");
         }
 
-        const { txid } = await createTask({
+        const { txid } = await apiClient.tasks.create({
           id: task.id,
           title: task.title,
           projectId: task.project_id,
@@ -131,7 +131,10 @@ export const tasksCollection = createCollection(
           throw new Error("Task title cannot be empty");
         }
 
-        const { txid } = await updateTask(String(mutation.key), title);
+        const { txid } = await apiClient.tasks.update({
+          taskId: String(mutation.key),
+          title,
+        });
         if (txid !== undefined) {
           txids.push(txid);
         }
@@ -143,7 +146,7 @@ export const tasksCollection = createCollection(
       const txids: Array<number> = [];
 
       for (const mutation of transaction.mutations) {
-        const { txid } = await deleteTask(String(mutation.key));
+        const { txid } = await apiClient.tasks.delete({ taskId: String(mutation.key) });
         if (txid !== undefined) {
           txids.push(txid);
         }
@@ -168,11 +171,14 @@ export const taskMessagesCollection = createCollection(
 
       for (const mutation of transaction.mutations) {
         const message = mutation.modified;
-        const { txid } = await createTaskMessage(message.task_id, {
-          id: message.id,
-          role: message.role,
-          content: message.content,
-          createdAt: Number(message.created_at),
+        const { txid } = await apiClient.tasks.createMessage({
+          taskId: message.task_id,
+          message: {
+            id: message.id,
+            role: message.role,
+            content: message.content,
+            createdAt: Number(message.created_at),
+          },
         });
 
         if (txid !== undefined) {
