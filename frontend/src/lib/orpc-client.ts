@@ -5,7 +5,7 @@ import { apiContract } from "../../../shared/orpc/contract";
 
 const rpcBaseUrl = new URL(
   "/api/rpc",
-  globalThis.location?.origin ?? "http://localhost",
+  globalThis.location?.origin ?? "https://localhost",
 ).toString();
 
 const link = new RPCLink({

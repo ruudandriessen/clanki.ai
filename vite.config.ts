@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import tailwindcss from "@tailwindcss/vite";
+import mkcert from "vite-plugin-mkcert";
 import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
@@ -12,6 +13,7 @@ export default defineConfig({
     },
   },
   plugins: [
+    mkcert(),
     tanstackRouter({
       routesDirectory: "./src/routes",
       generatedRouteTree: "./src/routeTree.gen.ts",
