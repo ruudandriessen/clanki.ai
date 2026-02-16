@@ -2,6 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import type { Sandbox } from "@cloudflare/sandbox";
 import { getDb } from "../db/client";
 import { executeTaskPrompt } from "./task-execution";
+import { markTaskFailed, getErrorMessage } from "./task-execution/helpers";
 import type { SupportedOpencodeProvider } from "./opencode";
 
 type TaskRunnerEnv = {
@@ -52,23 +53,36 @@ export class TaskRunner extends DurableObject<TaskRunnerEnv> {
     // Delete params first so a crash-retry doesn't re-run with stale data.
     await this.ctx.storage.delete("params");
 
-    const db = getDb(this.env);
-    await executeTaskPrompt({
-      db,
-      env: this.env,
-      executionId: params.executionId,
-      taskId: params.taskId,
-      organizationId: params.organizationId,
-      taskTitle: params.taskTitle,
-      prompt: params.prompt,
-      repoUrl: params.repoUrl,
-      installationId: params.installationId,
-      setupCommand: params.setupCommand,
-      initiatedByUserId: params.initiatedByUserId,
-      initiatedByUserName: params.initiatedByUserName,
-      initiatedByUserEmail: params.initiatedByUserEmail,
-      provider: params.provider,
-      model: params.model,
-    });
+    try {
+      const db = getDb(this.env);
+      await executeTaskPrompt({
+        db,
+        env: this.env,
+        executionId: params.executionId,
+        taskId: params.taskId,
+        organizationId: params.organizationId,
+        taskTitle: params.taskTitle,
+        prompt: params.prompt,
+        repoUrl: params.repoUrl,
+        installationId: params.installationId,
+        setupCommand: params.setupCommand,
+        initiatedByUserId: params.initiatedByUserId,
+        initiatedByUserName: params.initiatedByUserName,
+        initiatedByUserEmail: params.initiatedByUserEmail,
+        provider: params.provider,
+        model: params.model,
+      });
+    } catch (error) {
+      // executeTaskPrompt has its own try/catch, so this only fires for
+      // unexpected failures (e.g. getDb() failing). Mark the task as failed
+      // so the UI doesn't show it stuck in "running" forever.
+      try {
+        await markTaskFailed({
+          db: getDb(this.env),
+          taskId: params.taskId,
+          message: getErrorMessage(error),
+        });
+      } catch {}
+    }
   }
 }
