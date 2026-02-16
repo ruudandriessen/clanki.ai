@@ -33,45 +33,45 @@
 
 :root {
   --radius: 0.4rem;
-  --background: #f9f5e8;
-  --foreground: #121212;
-  --card: #fff7e1;
-  --card-foreground: #121212;
-  --popover: #fff7e1;
-  --popover-foreground: #121212;
-  --primary: #ff6e40;
-  --primary-foreground: #121212;
-  --secondary: #44d8ff;
-  --secondary-foreground: #121212;
-  --muted: #efe4cb;
-  --muted-foreground: #5c5c5c;
-  --accent: #ffe56b;
-  --accent-foreground: #121212;
-  --destructive: #ff3b30;
-  --border: #121212;
+  --background: #eaf1f8;
+  --foreground: #0f2238;
+  --card: #f8fbff;
+  --card-foreground: #0f2238;
+  --popover: #f8fbff;
+  --popover-foreground: #0f2238;
+  --primary: #1f6fdb;
+  --primary-foreground: #f8fbff;
+  --secondary: #b8c7d8;
+  --secondary-foreground: #10263d;
+  --muted: #d7e0ea;
+  --muted-foreground: #4b6078;
+  --accent: #7fa4d1;
+  --accent-foreground: #0f2238;
+  --destructive: #d94a4a;
+  --border: #2b4b69;
   --input: #ffffff;
-  --ring: #121212;
+  --ring: #1f6fdb;
 }
 
 .dark {
-  --background: #f9f5e8;
-  --foreground: #121212;
-  --card: #fff7e1;
-  --card-foreground: #121212;
-  --popover: #fff7e1;
-  --popover-foreground: #121212;
-  --primary: #ff6e40;
-  --primary-foreground: #121212;
-  --secondary: #44d8ff;
-  --secondary-foreground: #121212;
-  --muted: #efe4cb;
-  --muted-foreground: #5c5c5c;
-  --accent: #ffe56b;
-  --accent-foreground: #121212;
-  --destructive: #ff3b30;
-  --border: #121212;
+  --background: #eaf1f8;
+  --foreground: #0f2238;
+  --card: #f8fbff;
+  --card-foreground: #0f2238;
+  --popover: #f8fbff;
+  --popover-foreground: #0f2238;
+  --primary: #1f6fdb;
+  --primary-foreground: #f8fbff;
+  --secondary: #b8c7d8;
+  --secondary-foreground: #10263d;
+  --muted: #d7e0ea;
+  --muted-foreground: #4b6078;
+  --accent: #7fa4d1;
+  --accent-foreground: #0f2238;
+  --destructive: #d94a4a;
+  --border: #2b4b69;
   --input: #ffffff;
-  --ring: #121212;
+  --ring: #1f6fdb;
 }
 
 html,
@@ -85,9 +85,10 @@ body {
   font-family: "Space Grotesk", "Segoe UI", sans-serif;
   letter-spacing: 0.01em;
   background:
-    radial-gradient(circle at 12% 22%, rgb(68 216 255 / 22%) 0%, transparent 24%),
-    radial-gradient(circle at 90% 8%, rgb(255 110 64 / 22%) 0%, transparent 20%),
-    repeating-linear-gradient(-12deg, rgb(18 18 18 / 6%) 0 2px, transparent 2px 28px),
+    radial-gradient(circle at 12% 22%, rgb(31 111 219 / 20%) 0%, transparent 24%),
+    radial-gradient(circle at 88% 8%, rgb(217 74 74 / 11%) 0%, transparent 16%),
+    radial-gradient(circle at 80% 68%, rgb(121 141 164 / 24%) 0%, transparent 24%),
+    repeating-linear-gradient(-12deg, rgb(17 35 58 / 5%) 0 2px, transparent 2px 28px),
     var(--background);
 }
 
