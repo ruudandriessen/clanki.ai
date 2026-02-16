@@ -18,6 +18,17 @@ const HOP_BY_HOP_HEADERS = new Set([
   "upgrade",
 ]);
 
+function isAbortError(error: unknown): boolean {
+  if (error instanceof DOMException) {
+    return error.name === "AbortError";
+  }
+  if (typeof error === "object" && error !== null) {
+    const maybeError = error as { name?: string; code?: string };
+    return maybeError.name === "AbortError" || maybeError.code === "ABORT_ERR";
+  }
+  return false;
+}
+
 function devApiProxyPlugin(target: string): Plugin {
   return {
     name: "dev-api-proxy",
@@ -44,8 +55,13 @@ function devApiProxyPlugin(target: string): Plugin {
         headers.set("accept-encoding", "identity");
 
         const abortController = new AbortController();
-        req.on("aborted", () => abortController.abort());
-        req.on("close", () => abortController.abort());
+        const abortProxyRequest = () => {
+          if (!abortController.signal.aborted) {
+            abortController.abort();
+          }
+        };
+        req.once("aborted", abortProxyRequest);
+        res.once("close", abortProxyRequest);
 
         const requestInit: RequestInit & { duplex?: "half" } = {
           method: req.method,
@@ -87,8 +103,21 @@ function devApiProxyPlugin(target: string): Plugin {
             return;
           }
 
-          Readable.fromWeb(response.body as ReadableStream<Uint8Array>).pipe(res);
+          const upstreamBody = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
+          upstreamBody.on("error", (streamError) => {
+            if (isAbortError(streamError) || abortController.signal.aborted || res.destroyed) {
+              if (!res.writableEnded) {
+                res.end();
+              }
+              return;
+            }
+            next(streamError);
+          });
+          upstreamBody.pipe(res);
         } catch (error) {
+          if (isAbortError(error) && abortController.signal.aborted) {
+            return;
+          }
           next(error);
         }
       });
