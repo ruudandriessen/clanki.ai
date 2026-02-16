@@ -42,6 +42,18 @@ For new UI work, prefer existing shadcn primitives from `frontend/src/components
 
 Only create custom component wrappers when there is no suitable shadcn primitive or when product-specific behavior requires it.
 
+### Design style (neobrutal, but clean)
+
+The app's visual direction is neobrutalist: bold palette, clear borders, and strong typography.
+
+Apply this style with restraint:
+
+- Keep borders and shadows moderate (`border` over `border-2` by default).
+- Prefer flat or lightly elevated surfaces for dense UI areas (sidebar, chat timeline, tool summaries).
+- Avoid stacked boxed treatments in repeated lists (for example tool activity rows).
+- Preserve readability first: generous spacing, clear contrast, and calm message surfaces.
+- Keep the login page and top-level marketing-like surfaces visually expressive; keep operational areas cleaner.
+
 ### Prefer `??` over `||` for default values
 
 Use the nullish coalescing operator (`??`) instead of logical OR (`||`) when providing fallback/default values. `??` only falls back on `null`/`undefined`, while `||` also falls back on `0`, `""`, and `false` — which are often valid values.
