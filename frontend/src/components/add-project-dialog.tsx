@@ -134,17 +134,17 @@ export function AddProjectDialog({
       }}
     >
       <DialogContent
-        className="w-[32rem] max-w-[calc(100vw-2rem)] max-h-[80vh] gap-0 overflow-hidden p-0"
+        className="max-h-[80vh] w-[32rem] max-w-[calc(100vw-2rem)] gap-0 overflow-hidden p-0"
         showCloseButton={false}
       >
-        <DialogHeader className="flex-row items-center justify-between border-b border-border px-5 py-4">
+        <DialogHeader className="flex-row items-center justify-between border-b border-border bg-muted px-5 py-4">
           <DialogTitle className="text-base">Add Project</DialogTitle>
           <Button type="button" variant="ghost" size="icon-xs" onClick={onClose}>
             <X className="w-4 h-4" />
           </Button>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="neo-scroll min-h-0 flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -185,10 +185,10 @@ export function AddProjectDialog({
                         variant="ghost"
                         onClick={() => toggleRepo(repo.htmlUrl)}
                         className={cn(
-                          "h-auto w-full justify-start gap-3 rounded-md px-3 py-2.5 text-left font-normal transition-colors",
+                          "h-auto w-full justify-start gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-left font-normal transition-colors",
                           selected.has(repo.htmlUrl)
-                            ? "bg-primary/10 hover:bg-primary/10"
-                            : "hover:bg-accent/50",
+                            ? "border-border bg-primary/20 text-foreground shadow-[3px_3px_0_0_var(--color-border)]"
+                            : "hover:border-border hover:bg-accent/60",
                         )}
                       >
                         <div
@@ -240,7 +240,7 @@ export function AddProjectDialog({
         </div>
 
         {error ? <div className="px-5 py-2 text-xs text-destructive">{error}</div> : null}
-        <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4 shrink-0">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted px-5 py-4">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>

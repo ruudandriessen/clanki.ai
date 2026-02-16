@@ -93,8 +93,8 @@ export function TaskList() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="px-3 pt-3 pb-1 flex items-center justify-between">
-        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+      <div className="flex items-center justify-between px-3 pt-3 pb-2">
+        <p className="text-[11px] font-bold text-foreground/90 uppercase tracking-[0.08em]">
           Tasks
         </p>
         <Button
@@ -103,7 +103,7 @@ export function TaskList() {
           size="icon-xs"
           onClick={handleNewTask}
           disabled={creating || !defaultProject}
-          className="text-muted-foreground"
+          className="text-muted-foreground shadow-none hover:border-transparent hover:shadow-none"
           title="New task"
         >
           {creating ? (
@@ -114,7 +114,7 @@ export function TaskList() {
         </Button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5">
+      <nav className="neo-scroll flex-1 space-y-1 overflow-y-auto px-2 pb-2">
         {isLoading ? (
           <div className="flex items-center justify-center py-6 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -131,10 +131,10 @@ export function TaskList() {
               <div
                 key={task.id}
                 className={cn(
-                  "group flex items-center gap-1 rounded-md transition-colors",
+                  "group flex items-center gap-1 rounded-[var(--radius-sm)] transition-colors",
                   isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                    ? "bg-accent/70 text-accent-foreground"
+                    : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
                 )}
               >
                 <Link
@@ -166,7 +166,7 @@ export function TaskList() {
                   variant="ghost"
                   size="icon-xs"
                   className={cn(
-                    "mr-1 shrink-0 text-muted-foreground hover:text-destructive",
+                    "mr-1 shrink-0 text-muted-foreground shadow-none hover:border-transparent hover:text-destructive hover:shadow-none",
                     isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100",
                   )}
                   onClick={() => {

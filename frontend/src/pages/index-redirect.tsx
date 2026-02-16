@@ -32,9 +32,11 @@ export function IndexRedirect() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3 px-4">
-      <p className="text-sm">Create a new task to get started</p>
-      <p className="text-xs">Use the + button in the sidebar to create your first task.</p>
+    <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-muted-foreground">
+      <div className="neo-surface max-w-md rounded-[var(--radius-md)] p-5 text-center">
+        <p className="text-sm text-foreground">Create a new task to get started</p>
+        <p className="mt-2 text-xs">Use the + button in the sidebar to create your first task.</p>
+      </div>
     </div>
   );
 }

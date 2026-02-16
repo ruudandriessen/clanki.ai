@@ -41,7 +41,7 @@ export function UserMenu({ showIdentity = false, menuDirection = "down" }: UserM
             type="button"
             variant="ghost"
             className={cn(
-              "h-auto items-center gap-2 rounded-md px-2.5 py-2",
+              "h-auto items-center gap-2 px-2.5 py-2 shadow-none hover:border-transparent hover:bg-accent/70 hover:shadow-none",
               showIdentity ? "w-full justify-start" : "w-auto justify-center",
             )}
           >
@@ -54,7 +54,7 @@ export function UserMenu({ showIdentity = false, menuDirection = "down" }: UserM
             {showIdentity ? (
               <span className="truncate text-sm font-medium">{user.name}</span>
             ) : null}
-            <ChevronDown className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
+            <ChevronDown className="ml-auto h-3.5 w-3.5 text-foreground" />
           </Button>
         </DropdownMenuTrigger>
 
@@ -63,9 +63,9 @@ export function UserMenu({ showIdentity = false, menuDirection = "down" }: UserM
           align="end"
           className={cn(showIdentity ? "w-(--radix-dropdown-menu-trigger-width)" : "w-64")}
         >
-          <DropdownMenuLabel className="px-3 py-2.5">
-            <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+          <DropdownMenuLabel className="px-3 py-2.5 normal-case tracking-normal">
+            <p className="truncate text-sm font-bold text-foreground">{user.name}</p>
+            <p className="truncate text-xs font-medium text-muted-foreground">{user.email}</p>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
 

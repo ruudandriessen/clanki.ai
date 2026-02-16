@@ -12,16 +12,13 @@ export function MobileHeader({ onOpenSidebar }: MobileHeaderProps) {
   const orgName = activeOrg.data?.name;
 
   return (
-    <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        className="text-muted-foreground"
-        onClick={onOpenSidebar}
-      >
+    <div className="flex shrink-0 items-center gap-3 border-b border-border bg-card px-4 py-3 md:hidden">
+      <Button variant="ghost" size="icon-sm" className="text-foreground" onClick={onOpenSidebar}>
         <Menu className="w-5 h-5" />
       </Button>
-      <span className="font-semibold text-sm truncate">{orgName ?? "Organization"}</span>
+      <span className="truncate text-xs font-bold tracking-[0.08em] uppercase">
+        {orgName ?? "Organization"}
+      </span>
       <div className="ml-auto">
         <UserMenu />
       </div>

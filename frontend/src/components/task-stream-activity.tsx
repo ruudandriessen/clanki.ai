@@ -42,7 +42,7 @@ export function TaskStreamActivity({ items }: { items: TaskStreamActivityItem[] 
           const Icon = getActivityIcon(item.icon);
           const { action, details } = splitActivityLabel(item.label);
           return (
-            <div key={item.id} className="flex items-start gap-2 text-xs">
+            <div key={item.id} className="flex items-start gap-2 py-0.5 text-xs">
               <Icon
                 className={cn(
                   "mt-0.5 h-3.5 w-3.5 shrink-0",

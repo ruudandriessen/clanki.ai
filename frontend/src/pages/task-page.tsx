@@ -28,7 +28,7 @@ function CollapsedActivityGroup({ items }: { items: TaskStreamActivityItem[] }) 
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-1.5 px-1 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           <ChevronRight
             className={cn("h-3.5 w-3.5 shrink-0 transition-transform", expanded && "rotate-90")}
@@ -39,7 +39,7 @@ function CollapsedActivityGroup({ items }: { items: TaskStreamActivityItem[] }) 
           </span>
         </button>
         {expanded ? (
-          <div className="mt-1.5 ml-5">
+          <div className="mt-1.5 ml-2.5">
             <TaskStreamActivity items={items} />
           </div>
         ) : null}
@@ -241,8 +241,8 @@ export function TaskPage({ taskId, title, projectName }: TaskPageProps) {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="shrink-0 border-b border-border px-4 py-3 md:px-6">
+    <div className="neo-enter flex h-full flex-col">
+      <div className="shrink-0 border-b border-border bg-card px-4 py-3 md:px-6">
         {editingTitle ? (
           <div className="flex min-h-8 items-center gap-2">
             <Input
@@ -258,7 +258,7 @@ export function TaskPage({ taskId, title, projectName }: TaskPageProps) {
               size="icon-sm"
               onClick={() => void handleTitleEditSave()}
               disabled={savingTitle}
-              className="text-muted-foreground"
+              className="text-foreground"
               title="Save task name"
             >
               {savingTitle ? (
@@ -273,7 +273,7 @@ export function TaskPage({ taskId, title, projectName }: TaskPageProps) {
               size="icon-sm"
               onClick={handleTitleEditCancel}
               disabled={savingTitle}
-              className="text-muted-foreground"
+              className="text-foreground"
               title="Cancel"
             >
               <X className="h-4 w-4" />
@@ -282,13 +282,15 @@ export function TaskPage({ taskId, title, projectName }: TaskPageProps) {
         ) : (
           <div className="min-w-0">
             <div className="flex min-h-8 min-w-0 items-center gap-2">
-              <h2 className="m-0 truncate text-sm font-medium">{title}</h2>
+              <h2 className="m-0 truncate text-sm font-bold tracking-[0.04em] uppercase">
+                {title}
+              </h2>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-xs"
                 onClick={handleTitleEditStart}
-                className="text-muted-foreground"
+                className="text-foreground"
                 title="Edit task name"
               >
                 <Pencil className="h-3.5 w-3.5" />
@@ -300,7 +302,7 @@ export function TaskPage({ taskId, title, projectName }: TaskPageProps) {
         {titleError ? <p className="mt-1 text-xs text-destructive">{titleError}</p> : null}
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="neo-scroll flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -311,7 +313,7 @@ export function TaskPage({ taskId, title, projectName }: TaskPageProps) {
             <p className="text-xs">Send a message to start an OpenCode run.</p>
           </div>
         ) : (
-          <div className="space-y-4 px-4 py-4">
+          <div className="space-y-4 px-4 py-4 md:px-6">
             {timelineEntries.map((entry) => {
               if (entry.type === "activity") {
                 return <TaskStreamActivity key={entry.id} items={[entry.item]} />;
@@ -323,8 +325,11 @@ export function TaskPage({ taskId, title, projectName }: TaskPageProps) {
 
               if (entry.type === "assistant-preview") {
                 return (
-                  <div key={entry.id}>
-                    <div className="text-sm whitespace-pre-wrap text-foreground">
+                  <div
+                    key={entry.id}
+                    className="max-w-3xl rounded-[var(--radius-md)] border border-border/70 bg-card/80 p-4"
+                  >
+                    <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
                       {entry.content}
                     </div>
                   </div>
@@ -334,10 +339,10 @@ export function TaskPage({ taskId, title, projectName }: TaskPageProps) {
               return (
                 <div key={entry.id} className={entry.role === "user" ? "flex justify-end" : ""}>
                   <div
-                    className={`text-sm whitespace-pre-wrap ${
+                    className={`text-sm leading-relaxed whitespace-pre-wrap ${
                       entry.role === "user"
-                        ? "w-fit rounded-lg bg-primary px-4 py-2.5 text-primary-foreground"
-                        : "text-foreground"
+                        ? "w-fit rounded-[var(--radius-md)] border border-border/60 bg-primary/95 px-4 py-2.5 text-primary-foreground"
+                        : "max-w-3xl rounded-[var(--radius-md)] border border-border/70 bg-card/80 px-4 py-2.5 text-foreground"
                     }`}
                   >
                     {entry.content}
@@ -351,7 +356,7 @@ export function TaskPage({ taskId, title, projectName }: TaskPageProps) {
         )}
       </div>
 
-      <div className="shrink-0 p-4">
+      <div className="shrink-0 border-t border-border bg-card p-4">
         <div className="flex items-end gap-2">
           <Textarea
             ref={inputRef}
@@ -360,7 +365,7 @@ export function TaskPage({ taskId, title, projectName }: TaskPageProps) {
             onKeyDown={handleKeyDown}
             placeholder="Send a message..."
             rows={1}
-            className="min-h-[42px] max-h-[200px] flex-1 resize-none rounded-lg px-4 py-2.5 text-base md:text-sm"
+            className="min-h-[42px] max-h-[200px] flex-1 resize-none rounded-[var(--radius-md)] px-4 py-2.5 text-base md:text-sm"
             style={{ height: "auto" }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
@@ -372,7 +377,7 @@ export function TaskPage({ taskId, title, projectName }: TaskPageProps) {
             type="button"
             onClick={() => void handleSend()}
             disabled={!input.trim() || sending}
-            className="h-[42px] w-[42px] shrink-0 rounded-lg p-0"
+            className="h-[42px] w-[42px] shrink-0 rounded-[var(--radius-md)] p-0"
           >
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>

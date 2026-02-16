@@ -26,7 +26,7 @@ export function Layout() {
   if (isPending) {
     return (
       <div className="flex h-dvh items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-7 w-7 animate-spin text-foreground" />
       </div>
     );
   }
@@ -34,11 +34,11 @@ export function Layout() {
   if (!session) return null;
 
   return (
-    <div className="flex h-dvh bg-background text-foreground">
+    <div className="neo-enter flex h-dvh bg-background text-foreground">
       {/* Mobile backdrop */}
       <div
         className={cn(
-          "fixed inset-0 bg-black/50 z-40 transition-opacity md:hidden",
+          "fixed inset-0 z-40 bg-[rgb(18_18_18_/_0.32)] backdrop-blur-[1px] transition-opacity md:hidden",
           sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none",
         )}
         onClick={() => setSidebarOpen(false)}
@@ -47,7 +47,7 @@ export function Layout() {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transition-transform duration-200 ease-in-out",
+          "fixed inset-y-0 left-0 z-50 w-64 border-r border-border bg-card transition-transform duration-200 ease-in-out",
           "md:relative md:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
@@ -56,10 +56,10 @@ export function Layout() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <MobileHeader onOpenSidebar={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 overflow-hidden neo-scroll">
           <Outlet />
         </main>
       </div>

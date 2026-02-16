@@ -11,9 +11,9 @@ type SidebarProps = {
 export function Sidebar({ onClose }: SidebarProps) {
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-border flex justify-end md:hidden">
+      <div className="flex justify-end border-b border-border px-4 py-3 md:hidden">
         <Button
-          className="md:hidden text-muted-foreground"
+          className="text-foreground md:hidden"
           variant="ghost"
           size="icon-sm"
           onClick={onClose}
@@ -24,7 +24,7 @@ export function Sidebar({ onClose }: SidebarProps) {
 
       <TaskList />
 
-      <div className="border-t border-border">
+      <div className="border-t border-border bg-muted/20">
         <OrgSwitcher />
         <div className="p-2">
           <UserMenu showIdentity menuDirection="up" />

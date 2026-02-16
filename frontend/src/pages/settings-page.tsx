@@ -182,16 +182,16 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl p-6">
-      <h2 className="mb-6 text-lg font-semibold">Settings</h2>
+    <div className="neo-enter neo-scroll mx-auto h-full max-w-3xl overflow-y-auto p-6">
+      <h2 className="mb-6 text-2xl tracking-[0.08em] uppercase">Settings</h2>
 
-      <div className="space-y-6">
+      <div className="neo-stagger space-y-6">
         <section>
-          <h3 className="mb-4 text-sm font-medium tracking-wider text-muted-foreground uppercase">
+          <h3 className="mb-4 text-sm font-bold tracking-[0.1em] text-foreground uppercase">
             AI Providers
           </h3>
 
-          <div className="space-y-3 rounded-lg border border-border p-4">
+          <div className="neo-surface space-y-3 rounded-[var(--radius-md)] p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium">OpenAI (Codex)</p>
@@ -215,12 +215,12 @@ export function SettingsPage() {
             </div>
 
             <div className="flex flex-col gap-2 md:flex-row">
-              <input
+              <Input
                 type="password"
                 value={openaiApiKey}
                 onChange={(e) => setOpenaiApiKey(e.target.value)}
                 placeholder="sk-..."
-                className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary"
+                className="flex-1"
               />
               <Button
                 type="button"
@@ -239,7 +239,7 @@ export function SettingsPage() {
               </Button>
             </div>
 
-            <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+            <div className="space-y-2 rounded-[var(--radius-sm)] border border-border bg-muted/60 p-3 shadow-[2px_2px_0_0_var(--color-border)]">
               <p className="text-xs text-muted-foreground">
                 Prefer ChatGPT Plus/Pro instead of an API key? Use the OAuth flow below.
               </p>
@@ -282,7 +282,7 @@ export function SettingsPage() {
 
         <section>
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-medium tracking-wider text-muted-foreground uppercase">
+            <h3 className="text-sm font-bold tracking-[0.1em] text-foreground uppercase">
               Projects
             </h3>
             <Button type="button" onClick={() => setDialogOpen(true)}>
@@ -296,12 +296,12 @@ export function SettingsPage() {
               <Loader2 className="h-5 w-5 animate-spin" />
             </div>
           ) : projects.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-border border-dashed py-12 text-muted-foreground">
+            <div className="neo-surface flex flex-col items-center justify-center gap-3 rounded-[var(--radius-md)] border-dashed py-12 text-muted-foreground">
               <BookMarked className="h-8 w-8" />
               <p className="text-sm">No projects yet. Add a repository to get started.</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {projects.map((project) => (
                 <Card key={project.id} className="gap-0 py-0">
                   <CardContent className="p-4">

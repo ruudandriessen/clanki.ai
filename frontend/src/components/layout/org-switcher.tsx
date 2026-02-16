@@ -44,7 +44,7 @@ export function OrgSwitcher() {
 
   if (editing) {
     return (
-      <div className="px-3 py-3 border-b border-border">
+      <div className="border-b border-border px-3 py-3">
         <div className="flex items-center gap-1.5">
           <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
           <Input
@@ -64,7 +64,7 @@ export function OrgSwitcher() {
             size="icon-xs"
             onMouseDown={(e) => e.preventDefault()}
             onClick={handleSave}
-            className="shrink-0"
+            className="shrink-0 shadow-none hover:border-transparent hover:shadow-none"
           >
             <Check className="w-3.5 h-3.5" />
           </Button>
@@ -74,7 +74,7 @@ export function OrgSwitcher() {
   }
 
   return (
-    <div className="px-3 py-3 border-b border-border">
+    <div className="border-b border-border px-3 py-3">
       <Button
         type="button"
         variant="ghost"
@@ -82,7 +82,7 @@ export function OrgSwitcher() {
           setName(org.name);
           setEditing(true);
         }}
-        className="h-auto w-full justify-start gap-2 px-2.5 py-1.5 text-sm text-foreground group"
+        className="group h-auto w-full justify-start gap-2 px-2.5 py-1.5 text-sm text-foreground shadow-none hover:border-transparent hover:bg-accent/70 hover:shadow-none"
       >
         <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
         <span className="truncate font-medium">{org.name}</span>
