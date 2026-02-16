@@ -10,8 +10,6 @@ const DEV_API_TARGET = process.env.VITE_API_TARGET ?? "http://localhost:8787";
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
   "keep-alive",
-  "proxy-authenticate",
-  "proxy-authorization",
   "te",
   "trailer",
   "transfer-encoding",
