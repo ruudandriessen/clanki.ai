@@ -12,6 +12,7 @@ import { projects } from "./routes/projects";
 import { settings } from "./routes/settings";
 import { tasks } from "./routes/tasks";
 import { handleGitHubWebhook } from "./webhook/github";
+import type { TaskRunner } from "./lib/task-runner";
 
 type Bindings = {
   ASSETS: Fetcher;
@@ -28,6 +29,7 @@ type Bindings = {
   DURABLE_STREAMS_SERVICE_ID?: string;
   DURABLE_STREAMS_SECRET?: string;
   Sandbox: DurableObjectNamespace<Sandbox>;
+  TaskRunner: DurableObjectNamespace<TaskRunner>;
   GITHUB_APP_ID?: string;
   GITHUB_APP_PRIVATE_KEY?: string;
 };
@@ -110,6 +112,7 @@ app.get("*", async (c) => {
 });
 
 export { Sandbox } from "@cloudflare/sandbox";
+export { TaskRunner } from "./lib/task-runner";
 
 export default {
   fetch: app.fetch,

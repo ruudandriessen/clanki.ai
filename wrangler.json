@@ -32,6 +32,10 @@
       {
         "name": "Sandbox",
         "class_name": "Sandbox"
+      },
+      {
+        "name": "TaskRunner",
+        "class_name": "TaskRunner"
       }
     ]
   },
@@ -39,6 +43,10 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["Sandbox"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["TaskRunner"]
     }
   ],
   "hyperdrive": [

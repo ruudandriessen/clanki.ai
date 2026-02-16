@@ -2,7 +2,6 @@ import { and, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Sandbox } from "@cloudflare/sandbox";
 import type { AppDb } from "../db/client";
-import { getDb } from "../db/client";
 import { withTransaction, withTxid } from "../db/transaction";
 import * as schema from "../db/schema";
 import { clauseToString } from "../lib/clause-to-string";
@@ -13,12 +12,13 @@ import {
   isSupportedOpencodeProvider,
 } from "../lib/opencode";
 import { buildTaskEventsStreamId, openTaskEventsSse } from "../lib/durable-streams";
-import { executeTaskPrompt } from "../lib/task-execution";
+import type { TaskRunner } from "../lib/task-runner";
 
 type Env = {
   Bindings: {
     HYPERDRIVE: Hyperdrive;
     Sandbox: DurableObjectNamespace<Sandbox>;
+    TaskRunner: DurableObjectNamespace<TaskRunner>;
     GITHUB_APP_ID?: string;
     GITHUB_APP_PRIVATE_KEY?: string;
     CREDENTIALS_ENCRYPTION_KEY: string;
@@ -493,25 +493,23 @@ tasks.post("/:taskId/prompt", async (c) => {
       })
       .where(eq(schema.tasks.id, taskId));
 
-    c.executionCtx.waitUntil(
-      executeTaskPrompt({
-        db: getDb(c.env),
-        env: c.env,
-        executionId,
-        taskId,
-        taskTitle: task.title,
-        prompt: inputMessage.content,
-        repoUrl: project.repoUrl,
-        installationId: project.installationId ?? null,
-        setupCommand: project.setupCommand ?? null,
-        initiatedByUserId: userId,
-        initiatedByUserName: sessionUser.name,
-        initiatedByUserEmail: sessionUser.email,
-        organizationId: orgId,
-        provider: providerInput,
-        model,
-      }),
-    );
+    const runnerId = c.env.TaskRunner.idFromName(executionId);
+    const runner = c.env.TaskRunner.get(runnerId);
+    await runner.schedule({
+      executionId,
+      taskId,
+      taskTitle: task.title,
+      prompt: inputMessage.content,
+      repoUrl: project.repoUrl,
+      installationId: project.installationId ?? null,
+      setupCommand: project.setupCommand ?? null,
+      initiatedByUserId: userId,
+      initiatedByUserName: sessionUser.name,
+      initiatedByUserEmail: sessionUser.email,
+      organizationId: orgId,
+      provider: providerInput,
+      model,
+    });
 
     return c.json({ executionId, status: "queued" }, 202);
   } catch (error) {

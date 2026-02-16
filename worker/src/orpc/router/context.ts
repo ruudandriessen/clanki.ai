@@ -3,11 +3,13 @@ import { implement } from "@orpc/server";
 import { apiContract } from "../../../../shared/orpc/contract";
 import type { AppDb } from "../../db/client";
 import type { SecretCryptoEnv } from "../../lib/secret-crypto";
+import type { TaskRunner } from "../../lib/task-runner";
 
 export type Bindings = {
   HYPERDRIVE: Hyperdrive;
   DATABASE_URL?: string;
   Sandbox: DurableObjectNamespace<Sandbox>;
+  TaskRunner: DurableObjectNamespace<TaskRunner>;
   GITHUB_APP_ID?: string;
   GITHUB_APP_PRIVATE_KEY?: string;
   CREDENTIALS_ENCRYPTION_KEY: string;

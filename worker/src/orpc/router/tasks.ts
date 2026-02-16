@@ -1,7 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { ORPCError } from "@orpc/server";
 import type { AppDb } from "../../db/client";
-import { getDb } from "../../db/client";
 import * as schema from "../../db/schema";
 import { withTransaction } from "../../db/transaction";
 import {
@@ -10,7 +9,6 @@ import {
   isSupportedOpencodeProvider,
 } from "../../lib/opencode";
 import { buildTaskEventsStreamId } from "../../lib/durable-streams";
-import { executeTaskPrompt } from "../../lib/task-execution";
 import { getErrorMessage, getOrgId, parseOptionalId, parseOptionalTimestamp } from "./common";
 import { badRequest, internalError, notFound } from "./errors";
 import { os } from "./context";
@@ -308,25 +306,23 @@ export const tasksRouter = {
         badRequest("Task's project has no repository URL configured");
       }
 
-      context.executionCtx.waitUntil(
-        executeTaskPrompt({
-          db: getDb(context.env),
-          env: context.env,
-          executionId: run.id,
-          taskId,
-          taskTitle: task.title,
-          repoUrl: project.repoUrl,
-          installationId: project.installationId ?? null,
-          setupCommand: project.setupCommand ?? null,
-          prompt: inputMessage.content,
-          initiatedByUserId: userId,
-          initiatedByUserName: context.session.user.name,
-          initiatedByUserEmail: context.session.user.email,
-          organizationId: orgId,
-          provider: providerInput,
-          model,
-        }),
-      );
+      const runnerId = context.env.TaskRunner.idFromName(run.id);
+      const runner = context.env.TaskRunner.get(runnerId);
+      await runner.schedule({
+        executionId: run.id,
+        taskId,
+        taskTitle: task.title,
+        prompt: inputMessage.content,
+        repoUrl: project.repoUrl,
+        installationId: project.installationId ?? null,
+        setupCommand: project.setupCommand ?? null,
+        initiatedByUserId: userId,
+        initiatedByUserName: context.session.user.name,
+        initiatedByUserEmail: context.session.user.email,
+        organizationId: orgId,
+        provider: providerInput,
+        model,
+      });
 
       return run;
     } catch (error) {
