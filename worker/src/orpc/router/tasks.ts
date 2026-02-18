@@ -9,6 +9,7 @@ import {
   isSupportedOpencodeProvider,
 } from "../../lib/opencode";
 import { buildTaskEventsStreamId } from "../../lib/durable-streams";
+import { markTaskFailed } from "../../lib/task-execution/helpers";
 import { getErrorMessage, getOrgId, parseOptionalId, parseOptionalTimestamp } from "./common";
 import { badRequest, internalError, notFound } from "./errors";
 import { os } from "./context";
@@ -262,6 +263,20 @@ export const tasksRouter = {
         badRequest("No user message found for this task");
       }
 
+      const project = task.projectId
+        ? await db.query.projects.findFirst({
+            where: and(
+              eq(schema.projects.id, task.projectId),
+              eq(schema.projects.organizationId, orgId),
+            ),
+            columns: { repoUrl: true, installationId: true, setupCommand: true },
+          })
+        : null;
+
+      if (!project?.repoUrl) {
+        badRequest("Task's project has no repository URL configured");
+      }
+
       const now = Date.now();
       const run = {
         id: crypto.randomUUID(),
@@ -292,20 +307,6 @@ export const tasksRouter = {
         })
         .where(eq(schema.tasks.id, taskId));
 
-      const project = task.projectId
-        ? await db.query.projects.findFirst({
-            where: and(
-              eq(schema.projects.id, task.projectId),
-              eq(schema.projects.organizationId, orgId),
-            ),
-            columns: { repoUrl: true, installationId: true, setupCommand: true },
-          })
-        : null;
-
-      if (!project?.repoUrl) {
-        badRequest("Task's project has no repository URL configured");
-      }
-
       const runnerId = context.env.TaskRunner.idFromName(run.id);
       const runner = context.env.TaskRunner.get(runnerId);
       await runner.schedule({
@@ -332,6 +333,7 @@ export const tasksRouter = {
 
       const message = getErrorMessage(error, "Failed to create task run");
       console.error("Failed to create task run", { taskId, userId, message });
+      await markTaskFailed({ db, taskId, message });
       internalError(message);
     }
   }),
