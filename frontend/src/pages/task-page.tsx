@@ -17,7 +17,7 @@ import {
   type TaskStreamEvent,
 } from "../../../shared/task-stream-events";
 import { createTaskPrompt, getTaskEventStreamUrl } from "../lib/api";
-import { taskMessagesCollection, tasksCollection } from "../lib/collections";
+import { taskMessagesCollection } from "../lib/collections";
 
 function CollapsedActivityGroup({ items }: { items: TaskStreamActivityItem[] }) {
   const [expanded, setExpanded] = useState(false);
@@ -53,9 +53,10 @@ interface TaskPageProps {
   projectName: string;
   title: string;
   error: string | null;
+  isRunning: boolean;
 }
 
-export function TaskPage({ taskId, title, projectName, error }: TaskPageProps) {
+export function TaskPage({ taskId, title, projectName, error, isRunning }: TaskPageProps) {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [runEvents, setRunEvents] = useState<TaskStreamEvent[]>([]);
@@ -75,12 +76,6 @@ export function TaskPage({ taskId, title, projectName, error }: TaskPageProps) {
         .orderBy(({ m }) => m.created_at, "asc"),
     [taskId],
   );
-
-  const { data: taskData } = useLiveQuery(
-    (q) => q.from({ t: tasksCollection }).where(({ t }) => eq(t.id, taskId)),
-    [taskId],
-  );
-  const isRunning = taskData?.[0]?.status === "running";
 
   const persistedAssistantMessage = getLatestAssistantMessage(messages);
   const streamAssistantPreview = getLatestStreamAssistantPreview(runEvents);
