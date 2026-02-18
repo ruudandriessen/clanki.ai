@@ -30,6 +30,7 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
         taskId={taskId}
         title={result.task.title}
         projectName={result.project?.name ?? "No project"}
+        error={result.task.error ?? null}
       />
     );
   },

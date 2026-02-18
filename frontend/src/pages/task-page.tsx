@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLiveQuery, eq } from "@tanstack/react-db";
 import { stream } from "@durable-streams/client";
-import { Check, ChevronRight, Loader2, Pencil, Send, Wrench, X } from "lucide-react";
+import { AlertCircle, Check, ChevronRight, Loader2, Pencil, Send, Wrench, X } from "lucide-react";
 import {
   TaskStreamActivity,
   type TaskStreamActivityIcon,
@@ -52,9 +52,10 @@ interface TaskPageProps {
   taskId: string;
   projectName: string;
   title: string;
+  error: string | null;
 }
 
-export function TaskPage({ taskId, title, projectName }: TaskPageProps) {
+export function TaskPage({ taskId, title, projectName, error }: TaskPageProps) {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [runEvents, setRunEvents] = useState<TaskStreamEvent[]>([]);
@@ -301,6 +302,15 @@ export function TaskPage({ taskId, title, projectName }: TaskPageProps) {
         )}
         {titleError ? <p className="mt-1 text-xs text-destructive">{titleError}</p> : null}
       </div>
+
+      {error ? (
+        <div className="shrink-0 border-b border-destructive/30 bg-destructive/10 px-4 py-2.5 md:px-6">
+          <div className="flex items-start gap-2 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span className="break-words">{error}</span>
+          </div>
+        </div>
+      ) : null}
 
       <div className="neo-scroll flex-1 overflow-y-auto">
         {isLoading ? (
