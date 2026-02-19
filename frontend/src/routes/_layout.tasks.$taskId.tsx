@@ -18,6 +18,7 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
       (q) =>
         q
           .from({ task: tasksCollection })
+          .where(({ task }) => eq(task.id, taskId))
           .join({ project: projectsCollection }, ({ project, task }) =>
             eq(project.id, task.project_id),
           ),
