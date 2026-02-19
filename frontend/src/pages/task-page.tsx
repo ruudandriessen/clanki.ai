@@ -64,6 +64,7 @@ export function TaskPage({ taskId, title, projectName, error, isRunning }: TaskP
   const [titleInput, setTitleInput] = useState("");
   const [savingTitle, setSavingTitle] = useState(false);
   const [titleError, setTitleError] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -87,6 +88,9 @@ export function TaskPage({ taskId, title, projectName, error, isRunning }: TaskP
     persistedAssistantMessage,
   });
   const showEmptyState = timelineEntries.length === 0;
+  const runStartedAt = getLatestUserMessageCreatedAt(messages);
+  const runningDurationMs =
+    isRunning && runStartedAt !== null ? Math.max(0, now - runStartedAt) : null;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -129,6 +133,20 @@ export function TaskPage({ taskId, title, projectName, error, isRunning }: TaskP
       abortController.abort();
     };
   }, [taskId]);
+
+  useEffect(() => {
+    if (!isRunning) {
+      return;
+    }
+
+    const timerId = globalThis.setInterval(() => {
+      setNow(Date.now());
+    }, 1_000);
+
+    return () => {
+      globalThis.clearInterval(timerId);
+    };
+  }, [isRunning]);
 
   useEffect(() => {
     if (!editingTitle) {
@@ -361,10 +379,13 @@ export function TaskPage({ taskId, title, projectName, error, isRunning }: TaskP
             })}
 
             {isRunning && (
-              <div className="flex items-center gap-1 py-1">
+              <div className="flex items-center gap-2 py-1">
                 <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.3s]" />
                 <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.15s]" />
                 <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50" />
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {formatDuration(runningDurationMs ?? 0)}
+                </span>
               </div>
             )}
 
@@ -844,4 +865,39 @@ function toTimestampOrNull(value: unknown): number | null {
   }
 
   return null;
+}
+
+function getLatestUserMessageCreatedAt(
+  messages: Array<{ role: string; created_at: unknown }>,
+): number | null {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.role !== "user") {
+      continue;
+    }
+
+    const createdAt = toTimestampOrNull(message.created_at);
+    if (createdAt !== null) {
+      return createdAt;
+    }
+  }
+
+  return null;
+}
+
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+
+  return `${seconds}s`;
 }
