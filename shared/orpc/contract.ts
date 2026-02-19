@@ -32,11 +32,9 @@ export {
   createTaskInputSchema,
   createTaskMessageInputSchema,
   taskMessageSchema,
-  taskRunSchema,
   taskSchema,
   type CreateTaskInput,
   type CreateTaskMessageInput,
   type Task,
   type TaskMessage,
-  type TaskRun,
 } from "./contract/tasks";

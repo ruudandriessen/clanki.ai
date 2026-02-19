@@ -1,5 +1,4 @@
 import { and, desc, eq } from "drizzle-orm";
-import { ORPCError } from "@orpc/server";
 import type { AppDb } from "../../db/client";
 import * as schema from "../../db/schema";
 import { withTransaction } from "../../db/transaction";
@@ -10,14 +9,17 @@ import {
 } from "../../lib/opencode";
 import { buildTaskEventsStreamId } from "../../lib/durable-streams";
 import { getErrorMessage, getOrgId, parseOptionalId, parseOptionalTimestamp } from "./common";
-import { badRequest, internalError, notFound } from "./errors";
+import type { OrpcContext } from "./context";
+import { badRequest, notFound } from "./errors";
 import { os } from "./context";
+
+type TaskForOrg = { id: string; title: string; projectId: string | null };
 
 async function getTaskForOrg(
   db: AppDb,
   taskId: string,
   orgId: string,
-): Promise<{ id: string; title: string; projectId: string | null } | undefined> {
+): Promise<TaskForOrg | undefined> {
   return db.query.tasks.findFirst({
     where: and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)),
     columns: { id: true, title: true, projectId: true },
@@ -32,6 +34,133 @@ async function getLatestTaskMessageTimestamp(db: AppDb, taskId: string): Promise
   });
 
   return latest?.createdAt ?? null;
+}
+
+async function setTaskRunError(
+  db: AppDb,
+  args: { taskId: string; orgId: string; message: string },
+) {
+  const { taskId, orgId, message } = args;
+
+  try {
+    await db
+      .update(schema.tasks)
+      .set({ status: "open", error: message, updatedAt: Date.now() })
+      .where(and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)));
+  } catch {}
+}
+
+async function queueTaskRun(args: {
+  db: AppDb;
+  env: OrpcContext["env"];
+  orgId: string;
+  task: TaskForOrg;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  inputMessage: { id: string; content: string };
+  provider?: string;
+  model?: string;
+}) {
+  const {
+    db,
+    env,
+    orgId,
+    task,
+    userId,
+    userName,
+    userEmail,
+    inputMessage,
+    provider,
+    model: requestedModel,
+  } = args;
+
+  const requestedProvider = provider?.trim().toLowerCase() ?? "";
+  const providerInput =
+    requestedProvider.length > 0 ? requestedProvider : DEFAULT_OPENCODE_PROVIDER;
+  if (!isSupportedOpencodeProvider(providerInput)) {
+    badRequest(`Unsupported provider: ${providerInput}`);
+  }
+
+  const model = requestedModel?.trim() ?? DEFAULT_OPENCODE_MODEL;
+  if (model.length === 0) {
+    badRequest("model is required");
+  }
+
+  const hasCredential = await db.query.userProviderCredentials.findFirst({
+    where: and(
+      eq(schema.userProviderCredentials.userId, userId),
+      eq(schema.userProviderCredentials.provider, providerInput),
+    ),
+    columns: { id: true },
+  });
+  if (!hasCredential) {
+    badRequest(`No ${providerInput} credentials configured in Settings`);
+  }
+
+  const project = task.projectId
+    ? await db.query.projects.findFirst({
+        where: and(
+          eq(schema.projects.id, task.projectId),
+          eq(schema.projects.organizationId, orgId),
+        ),
+        columns: { repoUrl: true, installationId: true, setupCommand: true },
+      })
+    : null;
+
+  if (!project?.repoUrl) {
+    badRequest("Task's project has no repository URL configured");
+  }
+
+  const now = Date.now();
+  const run = {
+    id: crypto.randomUUID(),
+    taskId: task.id,
+    tool: "opencode",
+    status: "queued",
+    inputMessageId: inputMessage.id,
+    outputMessageId: null,
+    sandboxId: null,
+    sessionId: null,
+    initiatedByUserId: userId,
+    provider: providerInput,
+    model,
+    error: null,
+    startedAt: null,
+    finishedAt: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await db
+    .update(schema.tasks)
+    .set({
+      status: "running",
+      streamId: buildTaskEventsStreamId({ organizationId: orgId, taskId: task.id }),
+      error: null,
+      updatedAt: now,
+    })
+    .where(and(eq(schema.tasks.id, task.id), eq(schema.tasks.organizationId, orgId)));
+
+  const runnerId = env.TaskRunner.idFromName(run.id);
+  const runner = env.TaskRunner.get(runnerId);
+  await runner.schedule({
+    executionId: run.id,
+    taskId: task.id,
+    taskTitle: task.title,
+    prompt: inputMessage.content,
+    repoUrl: project.repoUrl,
+    installationId: project.installationId ?? null,
+    setupCommand: project.setupCommand ?? null,
+    initiatedByUserId: userId,
+    initiatedByUserName: userName,
+    initiatedByUserEmail: userEmail,
+    organizationId: orgId,
+    provider: providerInput,
+    model,
+  });
+
+  return run;
 }
 
 export const tasksRouter = {
@@ -201,138 +330,29 @@ export const tasksRouter = {
       return { data: message, txid };
     });
 
-    return result;
-  }),
-  createRun: os.tasks.createRun.handler(async ({ input, context }) => {
-    const db = context.db;
-    const orgId = getOrgId(context);
-    const userId = context.session.user.id;
-    const taskId = input.taskId;
-
-    try {
-      if (!orgId) {
-        badRequest("No active organization");
-      }
-
-      const task = await getTaskForOrg(db, taskId, orgId);
-      if (!task) {
-        notFound("Task not found");
-      }
-
-      const requestedProvider = input.provider?.trim().toLowerCase() ?? "";
-      const providerInput =
-        requestedProvider.length > 0 ? requestedProvider : DEFAULT_OPENCODE_PROVIDER;
-      if (!isSupportedOpencodeProvider(providerInput)) {
-        badRequest(`Unsupported provider: ${providerInput}`);
-      }
-
-      const model = input.model?.trim() ?? DEFAULT_OPENCODE_MODEL;
-      if (model.length === 0) {
-        badRequest("model is required");
-      }
-
-      const hasCredential = await db.query.userProviderCredentials.findFirst({
-        where: and(
-          eq(schema.userProviderCredentials.userId, userId),
-          eq(schema.userProviderCredentials.provider, providerInput),
-        ),
-        columns: { id: true },
-      });
-      if (!hasCredential) {
-        badRequest(`No ${providerInput} credentials configured in Settings`);
-      }
-
-      const inputMessage = input.messageId
-        ? await db.query.taskMessages.findFirst({
-            where: and(
-              eq(schema.taskMessages.id, input.messageId),
-              eq(schema.taskMessages.taskId, taskId),
-              eq(schema.taskMessages.role, "user"),
-            ),
-          })
-        : await db.query.taskMessages.findFirst({
-            where: and(
-              eq(schema.taskMessages.taskId, taskId),
-              eq(schema.taskMessages.role, "user"),
-            ),
-            orderBy: desc(schema.taskMessages.createdAt),
+    if (result.data.role === "user") {
+      context.executionCtx.waitUntil(
+        queueTaskRun({
+          db,
+          env: context.env,
+          orgId,
+          task,
+          userId: context.session.user.id,
+          userName: context.session.user.name,
+          userEmail: context.session.user.email,
+          inputMessage: { id: result.data.id, content: result.data.content },
+        }).catch(async (error: unknown) => {
+          const message = getErrorMessage(error, "Failed to auto-start task run");
+          console.error("Failed to auto-start task run", {
+            taskId: input.taskId,
+            userId: context.session.user.id,
+            message,
           });
-
-      if (!inputMessage) {
-        badRequest("No user message found for this task");
-      }
-
-      const now = Date.now();
-      const run = {
-        id: crypto.randomUUID(),
-        taskId,
-        tool: "opencode",
-        status: "queued",
-        inputMessageId: inputMessage.id,
-        outputMessageId: null,
-        sandboxId: null,
-        sessionId: null,
-        initiatedByUserId: userId,
-        provider: providerInput,
-        model,
-        error: null,
-        startedAt: null,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      await db
-        .update(schema.tasks)
-        .set({
-          status: "running",
-          streamId: buildTaskEventsStreamId({ organizationId: orgId, taskId }),
-          error: null,
-          updatedAt: now,
-        })
-        .where(eq(schema.tasks.id, taskId));
-
-      const project = task.projectId
-        ? await db.query.projects.findFirst({
-            where: and(
-              eq(schema.projects.id, task.projectId),
-              eq(schema.projects.organizationId, orgId),
-            ),
-            columns: { repoUrl: true, installationId: true, setupCommand: true },
-          })
-        : null;
-
-      if (!project?.repoUrl) {
-        badRequest("Task's project has no repository URL configured");
-      }
-
-      const runnerId = context.env.TaskRunner.idFromName(run.id);
-      const runner = context.env.TaskRunner.get(runnerId);
-      await runner.schedule({
-        executionId: run.id,
-        taskId,
-        taskTitle: task.title,
-        prompt: inputMessage.content,
-        repoUrl: project.repoUrl,
-        installationId: project.installationId ?? null,
-        setupCommand: project.setupCommand ?? null,
-        initiatedByUserId: userId,
-        initiatedByUserName: context.session.user.name,
-        initiatedByUserEmail: context.session.user.email,
-        organizationId: orgId,
-        provider: providerInput,
-        model,
-      });
-
-      return run;
-    } catch (error) {
-      if (error instanceof ORPCError) {
-        throw error;
-      }
-
-      const message = getErrorMessage(error, "Failed to create task run");
-      console.error("Failed to create task run", { taskId, userId, message });
-      internalError(message);
+          await setTaskRunError(db, { taskId: input.taskId, orgId, message });
+        }),
+      );
     }
+
+    return result;
   }),
 };

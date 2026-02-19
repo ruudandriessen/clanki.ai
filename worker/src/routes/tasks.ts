@@ -6,19 +6,12 @@ import { withTransaction, withTxid } from "../db/transaction";
 import * as schema from "../db/schema";
 import { clauseToString } from "../lib/clause-to-string";
 import { electricFn } from "../lib/electric";
-import {
-  DEFAULT_OPENCODE_MODEL,
-  DEFAULT_OPENCODE_PROVIDER,
-  isSupportedOpencodeProvider,
-} from "../lib/opencode";
 import { buildTaskEventsStreamId, openTaskEventsSse } from "../lib/durable-streams";
-import type { TaskRunner } from "../lib/task-runner";
 
 type Env = {
   Bindings: {
     HYPERDRIVE: Hyperdrive;
     Sandbox: DurableObjectNamespace<Sandbox>;
-    TaskRunner: DurableObjectNamespace<TaskRunner>;
     GITHUB_APP_ID?: string;
     GITHUB_APP_PRIVATE_KEY?: string;
     CREDENTIALS_ENCRYPTION_KEY: string;
@@ -39,10 +32,6 @@ const tasks = new Hono<Env>();
 function getOrgId(c: { get: (key: "session") => Env["Variables"]["session"] }): string | null {
   const session = c.get("session");
   return (session.session as { activeOrganizationId?: string | null }).activeOrganizationId ?? null;
-}
-
-function getUserId(c: { get: (key: "session") => Env["Variables"]["session"] }): string {
-  return c.get("session").user.id;
 }
 
 function parseOptionalId(value: unknown): string | undefined {
@@ -401,134 +390,4 @@ tasks.get("/:taskId/stream", async (c) => {
   }
 });
 
-// POST /api/tasks/:taskId/prompt — execute a prompt against the task's sandbox
-tasks.post("/:taskId/prompt", async (c) => {
-  const db = c.get("db");
-  const { taskId } = c.req.param();
-  const orgId = getOrgId(c);
-  const userId = getUserId(c);
-  const sessionUser = c.get("session").user;
-
-  try {
-    if (!orgId) {
-      return c.json({ error: "No active organization" }, 400);
-    }
-
-    const task = await getTaskForOrg(db, taskId, orgId);
-    if (!task) {
-      return c.json({ error: "Task not found" }, 404);
-    }
-
-    let body: { messageId?: string; provider?: string; model?: string };
-    try {
-      body = await c.req.json();
-    } catch {
-      body = {};
-    }
-
-    const requestedProvider = body.provider?.trim().toLowerCase() ?? "";
-    const providerInput =
-      requestedProvider.length > 0 ? requestedProvider : DEFAULT_OPENCODE_PROVIDER;
-    if (!isSupportedOpencodeProvider(providerInput)) {
-      return c.json({ error: `Unsupported provider: ${providerInput}` }, 400);
-    }
-
-    const model = body.model?.trim() ?? DEFAULT_OPENCODE_MODEL;
-    if (model.length === 0) {
-      return c.json({ error: "model is required" }, 400);
-    }
-
-    const hasCredential = await db.query.userProviderCredentials.findFirst({
-      where: and(
-        eq(schema.userProviderCredentials.userId, userId),
-        eq(schema.userProviderCredentials.provider, providerInput),
-      ),
-      columns: { id: true },
-    });
-    if (!hasCredential) {
-      return c.json({ error: `No ${providerInput} credentials configured in Settings` }, 400);
-    }
-
-    const inputMessage = body.messageId
-      ? await db.query.taskMessages.findFirst({
-          where: and(
-            eq(schema.taskMessages.id, body.messageId),
-            eq(schema.taskMessages.taskId, taskId),
-            eq(schema.taskMessages.role, "user"),
-          ),
-        })
-      : await db.query.taskMessages.findFirst({
-          where: and(eq(schema.taskMessages.taskId, taskId), eq(schema.taskMessages.role, "user")),
-          orderBy: desc(schema.taskMessages.createdAt),
-        });
-
-    if (!inputMessage) {
-      return c.json({ error: "No user message found for this task" }, 400);
-    }
-
-    const project = task.projectId
-      ? await db.query.projects.findFirst({
-          where: and(
-            eq(schema.projects.id, task.projectId),
-            eq(schema.projects.organizationId, orgId),
-          ),
-          columns: { repoUrl: true, installationId: true, setupCommand: true },
-        })
-      : null;
-
-    if (!project?.repoUrl) {
-      return c.json({ error: "Task's project has no repository URL configured" }, 400);
-    }
-
-    const executionId = crypto.randomUUID();
-    const now = Date.now();
-
-    await db
-      .update(schema.tasks)
-      .set({
-        status: "running",
-        streamId: buildTaskEventsStreamId({ organizationId: orgId, taskId }),
-        error: null,
-        updatedAt: now,
-      })
-      .where(eq(schema.tasks.id, taskId));
-
-    const runnerId = c.env.TaskRunner.idFromName(executionId);
-    const runner = c.env.TaskRunner.get(runnerId);
-    await runner.schedule({
-      executionId,
-      taskId,
-      taskTitle: task.title,
-      prompt: inputMessage.content,
-      repoUrl: project.repoUrl,
-      installationId: project.installationId ?? null,
-      setupCommand: project.setupCommand ?? null,
-      initiatedByUserId: userId,
-      initiatedByUserName: sessionUser.name,
-      initiatedByUserEmail: sessionUser.email,
-      organizationId: orgId,
-      provider: providerInput,
-      model,
-    });
-
-    return c.json({ executionId, status: "queued" }, 202);
-  } catch (error) {
-    const message = getErrorMessage(error);
-    console.error("Failed to execute task prompt", {
-      taskId,
-      userId,
-      message,
-    });
-    return c.json({ error: message }, 500);
-  }
-});
-
 export { tasks };
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.trim().length > 0) {
-    return error.message;
-  }
-
-  return "Failed to execute task prompt";
-}

@@ -18,25 +18,6 @@ export const taskMessageSchema = z.object({
   createdAt: z.number(),
 });
 
-export const taskRunSchema = z.object({
-  id: z.string(),
-  taskId: z.string(),
-  tool: z.string(),
-  status: z.string(),
-  inputMessageId: z.string().nullable(),
-  outputMessageId: z.string().nullable(),
-  sandboxId: z.string().nullable(),
-  sessionId: z.string().nullable(),
-  initiatedByUserId: z.string().nullable(),
-  provider: z.string(),
-  model: z.string(),
-  error: z.string().nullable(),
-  startedAt: z.number().nullable(),
-  finishedAt: z.number().nullable(),
-  createdAt: z.number(),
-  updatedAt: z.number(),
-});
-
 export const createTaskInputSchema = z.object({
   id: z.string().optional(),
   title: z.string(),
@@ -82,20 +63,9 @@ export const tasksContract = {
       }),
     )
     .output(mutationResultSchema(taskMessageSchema)),
-  createRun: oc
-    .input(
-      z.object({
-        taskId: z.string(),
-        messageId: z.string().optional(),
-        provider: z.string().optional(),
-        model: z.string().optional(),
-      }),
-    )
-    .output(taskRunSchema),
 };
 
 export type Task = z.infer<typeof taskSchema>;
 export type TaskMessage = z.infer<typeof taskMessageSchema>;
-export type TaskRun = z.infer<typeof taskRunSchema>;
 export type CreateTaskInput = z.infer<typeof createTaskInputSchema>;
 export type CreateTaskMessageInput = z.infer<typeof createTaskMessageInputSchema>;

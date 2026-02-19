@@ -16,7 +16,7 @@ import {
   parseOpenCodeEventPayload,
   type TaskStreamEvent,
 } from "../../../shared/task-stream-events";
-import { createTaskPrompt, getTaskEventStreamUrl } from "../lib/api";
+import { getTaskEventStreamUrl } from "../lib/api";
 import { taskMessagesCollection, tasksCollection } from "../lib/collections";
 
 function CollapsedActivityGroup({ items }: { items: TaskStreamActivityItem[] }) {
@@ -160,8 +160,6 @@ export function TaskPage({ taskId, title, projectName, error, isRunning }: TaskP
       };
       const messageTx = taskMessagesCollection.insert(userMessage);
       await messageTx.isPersisted.promise;
-
-      await createTaskPrompt(taskId, userMessage.id);
     } finally {
       setSending(false);
       inputRef.current?.focus();

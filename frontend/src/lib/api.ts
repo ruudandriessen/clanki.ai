@@ -20,37 +20,6 @@ export function updateProjectSetupCommand(projectId: string, setupCommand: strin
   return apiClient.projects.updateSetupCommand({ projectId, setupCommand });
 }
 
-function createTaskRun(
-  taskId: string,
-  messageId?: string,
-  options?: { provider?: string; model?: string },
-) {
-  return apiClient.tasks.createRun({
-    taskId,
-    messageId,
-    provider: options?.provider,
-    model: options?.model,
-  });
-}
-
-export interface TaskPromptResult {
-  executionId: string;
-  status: string;
-}
-
-// Backward-compatible wrapper for older task-page call sites.
-export async function createTaskPrompt(
-  taskId: string,
-  messageId?: string,
-  options?: { provider?: string; model?: string },
-): Promise<TaskPromptResult> {
-  const run = await createTaskRun(taskId, messageId, options);
-  return {
-    executionId: run.id,
-    status: run.status,
-  };
-}
-
 export function getTaskEventStreamUrl(taskId: string) {
   return `${globalThis.location.origin}/api/tasks/${taskId}/stream`;
 }
