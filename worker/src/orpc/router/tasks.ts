@@ -1,4 +1,5 @@
 import { and, desc, eq } from "drizzle-orm";
+import { ORPCError } from "@orpc/server";
 import type { AppDb } from "../../db/client";
 import * as schema from "../../db/schema";
 import { withTransaction } from "../../db/transaction";
@@ -10,7 +11,7 @@ import {
 import { buildTaskEventsStreamId } from "../../lib/durable-streams";
 import { getErrorMessage, getOrgId, parseOptionalId, parseOptionalTimestamp } from "./common";
 import type { OrpcContext } from "./context";
-import { badRequest, notFound } from "./errors";
+import { badRequest, internalError, notFound } from "./errors";
 import { os } from "./context";
 
 type TaskForOrg = { id: string; title: string; projectId: string | null };
@@ -331,8 +332,8 @@ export const tasksRouter = {
     });
 
     if (result.data.role === "user") {
-      context.executionCtx.waitUntil(
-        queueTaskRun({
+      try {
+        await queueTaskRun({
           db,
           env: context.env,
           orgId,
@@ -341,16 +342,20 @@ export const tasksRouter = {
           userName: context.session.user.name,
           userEmail: context.session.user.email,
           inputMessage: { id: result.data.id, content: result.data.content },
-        }).catch(async (error: unknown) => {
-          const message = getErrorMessage(error, "Failed to auto-start task run");
-          console.error("Failed to auto-start task run", {
-            taskId: input.taskId,
-            userId: context.session.user.id,
-            message,
-          });
-          await setTaskRunError(db, { taskId: input.taskId, orgId, message });
-        }),
-      );
+        });
+      } catch (error) {
+        const message = getErrorMessage(error, "Failed to auto-start task run");
+        console.error("Failed to auto-start task run", {
+          taskId: input.taskId,
+          userId: context.session.user.id,
+          message,
+        });
+        await setTaskRunError(db, { taskId: input.taskId, orgId, message });
+        if (error instanceof ORPCError) {
+          throw error;
+        }
+        internalError(message);
+      }
     }
 
     return result;
