@@ -72,18 +72,12 @@ export function TaskList() {
     }
 
     const deletingTaskId = taskToDelete.id;
-    const isDeletingActiveTask = pathname === `/tasks/${deletingTaskId}`;
 
     setDeletingTask(true);
     setDeleteError(null);
 
     try {
-      const tx = tasksCollection.delete(deletingTaskId);
-      await tx.isPersisted.promise;
-
-      if (isDeletingActiveTask) {
-        navigate({ to: "/", replace: true });
-      }
+      tasksCollection.delete(deletingTaskId);
       setTaskToDelete(null);
     } catch (error) {
       setDeleteError(error instanceof Error ? error.message : "Failed to delete task");

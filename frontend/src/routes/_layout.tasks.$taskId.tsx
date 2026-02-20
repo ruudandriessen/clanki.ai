@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Navigate, createFileRoute } from "@tanstack/react-router";
 import { TaskPage } from "@/pages/task-page";
 import { eq, useLiveQuery } from "@tanstack/react-db";
 import { projectsCollection, taskMessagesCollection, tasksCollection } from "@/lib/collections";
@@ -12,9 +12,7 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
     ]),
   component: () => {
     const { taskId } = Route.useParams();
-    const {
-      data: [result],
-    } = useLiveQuery(
+    const { data, isLoading } = useLiveQuery(
       (q) =>
         q
           .from({ task: tasksCollection })
@@ -25,14 +23,23 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
       [taskId],
     );
 
+    const openedTask = data[0];
+    if (isLoading) {
+      return null;
+    }
+
+    if (!openedTask) {
+      return <Navigate to="/" replace />;
+    }
+
     return (
       <TaskPage
         key={taskId}
         taskId={taskId}
-        title={result.task.title}
-        projectName={result.project?.name ?? "No project"}
-        error={result.task.error ?? null}
-        isRunning={result.task.status === "running"}
+        title={openedTask.task.title}
+        projectName={openedTask.project?.name ?? "No project"}
+        error={openedTask.task.error ?? null}
+        isRunning={openedTask.task.status === "running"}
       />
     );
   },
