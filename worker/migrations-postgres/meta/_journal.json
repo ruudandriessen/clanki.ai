@@ -64,6 +64,13 @@
       "when": 1771587897924,
       "tag": "0008_organic_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1771593433275,
+      "tag": "0009_nappy_scalphunter",
+      "breakpoints": true
     }
   ]
 }
