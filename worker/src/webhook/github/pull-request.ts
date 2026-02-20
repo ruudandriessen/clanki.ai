@@ -54,12 +54,22 @@ export async function handlePullRequest(
           prNumber: pr.number,
           openedAt: now,
           readyAt: pr.draft ? null : now,
+          reviewState: null,
+          reviewUpdatedAt: null,
+          checksState: null,
+          checksConclusion: null,
+          checksUpdatedAt: null,
         })
         .onConflictDoUpdate({
           target: [pullRequests.repository, pullRequests.prNumber],
           set: {
             installationId: installation.id,
             branch,
+            reviewState: null,
+            reviewUpdatedAt: null,
+            checksState: null,
+            checksConclusion: null,
+            checksUpdatedAt: null,
           },
         });
       break;
@@ -73,7 +83,17 @@ export async function handlePullRequest(
 
     case "synchronize": {
       console.log(`PR #${pr.number} synchronized: ${pr.title}`);
-      await db.update(pullRequests).set({ branch }).where(pullRequestWhere);
+      await db
+        .update(pullRequests)
+        .set({
+          branch,
+          reviewState: null,
+          reviewUpdatedAt: Date.now(),
+          checksState: null,
+          checksConclusion: null,
+          checksUpdatedAt: Date.now(),
+        })
+        .where(pullRequestWhere);
       break;
     }
 
@@ -86,8 +106,26 @@ export async function handlePullRequest(
           mergedBy: null,
           readyAt: pr.draft ? null : Date.now(),
           branch,
+          reviewState: null,
+          reviewUpdatedAt: Date.now(),
+          checksState: null,
+          checksConclusion: null,
+          checksUpdatedAt: Date.now(),
         })
         .where(pullRequestWhere);
+      break;
+    }
+
+    case "converted_to_draft": {
+      console.log(`PR #${pr.number} converted to draft: ${pr.title}`);
+      await db.update(pullRequests).set({ readyAt: null, branch }).where(pullRequestWhere);
+      break;
+    }
+
+    case "review_requested":
+    case "review_request_removed": {
+      console.log(`PR #${pr.number} ${action}: ${pr.title}`);
+      await db.update(pullRequests).set({ branch }).where(pullRequestWhere);
       break;
     }
   }

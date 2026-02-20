@@ -71,6 +71,13 @@
       "when": 1771593433275,
       "tag": "0009_nappy_scalphunter",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1771595153286,
+      "tag": "0010_freezing_magik",
+      "breakpoints": true
     }
   ]
 }
