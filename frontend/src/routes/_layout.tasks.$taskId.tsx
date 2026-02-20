@@ -7,48 +7,7 @@ import {
   taskMessagesCollection,
   tasksCollection,
 } from "@/lib/collections";
-
-type PullRequestStatus = "open" | "merged" | "closed" | "draft";
-
-function getPullRequestStatus(pr: {
-  state?: string;
-  merged_at: bigint | null;
-  ready_at: bigint | null;
-}): PullRequestStatus {
-  switch (pr.state) {
-    case "draft":
-      return "draft";
-    case "closed":
-      return "closed";
-    case "merged":
-      return "merged";
-    case "open":
-      return "open";
-    default: {
-      if (pr.merged_at !== null) {
-        return "merged";
-      }
-      return pr.ready_at === null ? "draft" : "open";
-    }
-  }
-}
-
-const extractOrgRepoFromUrl = (url: string): string | null => {
-  if (!url) {
-    return null;
-  }
-
-  try {
-    const parsed = new URL(url);
-    const pathParts = parsed.pathname.split("/");
-    if (pathParts.length < 3) {
-      return null;
-    }
-    return pathParts.slice(1, 3).join("/");
-  } catch {
-    return null;
-  }
-};
+import { extractOrgRepoFromUrl, getPullRequestStatus } from "@/lib/pull-request";
 
 export const Route = createFileRoute("/_layout/tasks/$taskId")({
   loader: () =>

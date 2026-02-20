@@ -12,7 +12,73 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "../../lib/utils";
-import { projectsCollection, tasksCollection } from "../../lib/collections";
+import { projectsCollection, pullRequestsCollection, tasksCollection } from "../../lib/collections";
+import {
+  extractOrgRepoFromUrl,
+  getPullRequestStatus,
+  type PullRequestStatus,
+} from "../../lib/pull-request";
+
+type TaskSidebarGroup = "merged" | "needsAction" | "openNoPr" | "awaitingReview" | "running";
+
+const SIDEBAR_GROUPS: Array<{ key: TaskSidebarGroup; label: string }> = [
+  { key: "merged", label: "Merged" },
+  { key: "needsAction", label: "Needs action" },
+  { key: "openNoPr", label: "Open (no PR)" },
+  { key: "awaitingReview", label: "Awaiting review" },
+  { key: "running", label: "Running" },
+];
+
+const FAILING_CHECK_CONCLUSIONS = new Set([
+  "failure",
+  "cancelled",
+  "timed_out",
+  "action_required",
+  "startup_failure",
+  "stale",
+]);
+
+function hasFailingChecks(checksConclusion: string | null | undefined): boolean {
+  if (!checksConclusion) {
+    return false;
+  }
+
+  return FAILING_CHECK_CONCLUSIONS.has(checksConclusion);
+}
+
+function getSidebarGroupKey(params: {
+  taskStatus: string;
+  pullRequestStatus: PullRequestStatus | null;
+  reviewState: string | null | undefined;
+  checksConclusion: string | null | undefined;
+  hasError: boolean;
+}): TaskSidebarGroup {
+  const { taskStatus, pullRequestStatus, reviewState, checksConclusion, hasError } = params;
+
+  if (taskStatus === "running") {
+    return "running";
+  }
+
+  if (pullRequestStatus === "merged") {
+    return "merged";
+  }
+
+  if (
+    hasError ||
+    reviewState === "changes_requested" ||
+    hasFailingChecks(checksConclusion) ||
+    pullRequestStatus === "closed" ||
+    pullRequestStatus === "draft"
+  ) {
+    return "needsAction";
+  }
+
+  if (!pullRequestStatus) {
+    return "openNoPr";
+  }
+
+  return "awaitingReview";
+}
 
 export function TaskList() {
   const { data: tasks, isLoading } = useLiveQuery((query) =>
@@ -20,6 +86,9 @@ export function TaskList() {
   );
   const { data: projects } = useLiveQuery((query) =>
     query.from({ p: projectsCollection }).orderBy(({ p }) => p.created_at, "asc"),
+  );
+  const { data: pullRequests } = useLiveQuery((query) =>
+    query.from({ pr: pullRequestsCollection }).orderBy(({ pr }) => pr.opened_at, "desc"),
   );
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -30,6 +99,45 @@ export function TaskList() {
 
   const [defaultProject] = projects;
   const projectsById = new Map(projects.map((project) => [project.id, project]));
+  const latestPullRequestByKey = new Map<string, (typeof pullRequests)[number]>();
+
+  for (const pullRequest of pullRequests) {
+    if (!pullRequest.branch) {
+      continue;
+    }
+
+    const pullRequestKey = `${pullRequest.repository}::${pullRequest.branch}`;
+    if (!latestPullRequestByKey.has(pullRequestKey)) {
+      latestPullRequestByKey.set(pullRequestKey, pullRequest);
+    }
+  }
+
+  const groupedTasks: Record<TaskSidebarGroup, Array<(typeof tasks)[number]>> = {
+    merged: [],
+    needsAction: [],
+    openNoPr: [],
+    awaitingReview: [],
+    running: [],
+  };
+
+  for (const task of tasks) {
+    const projectRepository = extractOrgRepoFromUrl(
+      task.project_id ? projectsById.get(task.project_id)?.repo_url : null,
+    );
+    const pullRequest =
+      projectRepository && task.branch
+        ? (latestPullRequestByKey.get(`${projectRepository}::${task.branch}`) ?? null)
+        : null;
+    const pullRequestStatus = pullRequest ? getPullRequestStatus(pullRequest) : null;
+    const groupKey = getSidebarGroupKey({
+      taskStatus: task.status,
+      pullRequestStatus,
+      reviewState: pullRequest?.review_state,
+      checksConclusion: pullRequest?.checks_conclusion,
+      hasError: (task.error?.trim().length ?? 0) > 0,
+    });
+    groupedTasks[groupKey].push(task);
+  }
 
   async function handleNewTask() {
     if (creating || !defaultProject) return;
@@ -111,7 +219,7 @@ export function TaskList() {
         </Button>
       </div>
 
-      <nav className="neo-scroll flex-1 space-y-1 overflow-y-auto px-2 pb-2">
+      <nav className="neo-scroll flex-1 space-y-3 overflow-y-auto px-2 pb-2">
         {isLoading ? (
           <div className="flex items-center justify-center py-6 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -121,66 +229,83 @@ export function TaskList() {
             <p className="text-xs text-muted-foreground">No tasks yet</p>
           </div>
         ) : (
-          tasks.map((task) => {
-            const isActive = pathname === `/tasks/${task.id}`;
-            const projectName = task.project_id ? projectsById.get(task.project_id)?.name : null;
-            const secondaryLabel =
-              projectName && task.branch
-                ? `${projectName} - ${task.branch}`
-                : (projectName ?? task.branch);
-            const hasError = (task.error?.trim().length ?? 0) > 0;
+          SIDEBAR_GROUPS.map((group) => {
+            const tasksInGroup = groupedTasks[group.key];
+            if (tasksInGroup.length === 0) {
+              return null;
+            }
+
             return (
-              <div
-                key={task.id}
-                className={cn(
-                  "group flex items-center gap-1 rounded-[var(--radius-sm)] transition-colors",
-                  isActive
-                    ? "bg-accent/70 text-accent-foreground"
-                    : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
-                )}
-              >
-                <Link
-                  to="/tasks/$taskId"
-                  params={{ taskId: task.id }}
-                  className="flex min-w-0 flex-1 items-start gap-2 px-2.5 py-2 text-sm"
-                >
-                  {hasError ? (
-                    <CircleAlert className="mt-0.5 w-3.5 h-3.5 shrink-0 text-destructive" />
-                  ) : task.status === "running" ? (
-                    <Loader2 className="mt-0.5 w-3.5 h-3.5 shrink-0 animate-spin" />
-                  ) : (
-                    <MessageSquare className="mt-0.5 w-3.5 h-3.5 shrink-0" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate">{task.title}</p>
-                    {secondaryLabel ? (
-                      <p
-                        className={cn(
-                          "truncate text-[11px]",
-                          isActive ? "text-accent-foreground/80" : "text-muted-foreground",
-                        )}
+              <div key={group.key} className="space-y-1">
+                <p className="px-2.5 py-1 text-[10px] font-bold text-muted-foreground/90 uppercase tracking-[0.08em]">
+                  {group.label}
+                </p>
+                {tasksInGroup.map((task) => {
+                  const isActive = pathname === `/tasks/${task.id}`;
+                  const projectName = task.project_id
+                    ? projectsById.get(task.project_id)?.name
+                    : null;
+                  const secondaryLabel =
+                    projectName && task.branch
+                      ? `${projectName} - ${task.branch}`
+                      : (projectName ?? task.branch);
+                  const hasError = (task.error?.trim().length ?? 0) > 0;
+
+                  return (
+                    <div
+                      key={task.id}
+                      className={cn(
+                        "group flex items-center gap-1 rounded-[var(--radius-sm)] transition-colors",
+                        isActive
+                          ? "bg-accent/70 text-accent-foreground"
+                          : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
+                      )}
+                    >
+                      <Link
+                        to="/tasks/$taskId"
+                        params={{ taskId: task.id }}
+                        className="flex min-w-0 flex-1 items-start gap-2 px-2.5 py-2 text-sm"
                       >
-                        {secondaryLabel}
-                      </p>
-                    ) : null}
-                  </div>
-                </Link>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  className={cn(
-                    "mr-1 shrink-0 text-muted-foreground shadow-none hover:border-transparent hover:text-destructive hover:shadow-none",
-                    isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-                  )}
-                  onClick={() => {
-                    setTaskToDelete({ id: task.id, title: task.title });
-                    setDeleteError(null);
-                  }}
-                  title={`Delete ${task.title}`}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
+                        {hasError ? (
+                          <CircleAlert className="mt-0.5 w-3.5 h-3.5 shrink-0 text-destructive" />
+                        ) : task.status === "running" ? (
+                          <Loader2 className="mt-0.5 w-3.5 h-3.5 shrink-0 animate-spin" />
+                        ) : (
+                          <MessageSquare className="mt-0.5 w-3.5 h-3.5 shrink-0" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate">{task.title}</p>
+                          {secondaryLabel ? (
+                            <p
+                              className={cn(
+                                "truncate text-[11px]",
+                                isActive ? "text-accent-foreground/80" : "text-muted-foreground",
+                              )}
+                            >
+                              {secondaryLabel}
+                            </p>
+                          ) : null}
+                        </div>
+                      </Link>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        className={cn(
+                          "mr-1 shrink-0 text-muted-foreground shadow-none hover:border-transparent hover:text-destructive hover:shadow-none",
+                          isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+                        )}
+                        onClick={() => {
+                          setTaskToDelete({ id: task.id, title: task.title });
+                          setDeleteError(null);
+                        }}
+                        title={`Delete ${task.title}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             );
           })
