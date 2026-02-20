@@ -6,13 +6,14 @@ const STORE_NAME = "streams";
 
 type TaskStreamCacheRecord = {
   key: string;
-  cursor: string | null;
+  offset?: string | null;
+  cursor?: string | null;
   events: TaskStreamEvent[];
   updatedAt: number;
 };
 
 type TaskStreamCacheSnapshot = {
-  cursor: string | null;
+  offset: string | null;
   events: TaskStreamEvent[];
 };
 
@@ -72,7 +73,7 @@ function parseTaskStreamEvents(value: unknown): TaskStreamEvent[] {
 
 export async function readTaskStreamCache(key: string): Promise<TaskStreamCacheSnapshot> {
   if (!canUseIndexedDb()) {
-    return { cursor: null, events: [] };
+    return { offset: null, events: [] };
   }
 
   try {
@@ -85,13 +86,17 @@ export async function readTaskStreamCache(key: string): Promise<TaskStreamCacheS
       request.onsuccess = () => {
         const record = request.result as TaskStreamCacheRecord | undefined;
         if (!record) {
-          resolve({ cursor: null, events: [] });
+          resolve({ offset: null, events: [] });
           return;
         }
 
         resolve({
-          cursor:
-            typeof record.cursor === "string" && record.cursor.length > 0 ? record.cursor : null,
+          offset:
+            typeof record.offset === "string" && record.offset.length > 0
+              ? record.offset
+              : typeof record.cursor === "string" && record.cursor.length > 0
+                ? record.cursor
+                : null,
           events: parseTaskStreamEvents(record.events),
         });
       };
@@ -104,13 +109,13 @@ export async function readTaskStreamCache(key: string): Promise<TaskStreamCacheS
     db.close();
     return snapshot;
   } catch {
-    return { cursor: null, events: [] };
+    return { offset: null, events: [] };
   }
 }
 
 export async function writeTaskStreamCache(
   key: string,
-  cursor: string | null,
+  offset: string | null,
   events: TaskStreamEvent[],
 ): Promise<void> {
   if (!canUseIndexedDb()) {
@@ -122,7 +127,7 @@ export async function writeTaskStreamCache(
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, "readwrite");
       const store = tx.objectStore(STORE_NAME);
-      store.put({ key, cursor, events, updatedAt: Date.now() } satisfies TaskStreamCacheRecord);
+      store.put({ key, offset, events, updatedAt: Date.now() } satisfies TaskStreamCacheRecord);
 
       tx.oncomplete = () => {
         resolve();
