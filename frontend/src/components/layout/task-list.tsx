@@ -198,7 +198,7 @@ export function TaskList() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="flex items-center justify-between px-3 pt-3 pb-2">
+      <div className="flex items-center justify-between px-3 py-3">
         <p className="text-[11px] font-bold text-foreground/90 uppercase tracking-[0.08em]">
           Tasks
         </p>
