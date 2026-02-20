@@ -230,7 +230,7 @@ export function TaskPage({
 
   async function handleSend() {
     const content = input.trim();
-    if (!content || sending || !taskId) return;
+    if (!content || sending || isRunning || !taskId) return;
 
     setSending(true);
     setInput("");
@@ -520,8 +520,9 @@ export function TaskPage({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Send a message..."
+            placeholder={isRunning ? "Wait for the current run to finish..." : "Send a message..."}
             rows={1}
+            disabled={isRunning || sending}
             className="min-h-[42px] max-h-[200px] flex-1 resize-none rounded-[var(--radius-md)] px-4 py-2.5 text-base md:text-sm"
             style={{ height: "auto" }}
             onInput={(e) => {
@@ -533,7 +534,7 @@ export function TaskPage({
           <Button
             type="button"
             onClick={() => void handleSend()}
-            disabled={!input.trim() || sending}
+            disabled={!input.trim() || sending || isRunning}
             className="h-[42px] w-[42px] shrink-0 rounded-[var(--radius-md)] p-0"
           >
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
