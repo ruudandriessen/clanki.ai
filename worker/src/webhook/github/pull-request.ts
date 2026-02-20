@@ -56,6 +56,11 @@ export async function handlePullRequest(
           openedAt: now,
           readyAt: pr.draft ? null : now,
           state: pr.draft ? "draft" : "open",
+          reviewState: null,
+          reviewUpdatedAt: null,
+          checksState: null,
+          checksConclusion: null,
+          checksUpdatedAt: null,
         })
         .onConflictDoUpdate({
           target: [pullRequests.repository, pullRequests.prNumber],
@@ -65,6 +70,11 @@ export async function handlePullRequest(
             state: pr.draft ? "draft" : "open",
             mergedAt: null,
             mergedBy: null,
+            reviewState: null,
+            reviewUpdatedAt: null,
+            checksState: null,
+            checksConclusion: null,
+            checksUpdatedAt: null,
           },
         });
       break;
@@ -83,7 +93,15 @@ export async function handlePullRequest(
       console.log(`PR #${pr.number} synchronized: ${pr.title}`);
       await db
         .update(pullRequests)
-        .set({ branch, state: pr.draft ? "draft" : "open" })
+        .set({
+          branch,
+          state: pr.draft ? "draft" : "open",
+          reviewState: null,
+          reviewUpdatedAt: Date.now(),
+          checksState: null,
+          checksConclusion: null,
+          checksUpdatedAt: Date.now(),
+        })
         .where(pullRequestWhere);
       break;
     }
@@ -98,6 +116,11 @@ export async function handlePullRequest(
           state: "draft",
           mergedAt: null,
           mergedBy: null,
+          reviewState: null,
+          reviewUpdatedAt: Date.now(),
+          checksState: null,
+          checksConclusion: null,
+          checksUpdatedAt: Date.now(),
         })
         .where(pullRequestWhere);
       break;
@@ -113,8 +136,20 @@ export async function handlePullRequest(
           readyAt: pr.draft ? null : Date.now(),
           branch,
           state: pr.draft ? "draft" : "open",
+          reviewState: null,
+          reviewUpdatedAt: Date.now(),
+          checksState: null,
+          checksConclusion: null,
+          checksUpdatedAt: Date.now(),
         })
         .where(pullRequestWhere);
+      break;
+    }
+
+    case "review_requested":
+    case "review_request_removed": {
+      console.log(`PR #${pr.number} ${action}: ${pr.title}`);
+      await db.update(pullRequests).set({ branch }).where(pullRequestWhere);
       break;
     }
   }

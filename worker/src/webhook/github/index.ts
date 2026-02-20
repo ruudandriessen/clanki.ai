@@ -1,15 +1,30 @@
 import { Webhooks } from "@octokit/webhooks";
 import type { Context } from "hono";
 import type { AppDb } from "../../db/client";
+import { handleCheckRun } from "./check-run";
+import { handleCheckSuite } from "./check-suite";
 import { handleInstallation } from "./installation";
 import { handlePing } from "./ping";
 import { handlePullRequest } from "./pull-request";
+import { handlePullRequestReview } from "./pull-request-review";
 
 function createWebhooks(secret: string, db: AppDb): Webhooks {
   const webhooks = new Webhooks({ secret });
 
   webhooks.on("pull_request", async (event) => {
     await handlePullRequest(event, db);
+  });
+
+  webhooks.on("pull_request_review", async (event) => {
+    await handlePullRequestReview(event, db);
+  });
+
+  webhooks.on("check_suite", async (event) => {
+    await handleCheckSuite(event, db);
+  });
+
+  webhooks.on("check_run", async (event) => {
+    await handleCheckRun(event, db);
   });
 
   webhooks.on("installation", async (event) => {
