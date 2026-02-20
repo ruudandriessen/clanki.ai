@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLiveQuery, eq } from "@tanstack/react-db";
 import { stream } from "@durable-streams/client";
 import { AlertCircle, Check, ChevronRight, Loader2, Pencil, Send, Wrench, X } from "lucide-react";
@@ -58,8 +58,7 @@ interface TaskPageProps {
 }
 
 export function TaskPage({ taskId, title, projectName, error, isRunning }: TaskPageProps) {
-  const taskInputSessionKey = useMemo(() => sessionStateKeys.taskInput(taskId), [taskId]);
-  const [input, setInput] = useSessionState(taskInputSessionKey, "");
+  const [input, setInput] = useSessionState(sessionStateKeys.taskInput(taskId), "");
   const [sending, setSending] = useState(false);
   const [runEvents, setRunEvents] = useState<TaskStreamEvent[]>([]);
   const [editingTitle, setEditingTitle] = useState(false);

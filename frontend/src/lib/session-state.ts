@@ -8,7 +8,7 @@ export type SessionStateKey<T> = {
   serialize: (value: T) => string;
 };
 
-export function createSessionStateKey<T>(
+function createSessionStateKey<T>(
   storageKey: string,
   options?: {
     parse?: (rawValue: string) => T;
@@ -17,8 +17,8 @@ export function createSessionStateKey<T>(
 ): SessionStateKey<T> {
   return {
     storageKey,
-    parse: options?.parse ?? ((rawValue) => JSON.parse(rawValue) as T),
-    serialize: options?.serialize ?? ((value) => JSON.stringify(value)),
+    parse: options?.parse ?? defaultParse,
+    serialize: options?.serialize ?? defaultSerialize,
   };
 }
 
@@ -26,11 +26,14 @@ export function useSessionState<T>(
   key: SessionStateKey<T>,
   initialState: T | (() => T),
 ): [T, (nextState: SetStateAction<T>) => void] {
-  const [state, setState] = useState<T>(() => getInitialSessionState(key, initialState));
+  const { parse, serialize, storageKey } = key;
+  const [state, setState] = useState<T>(() =>
+    getInitialSessionState(storageKey, parse, initialState),
+  );
 
   useEffect(() => {
-    setState(getInitialSessionState(key, initialState));
-  }, [initialState, key]);
+    setState(getInitialSessionState(storageKey, parse, initialState));
+  }, [initialState, parse, storageKey]);
 
   const setSessionState = (nextState: SetStateAction<T>) => {
     setState((previousState) => {
@@ -41,7 +44,7 @@ export function useSessionState<T>(
 
       if (canUseSessionStorage()) {
         try {
-          globalThis.sessionStorage.setItem(key.storageKey, key.serialize(resolvedState));
+          globalThis.sessionStorage.setItem(storageKey, serialize(resolvedState));
         } catch {
           return resolvedState;
         }
@@ -58,7 +61,11 @@ function resolveInitialState<T>(initialState: T | (() => T)): T {
   return typeof initialState === "function" ? (initialState as () => T)() : initialState;
 }
 
-function getInitialSessionState<T>(key: SessionStateKey<T>, initialState: T | (() => T)): T {
+function getInitialSessionState<T>(
+  storageKey: string,
+  parse: (rawValue: string) => T,
+  initialState: T | (() => T),
+): T {
   const resolvedInitialState = resolveInitialState(initialState);
 
   if (!canUseSessionStorage()) {
@@ -66,15 +73,23 @@ function getInitialSessionState<T>(key: SessionStateKey<T>, initialState: T | ((
   }
 
   try {
-    const persistedValue = globalThis.sessionStorage.getItem(key.storageKey);
+    const persistedValue = globalThis.sessionStorage.getItem(storageKey);
     if (persistedValue === null) {
       return resolvedInitialState;
     }
 
-    return key.parse(persistedValue);
+    return parse(persistedValue);
   } catch {
     return resolvedInitialState;
   }
+}
+
+function defaultParse<T>(rawValue: string): T {
+  return JSON.parse(rawValue) as T;
+}
+
+function defaultSerialize<T>(value: T): string {
+  return JSON.stringify(value);
 }
 
 function canUseSessionStorage(): boolean {

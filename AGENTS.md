@@ -36,6 +36,13 @@ Examples:
 
 Every React component must live in its own file. Do not define multiple components in a single `.tsx` file (except tiny local inline render helpers that are not reusable components).
 
+### React Compiler: avoid manual memoization by default
+
+This project uses the React Compiler. Do not add `useMemo`/`useCallback` for routine derived values or inline handlers unless there is a specific non-compiler reason.
+
+- Prefer direct expressions and plain functions in components.
+- Only add memoization when required for correctness or integration constraints (for example, stable identity required by an external API).
+
 ### Use shadcn components where applicable
 
 For new UI work, prefer existing shadcn primitives from `frontend/src/components/ui` (for example `Button`, `Input`, `Textarea`, `Dialog`, `DropdownMenu`, `Card`, `Avatar`) instead of custom base controls.
