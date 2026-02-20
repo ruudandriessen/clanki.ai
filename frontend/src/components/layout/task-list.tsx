@@ -123,6 +123,10 @@ export function TaskList() {
           tasks.map((task) => {
             const isActive = pathname === `/tasks/${task.id}`;
             const projectName = task.project_id ? projectsById.get(task.project_id)?.name : null;
+            const secondaryLabel =
+              projectName && task.branch
+                ? `${projectName} - ${task.branch}`
+                : (projectName ?? task.branch);
             const hasError = (task.error?.trim().length ?? 0) > 0;
             return (
               <div
@@ -148,14 +152,14 @@ export function TaskList() {
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate">{task.title}</p>
-                    {projectName ? (
+                    {secondaryLabel ? (
                       <p
                         className={cn(
                           "truncate text-[11px]",
                           isActive ? "text-accent-foreground/80" : "text-muted-foreground",
                         )}
                       >
-                        {projectName}
+                        {secondaryLabel}
                       </p>
                     ) : null}
                   </div>
