@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { stream } from "@durable-streams/client";
 import type { TaskStreamEvent } from "../../../shared/task-stream-events";
 import { getTaskEventStreamUrl } from "./api";
+import { readTaskStreamCache, writeTaskStreamCache } from "./task-stream-cache";
 
 const STREAM_STORAGE_PREFIX = "task-event-stream";
 const MAX_PERSISTED_EVENTS = 1_000;
@@ -39,10 +40,6 @@ function getTaskStreamStorageKey(taskId: string, streamId: string): string {
   return `${STREAM_STORAGE_PREFIX}:${taskId}:${streamId}`;
 }
 
-function canUseStorage(): boolean {
-  return typeof window !== "undefined";
-}
-
 function trimPersistedEvents(events: TaskStreamEvent[]): TaskStreamEvent[] {
   if (events.length <= MAX_PERSISTED_EVENTS) {
     return events;
@@ -73,57 +70,6 @@ function isTaskStreamEvent(value: unknown): value is TaskStreamEvent {
     typeof candidate.kind === "string" &&
     typeof candidate.payload === "string"
   );
-}
-
-function readPersistedTaskStream(storageKey: string): {
-  cursor: string | null;
-  events: TaskStreamEvent[];
-} {
-  if (!canUseStorage()) {
-    return { cursor: null, events: [] };
-  }
-
-  try {
-    const raw = globalThis.localStorage.getItem(storageKey);
-    if (!raw) {
-      return { cursor: null, events: [] };
-    }
-
-    const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") {
-      return { cursor: null, events: [] };
-    }
-
-    const candidate = parsed as Record<string, unknown>;
-    const cursor =
-      typeof candidate.cursor === "string" && candidate.cursor.length > 0 ? candidate.cursor : null;
-    const events = trimPersistedEvents(parsePersistedEvents(candidate.events));
-    return { cursor, events };
-  } catch {
-    return { cursor: null, events: [] };
-  }
-}
-
-function persistTaskStream(
-  storageKey: string,
-  cursor: string | null,
-  events: TaskStreamEvent[],
-): void {
-  if (!canUseStorage()) {
-    return;
-  }
-
-  try {
-    globalThis.localStorage.setItem(
-      storageKey,
-      JSON.stringify({
-        cursor,
-        events: trimPersistedEvents(events),
-      }),
-    );
-  } catch {
-    // Ignore storage failures and keep streaming in-memory.
-  }
 }
 
 function extractBatchItems(value: unknown): readonly TaskStreamEvent[] {
@@ -164,21 +110,28 @@ export function useTaskEventStream(args: UseTaskEventStreamArgs): TaskStreamEven
     }
 
     const storageKey = getTaskStreamStorageKey(taskId, streamId);
-    const persisted = readPersistedTaskStream(storageKey);
-    let latestCursor = persisted.cursor;
-    setRunEvents(persisted.events);
-
     const abortController = new AbortController();
-    const streamUrl = getTaskEventStreamUrl(taskId);
+    setRunEvents([]);
 
-    stream<TaskStreamEvent>({
-      url: streamUrl,
-      offset: latestCursor ?? "-1",
-      live: "sse",
-      json: true,
-      signal: abortController.signal,
-    })
-      .then((res) => {
+    async function connect(): Promise<void> {
+      const persisted = await readTaskStreamCache(storageKey);
+      if (abortController.signal.aborted) {
+        return;
+      }
+
+      let latestCursor = persisted.cursor;
+      setRunEvents(trimPersistedEvents(persisted.events));
+
+      try {
+        const streamUrl = getTaskEventStreamUrl(taskId);
+        const res = await stream<TaskStreamEvent>({
+          url: streamUrl,
+          offset: latestCursor ?? "-1",
+          live: "sse",
+          json: true,
+          signal: abortController.signal,
+        });
+
         if (abortController.signal.aborted) {
           return;
         }
@@ -193,18 +146,20 @@ export function useTaskEventStream(args: UseTaskEventStreamArgs): TaskStreamEven
           setRunEvents((previousEvents) => {
             const mergedEvents = appendUniqueEvents(previousEvents, items);
             const trimmedEvents = trimPersistedEvents(mergedEvents);
-            persistTaskStream(storageKey, latestCursor, trimmedEvents);
+            void writeTaskStreamCache(storageKey, latestCursor, trimmedEvents);
             return trimmedEvents;
           });
         });
-      })
-      .catch((error: unknown) => {
+      } catch (error: unknown) {
         if (isAbortError(error)) {
           return;
         }
 
         console.error("Failed to subscribe to task stream", error);
-      });
+      }
+    }
+
+    void connect();
 
     return () => {
       abortController.abort();
