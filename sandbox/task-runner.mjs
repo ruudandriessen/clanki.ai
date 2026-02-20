@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 import { appendFileSync } from "node:fs";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 
 /**
  * Autonomous task runner that executes inside the Cloudflare sandbox.
@@ -10,14 +12,17 @@ import { appendFileSync } from "node:fs";
  * 2. Reads SSE events from the local OpenCode event stream
  * 3. Appends events to Durable Streams (ElectricSQL)
  * 4. Sends heartbeats to the worker
- * 5. Calls the worker on completion or failure
+ * 5. Reports local git branch changes to the worker
+ * 6. Calls the worker on completion or failure
  */
 
 const OPENCODE_PORT = 4096;
 const HEARTBEAT_INTERVAL_MS = 30_000;
+const BRANCH_POLL_INTERVAL_MS = 5_000;
 const STREAM_COMPLETION_GRACE_MS = 15_000;
 const STREAM_CONNECTION_TIMEOUT_MS = 5_000;
 const DURABLE_STREAMS_BASE_URL = "https://api.electric-sql.cloud";
+const execFileAsync = promisify(execFile);
 
 // ---------------------------------------------------------------------------
 // Config from environment
@@ -289,6 +294,47 @@ async function callMessage(config, content) {
     });
     return false;
   }
+}
+
+async function callBranch(config, branch) {
+  try {
+    const response = await fetch(
+      `${config.workerUrl}/api/internal/task-runs/${config.runId}/branch`,
+      {
+        method: "POST",
+        headers: callbackHeaders(config),
+        body: JSON.stringify({ branch }),
+      },
+    );
+
+    if (!response.ok) {
+      logWarn(config, "branch callback failed", {
+        status: response.status,
+        statusText: response.statusText,
+        branch,
+        body: await readResponseText(response),
+      });
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    logWarn(config, "branch callback failed", {
+      branch,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return false;
+  }
+}
+
+async function readCurrentGitBranch(repoDir) {
+  const { stdout } = await execFileAsync("git", ["-C", repoDir, "branch", "--show-current"], {
+    timeout: 3_000,
+    maxBuffer: 16 * 1024,
+  });
+
+  const branch = stdout.trim();
+  return branch.length > 0 ? branch : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -567,6 +613,42 @@ async function main() {
     });
   }, HEARTBEAT_INTERVAL_MS);
 
+  let lastReportedBranch;
+  let gitBranchReadFailureLogged = false;
+  const syncBranch = async () => {
+    let currentBranch;
+    try {
+      currentBranch = await readCurrentGitBranch(config.repoDir);
+      gitBranchReadFailureLogged = false;
+    } catch (error) {
+      if (!gitBranchReadFailureLogged) {
+        gitBranchReadFailureLogged = true;
+        logWarn(config, "failed to read git branch", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      return;
+    }
+
+    if (currentBranch === lastReportedBranch) {
+      return;
+    }
+
+    const updated = await callBranch(config, currentBranch);
+    if (updated) {
+      lastReportedBranch = currentBranch;
+    }
+  };
+
+  await syncBranch();
+  const branchWatcherTimer = setInterval(() => {
+    syncBranch().catch((error) => {
+      logWarn(config, "branch watcher tick failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }, BRANCH_POLL_INTERVAL_MS);
+
   const capture = createCapture();
   const streamAbortController = new AbortController();
 
@@ -677,6 +759,7 @@ async function main() {
     logError(config, "failed", { error: message });
     await callFail(config, message);
   } finally {
+    clearInterval(branchWatcherTimer);
     clearInterval(heartbeatTimer);
   }
 }

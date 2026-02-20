@@ -231,6 +231,7 @@ export const tasks = pgTable(
     status: text("status").notNull().default("open"),
     sandboxId: text("sandbox_id"),
     sessionId: text("session_id"),
+    branch: text("branch"),
     streamId: text("stream_id").notNull(),
     error: text("error"),
     createdAt: msTimestamp("created_at").notNull(),

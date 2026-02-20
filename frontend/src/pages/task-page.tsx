@@ -52,12 +52,13 @@ function CollapsedActivityGroup({ items }: { items: TaskStreamActivityItem[] }) 
 interface TaskPageProps {
   taskId: string;
   projectName: string;
+  branch: string | null;
   title: string;
   error: string | null;
   isRunning: boolean;
 }
 
-export function TaskPage({ taskId, title, projectName, error, isRunning }: TaskPageProps) {
+export function TaskPage({ taskId, title, projectName, branch, error, isRunning }: TaskPageProps) {
   const [input, setInput] = useSessionState(sessionStateKeys.taskInput(taskId), "");
   const [sending, setSending] = useState(false);
   const [runEvents, setRunEvents] = useState<TaskStreamEvent[]>([]);
@@ -315,7 +316,9 @@ export function TaskPage({ taskId, title, projectName, error, isRunning }: TaskP
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
             </div>
-            <p className="truncate text-xs text-muted-foreground">{projectName}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {branch ? `${projectName} - ${branch}` : projectName}
+            </p>
           </div>
         )}
         {titleError ? <p className="mt-1 text-xs text-destructive">{titleError}</p> : null}

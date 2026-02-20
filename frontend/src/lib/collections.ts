@@ -23,6 +23,7 @@ const taskSchema = z.object({
   project_id: z.string().nullable(),
   title: z.string(),
   status: z.string(),
+  branch: z.string().nullable(),
   error: z.string().nullable(),
   created_at: z.bigint(),
   updated_at: z.bigint(),

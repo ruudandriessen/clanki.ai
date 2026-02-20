@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import type { Sandbox } from "@cloudflare/sandbox";
+import { and, eq } from "drizzle-orm";
 import type { AppDb } from "../db/client";
+import * as schema from "../db/schema";
 import type { TaskRunner } from "../lib/task-runner";
 import {
   completeTask,
@@ -69,6 +71,56 @@ internalTasks.post("/task-runs/:executionId/heartbeat", async (c) => {
   } catch {
     return c.json({ error: "Failed to record heartbeat" }, 500);
   }
+});
+
+// POST /api/internal/task-runs/:executionId/branch
+internalTasks.post("/task-runs/:executionId/branch", async (c) => {
+  const token = getCallbackToken(c);
+  if (!token) {
+    return c.json({ error: "Missing callback token" }, 401);
+  }
+
+  const { executionId } = c.req.param();
+  const runner = getRunner(c.env, executionId);
+
+  const context = await runner.verifyToken(token);
+  if (!context) {
+    return c.json({ error: "Invalid callback token" }, 401);
+  }
+
+  let body: { branch?: string | null };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+
+  let branch: string | null = null;
+  if (body.branch !== null && body.branch !== undefined) {
+    if (typeof body.branch !== "string") {
+      return c.json({ error: "branch must be a string or null" }, 400);
+    }
+
+    const normalizedBranch = body.branch.trim();
+    if (normalizedBranch.length > 255) {
+      return c.json({ error: "branch must be at most 255 characters" }, 400);
+    }
+
+    branch = normalizedBranch.length > 0 ? normalizedBranch : null;
+  }
+
+  const db = c.get("db");
+  await db
+    .update(schema.tasks)
+    .set({ branch, updatedAt: Date.now() })
+    .where(
+      and(
+        eq(schema.tasks.id, context.taskId),
+        eq(schema.tasks.organizationId, context.organizationId),
+      ),
+    );
+
+  return c.json({ ok: true });
 });
 
 // POST /api/internal/task-runs/:executionId/complete

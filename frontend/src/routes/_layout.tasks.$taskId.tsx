@@ -38,6 +38,7 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
         taskId={taskId}
         title={openedTask.task.title}
         projectName={openedTask.project?.name ?? "No project"}
+        branch={openedTask.task.branch ?? null}
         error={openedTask.task.error ?? null}
         isRunning={openedTask.task.status === "running"}
       />
