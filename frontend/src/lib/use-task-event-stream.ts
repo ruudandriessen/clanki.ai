@@ -82,17 +82,25 @@ function extractBatchItems(value: unknown): readonly TaskStreamEvent[] {
   return parsedItems;
 }
 
-function extractBatchCursor(value: unknown): string | null {
+function extractBatchOffset(value: unknown): string | null {
   if (!value || typeof value !== "object") {
     return null;
   }
 
   const candidate = value as Record<string, unknown>;
-  if (typeof candidate.cursor === "string" && candidate.cursor.length > 0) {
-    return candidate.cursor;
+  if (typeof candidate.offset === "string" && candidate.offset.length > 0) {
+    return candidate.offset;
   }
 
   return null;
+}
+
+function isLikelyDurableStreamOffset(value: string): boolean {
+  if (value === "-1" || value === "now") {
+    return true;
+  }
+
+  return value.includes("_");
 }
 
 interface UseTaskEventStreamArgs {
@@ -119,14 +127,18 @@ export function useTaskEventStream(args: UseTaskEventStreamArgs): TaskStreamEven
         return;
       }
 
-      let latestCursor = persisted.cursor;
+      let latestOffset = persisted.offset;
+      if (latestOffset !== null && !isLikelyDurableStreamOffset(latestOffset)) {
+        latestOffset = null;
+        void writeTaskStreamCache(storageKey, null, persisted.events);
+      }
       setRunEvents(trimPersistedEvents(persisted.events));
 
       try {
         const streamUrl = getTaskEventStreamUrl(taskId);
         const res = await stream<TaskStreamEvent>({
           url: streamUrl,
-          offset: latestCursor ?? "-1",
+          offset: latestOffset ?? "-1",
           live: "sse",
           json: true,
           signal: abortController.signal,
@@ -138,15 +150,15 @@ export function useTaskEventStream(args: UseTaskEventStreamArgs): TaskStreamEven
 
         res.subscribeJson((batch) => {
           const items = extractBatchItems(batch);
-          const batchCursor = extractBatchCursor(batch);
-          if (batchCursor !== null) {
-            latestCursor = batchCursor;
+          const batchOffset = extractBatchOffset(batch);
+          if (batchOffset !== null && isLikelyDurableStreamOffset(batchOffset)) {
+            latestOffset = batchOffset;
           }
 
           setRunEvents((previousEvents) => {
             const mergedEvents = appendUniqueEvents(previousEvents, items);
             const trimmedEvents = trimPersistedEvents(mergedEvents);
-            void writeTaskStreamCache(storageKey, latestCursor, trimmedEvents);
+            void writeTaskStreamCache(storageKey, latestOffset, trimmedEvents);
             return trimmedEvents;
           });
         });
