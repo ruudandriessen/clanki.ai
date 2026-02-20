@@ -1,5 +1,4 @@
 import { DurableStream, DurableStreamError } from "@durable-streams/client";
-import type { TaskStreamEventBase, TaskStreamEventKind } from "../../../shared/task-stream-events";
 
 export type DurableStreamsEnv = {
   DURABLE_STREAMS_SERVICE_ID?: string;
@@ -65,38 +64,6 @@ export async function createStream({
       return streamId;
     }
     throw error;
-  }
-}
-
-export async function appendTaskEventToDurableStream(args: {
-  env: DurableStreamsEnv;
-  organizationId: string;
-  taskId: string;
-  event: TaskStreamEventBase & { kind: TaskStreamEventKind; payload: string };
-}): Promise<void> {
-  const { env, organizationId, taskId, event } = args;
-
-  if (!isDurableStreamsConfigured(env)) {
-    return;
-  }
-
-  const streamPath = buildTaskEventsStreamId({ organizationId, taskId });
-  const url = buildStreamUrl(env, streamPath);
-
-  try {
-    const handle = new DurableStream({
-      url,
-      headers: buildHeaders(env),
-      contentType: "application/json",
-      batching: false,
-    });
-    await handle.append(JSON.stringify(event));
-  } catch (error) {
-    console.warn("Failed to append task event to durable stream", {
-      organizationId,
-      taskId,
-      message: error instanceof Error ? error.message : String(error),
-    });
   }
 }
 

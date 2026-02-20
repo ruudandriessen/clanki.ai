@@ -7,7 +7,6 @@ import {
   insertAssistantTaskMessage,
   markTaskFailed,
 } from "../lib/task-execution/helpers";
-import { appendTaskEvent } from "../lib/task-run-events";
 import { upsertProviderAuthCredential } from "../lib/provider-credentials";
 import type { SupportedOpencodeProvider } from "../lib/opencode";
 import { isSupportedOpencodeProvider } from "../lib/opencode";
@@ -112,14 +111,6 @@ internalTasks.post("/task-runs/:executionId/complete", async (c) => {
         taskId: context.taskId,
         content: body.assistantOutput.trim(),
       });
-      await appendTaskEvent({
-        env: c.env,
-        executionId,
-        taskId: context.taskId,
-        organizationId: context.organizationId,
-        kind: "assistant",
-        payload: body.assistantOutput.trim(),
-      });
     } catch (error) {
       console.warn("Failed to persist assistant output on complete callback", {
         executionId,
@@ -218,15 +209,6 @@ internalTasks.post("/task-runs/:executionId/message", async (c) => {
     organizationId: context.organizationId,
     taskId: context.taskId,
     content: body.content.trim(),
-  });
-
-  await appendTaskEvent({
-    env: c.env,
-    executionId,
-    taskId: context.taskId,
-    organizationId: context.organizationId,
-    kind: "assistant",
-    payload: body.content.trim(),
   });
 
   return c.json({ id: taskMessageId }, 201);
