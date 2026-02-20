@@ -64,7 +64,6 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
         title={openedTask.task.title}
         projectName={openedTask.project?.name ?? "No project"}
         streamId={openedTask.task.stream_id ?? null}
-        branch={openedTask.task.branch ?? null}
         pullRequest={
           pullRequest
             ? {

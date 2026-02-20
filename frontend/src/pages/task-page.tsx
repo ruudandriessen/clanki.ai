@@ -64,7 +64,6 @@ interface TaskPageProps {
   taskId: string;
   projectName: string;
   streamId: string | null;
-  branch: string | null;
   pullRequest: {
     prNumber: number;
     url: string;
@@ -153,7 +152,6 @@ export function TaskPage({
   title,
   projectName,
   streamId,
-  branch,
   pullRequest,
   error,
   isRunning,
@@ -390,9 +388,7 @@ export function TaskPage({
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-                <p className="truncate text-xs text-muted-foreground">
-                  {branch ? `${projectName} - ${branch}` : projectName}
-                </p>
+                <p className="truncate text-xs text-muted-foreground">{projectName}</p>
               </div>
             )}
           </div>

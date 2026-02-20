@@ -247,10 +247,8 @@ export function TaskList() {
                   const projectName = task.project_id
                     ? projectsById.get(task.project_id)?.name
                     : null;
-                  const secondaryLabel =
-                    projectName && task.branch
-                      ? `${projectName} - ${task.branch}`
-                      : (projectName ?? task.branch);
+                  const taskLabel = task.branch ?? task.title;
+                  const secondaryLabel = projectName ?? null;
                   const hasError = (task.error?.trim().length ?? 0) > 0;
 
                   const shouldSkipDeleteConfirmation = group.key === "merged";
@@ -278,7 +276,7 @@ export function TaskList() {
                           <MessageSquare className="mt-0.5 w-3.5 h-3.5 shrink-0" />
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="truncate">{task.title}</p>
+                          <p className="truncate">{taskLabel}</p>
                           {secondaryLabel ? (
                             <p
                               className={cn(
@@ -305,10 +303,10 @@ export function TaskList() {
                             return;
                           }
 
-                          setTaskToDelete({ id: task.id, title: task.title });
+                          setTaskToDelete({ id: task.id, title: taskLabel });
                           setDeleteError(null);
                         }}
-                        title={`Delete ${task.title}`}
+                        title={`Delete ${taskLabel}`}
                         disabled={deletingTask}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
