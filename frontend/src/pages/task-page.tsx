@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 import type { Event as OpenCodeEvent } from "@opencode-ai/sdk";
 import {
   parseOpenCodeEventPayload,
+  parseTaskLifecycleEventPayload,
+  type TaskLifecycleEventPayload,
   type TaskStreamEvent,
 } from "../../../shared/task-stream-events";
 import { taskMessagesCollection, tasksCollection } from "../lib/collections";
@@ -792,12 +794,79 @@ function toTaskStreamActivityItem(event: TaskStreamEvent): ChronologicalActivity
     return null;
   }
 
+  if (event.kind === "task.lifecycle") {
+    const lifecycle = parseTaskLifecycleEventPayload(event);
+    if (!lifecycle) {
+      return null;
+    }
+
+    return taskLifecycleToActivityItem(event, lifecycle);
+  }
+
   const parsed = parseOpenCodeEventPayload(event);
   if (!parsed) {
     return null;
   }
 
   return openCodeEventToActivityItem(event, parsed);
+}
+
+function taskLifecycleToActivityItem(
+  event: TaskStreamEvent,
+  lifecycle: TaskLifecycleEventPayload,
+): ChronologicalActivityItem {
+  const details = lifecycle.details ? [`Command: ${lifecycle.details}`] : undefined;
+
+  return {
+    id: event.id,
+    stateKey: `lifecycle:${lifecycle.phase}`,
+    icon: getLifecycleActivityIcon(lifecycle),
+    label: `${getLifecyclePhaseLabel(lifecycle.phase)}: ${lifecycle.message}`,
+    details,
+    tone: getLifecycleActivityTone(lifecycle.status),
+    spinning: lifecycle.status === "running",
+    createdAt: event.createdAt,
+  };
+}
+
+function getLifecyclePhaseLabel(phase: TaskLifecycleEventPayload["phase"]): string {
+  switch (phase) {
+    case "sandbox":
+      return "Sandbox";
+    case "clone":
+      return "Git clone";
+    case "setup":
+      return "Project setup";
+    case "assistant":
+      return "Assistant";
+  }
+}
+
+function getLifecycleActivityIcon(lifecycle: TaskLifecycleEventPayload): TaskStreamActivityIcon {
+  switch (lifecycle.phase) {
+    case "clone":
+      return "web";
+    case "setup":
+      return "terminal";
+    case "assistant":
+      return lifecycle.status === "completed" ? "success" : "status";
+    case "sandbox":
+    default:
+      return "status";
+  }
+}
+
+function getLifecycleActivityTone(
+  status: TaskLifecycleEventPayload["status"],
+): TaskStreamActivityItem["tone"] {
+  switch (status) {
+    case "completed":
+      return "success";
+    case "error":
+      return "error";
+    default:
+      return "muted";
+  }
 }
 
 function openCodeEventToActivityItem(
