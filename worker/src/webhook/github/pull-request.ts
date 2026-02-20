@@ -30,6 +30,7 @@ export async function handlePullRequest(
             mergedAt: pr.merged_at ? new Date(pr.merged_at).getTime() : null,
             mergedBy: pr.merged_by?.login,
             branch,
+            state: "merged",
           })
           .where(pullRequestWhere);
 
@@ -37,7 +38,7 @@ export async function handlePullRequest(
       }
 
       console.log(`PR #${pr.number} closed without merge: ${pr.title}`);
-      await db.update(pullRequests).set({ branch }).where(pullRequestWhere);
+      await db.update(pullRequests).set({ branch, state: "closed" }).where(pullRequestWhere);
       break;
     }
 
@@ -54,12 +55,16 @@ export async function handlePullRequest(
           prNumber: pr.number,
           openedAt: now,
           readyAt: pr.draft ? null : now,
+          state: pr.draft ? "draft" : "open",
         })
         .onConflictDoUpdate({
           target: [pullRequests.repository, pullRequests.prNumber],
           set: {
             installationId: installation.id,
             branch,
+            state: pr.draft ? "draft" : "open",
+            mergedAt: null,
+            mergedBy: null,
           },
         });
       break;
@@ -67,13 +72,19 @@ export async function handlePullRequest(
 
     case "ready_for_review": {
       console.log(`PR #${pr.number} ready for review: ${pr.title}`);
-      await db.update(pullRequests).set({ readyAt: Date.now(), branch }).where(pullRequestWhere);
+      await db
+        .update(pullRequests)
+        .set({ readyAt: Date.now(), branch, state: "open" })
+        .where(pullRequestWhere);
       break;
     }
 
     case "synchronize": {
       console.log(`PR #${pr.number} synchronized: ${pr.title}`);
-      await db.update(pullRequests).set({ branch }).where(pullRequestWhere);
+      await db
+        .update(pullRequests)
+        .set({ branch, state: pr.draft ? "draft" : "open" })
+        .where(pullRequestWhere);
       break;
     }
 
@@ -86,6 +97,7 @@ export async function handlePullRequest(
           mergedBy: null,
           readyAt: pr.draft ? null : Date.now(),
           branch,
+          state: pr.draft ? "draft" : "open",
         })
         .where(pullRequestWhere);
       break;

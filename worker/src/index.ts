@@ -8,6 +8,7 @@ import { createAuth } from "./auth";
 import { requireAuth } from "./middleware/requireAuth";
 import { orpcRouter } from "./orpc/router";
 import { projects } from "./routes/projects";
+import { pullRequests } from "./routes/pull-requests";
 import { tasks } from "./routes/tasks";
 import { handleGitHubWebhook } from "./webhook/github";
 import type { TaskRunner } from "./lib/task-runner";
@@ -75,6 +76,7 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => {
 
 // Auth guard for data API routes
 app.use("/api/projects/*", requireAuth);
+app.use("/api/pull-requests/*", requireAuth);
 app.use("/api/tasks/*", requireAuth);
 app.use("/api/rpc/*", requireAuth);
 
@@ -83,6 +85,7 @@ app.route("/api/internal", internalTasks);
 
 // Data API routes
 app.route("/api/projects", projects);
+app.route("/api/pull-requests", pullRequests);
 app.route("/api/tasks", tasks);
 app.all("/api/rpc/*", async (c) => {
   const result = await rpcHandler.handle(c.req.raw, {

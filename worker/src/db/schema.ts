@@ -208,6 +208,7 @@ export const pullRequests = pgTable(
     mergedBy: text("merged_by"),
     mergedAt: msTimestamp("merged_at"),
     readyAt: msTimestamp("ready_at"),
+    state: text("state").notNull().default("open"),
   },
   (t) => [
     uniqueIndex("pr_repo_number").on(t.repository, t.prNumber),

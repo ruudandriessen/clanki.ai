@@ -1,7 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useLiveQuery, eq } from "@tanstack/react-db";
 import { stream } from "@durable-streams/client";
-import { AlertCircle, Check, ChevronRight, Loader2, Pencil, Send, Wrench, X } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  ChevronRight,
+  ExternalLink,
+  Loader2,
+  Pencil,
+  Send,
+  Wrench,
+  X,
+} from "lucide-react";
 import {
   TaskStreamActivity,
   type TaskStreamActivityIcon,
@@ -53,12 +63,38 @@ interface TaskPageProps {
   taskId: string;
   projectName: string;
   branch: string | null;
+  pullRequest: {
+    prNumber: number;
+    url: string;
+    status: "open" | "merged" | "closed" | "draft";
+  } | null;
   title: string;
   error: string | null;
   isRunning: boolean;
 }
 
-export function TaskPage({ taskId, title, projectName, branch, error, isRunning }: TaskPageProps) {
+function getPullRequestButtonClasses(status: "open" | "merged" | "closed" | "draft"): string {
+  switch (status) {
+    case "merged":
+      return "border-[#8250df] bg-[#8250df] text-white hover:border-[#6f42c1] hover:bg-[#6f42c1]";
+    case "closed":
+      return "border-[#cf222e] bg-[#cf222e] text-white hover:border-[#a40e26] hover:bg-[#a40e26]";
+    case "draft":
+      return "border-[#6e7781] bg-[#6e7781] text-white hover:border-[#57606a] hover:bg-[#57606a]";
+    default:
+      return "";
+  }
+}
+
+export function TaskPage({
+  taskId,
+  title,
+  projectName,
+  branch,
+  pullRequest,
+  error,
+  isRunning,
+}: TaskPageProps) {
   const [input, setInput] = useSessionState(sessionStateKeys.taskInput(taskId), "");
   const [sending, setSending] = useState(false);
   const [runEvents, setRunEvents] = useState<TaskStreamEvent[]>([]);
@@ -263,64 +299,86 @@ export function TaskPage({ taskId, title, projectName, branch, error, isRunning 
   return (
     <div className="neo-enter flex h-full flex-col">
       <div className="shrink-0 border-b border-border bg-card px-4 py-3 md:px-6">
-        {editingTitle ? (
-          <div className="flex min-h-8 items-center gap-2">
-            <Input
-              ref={titleInputRef}
-              value={titleInput}
-              onChange={(e) => setTitleInput(e.target.value)}
-              onKeyDown={handleTitleInputKeyDown}
-              className="h-8 w-full max-w-lg px-2 text-sm"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => void handleTitleEditSave()}
-              disabled={savingTitle}
-              className="text-foreground"
-              title="Save task name"
-            >
-              {savingTitle ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Check className="h-4 w-4" />
-              )}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              onClick={handleTitleEditCancel}
-              disabled={savingTitle}
-              className="text-foreground"
-              title="Cancel"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {editingTitle ? (
+              <div className="flex min-h-8 items-center gap-2">
+                <Input
+                  ref={titleInputRef}
+                  value={titleInput}
+                  onChange={(e) => setTitleInput(e.target.value)}
+                  onKeyDown={handleTitleInputKeyDown}
+                  className="h-8 w-full max-w-lg px-2 text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => void handleTitleEditSave()}
+                  disabled={savingTitle}
+                  className="text-foreground"
+                  title="Save task name"
+                >
+                  {savingTitle ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={handleTitleEditCancel}
+                  disabled={savingTitle}
+                  className="text-foreground"
+                  title="Cancel"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="min-w-0">
+                <div className="flex min-h-8 min-w-0 items-center gap-2">
+                  <h2 className="m-0 truncate text-sm font-bold tracking-[0.04em] uppercase">
+                    {title}
+                  </h2>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={handleTitleEditStart}
+                    className="text-foreground"
+                    title="Edit task name"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <p className="truncate text-xs text-muted-foreground">
+                  {branch ? `${projectName} - ${branch}` : projectName}
+                </p>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="min-w-0">
-            <div className="flex min-h-8 min-w-0 items-center gap-2">
-              <h2 className="m-0 truncate text-sm font-bold tracking-[0.04em] uppercase">
-                {title}
-              </h2>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                onClick={handleTitleEditStart}
-                className="text-foreground"
-                title="Edit task name"
+          {pullRequest ? (
+            <Button
+              asChild
+              variant="outline"
+              size="xs"
+              className={getPullRequestButtonClasses(pullRequest.status)}
+            >
+              <a
+                href={pullRequest.url}
+                target="_blank"
+                rel="noreferrer"
+                title={`Open PR #${pullRequest.prNumber} on GitHub`}
               >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-            <p className="truncate text-xs text-muted-foreground">
-              {branch ? `${projectName} - ${branch}` : projectName}
-            </p>
-          </div>
-        )}
+                PR #{pullRequest.prNumber} {pullRequest.status}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </Button>
+          ) : null}
+        </div>
         {titleError ? <p className="mt-1 text-xs text-destructive">{titleError}</p> : null}
       </div>
 

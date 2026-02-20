@@ -29,6 +29,19 @@ const taskSchema = z.object({
   updated_at: z.bigint(),
 });
 
+const pullRequestSchema = z.object({
+  id: z.string(),
+  installation_id: z.number(),
+  repository: z.string(),
+  branch: z.string().nullable(),
+  pr_number: z.number(),
+  opened_at: z.bigint(),
+  merged_by: z.string().nullable(),
+  merged_at: z.bigint().nullable(),
+  ready_at: z.bigint().nullable(),
+  state: z.string().optional(),
+});
+
 const taskMessageSchema = z.object({
   id: z.string(),
   task_id: z.string(),
@@ -155,6 +168,27 @@ export const tasksCollection = createCollection(
       }
 
       return txidsToMatch(txids);
+    },
+  }),
+);
+
+// ---- Pull requests collection ----
+
+export const pullRequestsCollection = createCollection(
+  electricCollectionOptions({
+    schema: pullRequestSchema,
+    shapeOptions: {
+      url: `${BASE_URL}/api/pull-requests/shape`,
+    },
+    getKey: (pr) => pr.id,
+    onInsert: async () => {
+      throw new Error("Pull request insertion is not supported");
+    },
+    onUpdate: async () => {
+      throw new Error("Pull request updates are not supported");
+    },
+    onDelete: async () => {
+      throw new Error("Pull request deletion is not supported");
     },
   }),
 );
