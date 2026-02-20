@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useLiveQuery } from "@tanstack/react-db";
-import { Loader2, MessageSquare, Plus, Trash2 } from "lucide-react";
+import { CircleAlert, Loader2, MessageSquare, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -128,6 +128,7 @@ export function TaskList() {
           tasks.map((task) => {
             const isActive = pathname === `/tasks/${task.id}`;
             const projectName = task.project_id ? projectsById.get(task.project_id)?.name : null;
+            const hasError = (task.error?.trim().length ?? 0) > 0;
             return (
               <div
                 key={task.id}
@@ -143,7 +144,9 @@ export function TaskList() {
                   params={{ taskId: task.id }}
                   className="flex min-w-0 flex-1 items-start gap-2 px-2.5 py-2 text-sm"
                 >
-                  {task.status === "running" ? (
+                  {hasError ? (
+                    <CircleAlert className="mt-0.5 w-3.5 h-3.5 shrink-0 text-destructive" />
+                  ) : task.status === "running" ? (
                     <Loader2 className="mt-0.5 w-3.5 h-3.5 shrink-0 animate-spin" />
                   ) : (
                     <MessageSquare className="mt-0.5 w-3.5 h-3.5 shrink-0" />
