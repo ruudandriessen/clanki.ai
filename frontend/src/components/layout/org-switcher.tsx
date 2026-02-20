@@ -20,6 +20,18 @@ export function OrgSwitcher() {
   }, [editing]);
 
   const org = activeOrg.data;
+
+  if (activeOrg.isPending) {
+    return (
+      <div className="border-b border-border px-3 py-3">
+        <div className="flex h-8 items-center gap-2 px-2.5 py-1.5">
+          <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          <span className="h-3.5 w-28 animate-pulse rounded bg-muted" aria-hidden />
+        </div>
+      </div>
+    );
+  }
+
   if (!org) return null;
 
   const handleSave = () => {
