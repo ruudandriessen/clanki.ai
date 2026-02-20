@@ -110,7 +110,10 @@ function getReviewStatusClasses(reviewState: string | null): string {
   }
 }
 
-function getChecksStatusClasses(checksState: string | null, checksConclusion: string | null): string {
+function getChecksStatusClasses(
+  checksState: string | null,
+  checksConclusion: string | null,
+): string {
   switch (checksConclusion) {
     case "success":
       return "border-emerald-300 bg-emerald-100 text-emerald-900";
@@ -450,7 +453,8 @@ export function TaskPage({
                     getChecksStatusClasses(pullRequest.checksState, pullRequest.checksConclusion),
                   )}
                 >
-                  Checks: {formatChecksStatus(pullRequest.checksState, pullRequest.checksConclusion)}
+                  Checks:{" "}
+                  {formatChecksStatus(pullRequest.checksState, pullRequest.checksConclusion)}
                 </span>
               </div>
             </div>
