@@ -46,17 +46,19 @@ export async function handleCheckRun(
       target: [pullRequests.repository, pullRequests.prNumber],
     });
 
-  await db
-    .update(pullRequests)
-    .set({
-      checksState: checkRun.status,
-      checksConclusion: checkRun.conclusion,
-      checksUpdatedAt: now,
-    })
-    .where(
-      and(
-        eq(pullRequests.repository, repository.full_name),
-        inArray(pullRequests.prNumber, prNumbers),
-      ),
-    );
+  if (checkRun.status !== "completed") {
+    await db
+      .update(pullRequests)
+      .set({
+        checksState: checkRun.status,
+        checksConclusion: checkRun.conclusion,
+        checksUpdatedAt: now,
+      })
+      .where(
+        and(
+          eq(pullRequests.repository, repository.full_name),
+          inArray(pullRequests.prNumber, prNumbers),
+        ),
+      );
+  }
 }
