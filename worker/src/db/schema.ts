@@ -202,6 +202,7 @@ export const pullRequests = pgTable(
       .notNull()
       .references(() => installations.installationId, { onDelete: "cascade" }),
     repository: text("repository").notNull(),
+    branch: text("branch"),
     prNumber: integer("pr_number").notNull(),
     openedAt: msTimestamp("opened_at").notNull(),
     mergedBy: text("merged_by"),
