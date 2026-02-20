@@ -411,23 +411,27 @@ export function TaskPage({
                 </a>
               </Button>
               <div className="flex flex-wrap justify-end gap-1">
-                <span
-                  className={cn(
-                    "rounded border px-2 py-0.5 text-[11px] font-medium",
-                    getReviewStatusClasses(pullRequest.reviewState),
-                  )}
-                >
-                  Review: {humanizePullRequestStatus(pullRequest.reviewState)}
-                </span>
-                <span
-                  className={cn(
-                    "rounded border px-2 py-0.5 text-[11px] font-medium",
-                    getChecksStatusClasses(pullRequest.checksState, pullRequest.checksConclusion),
-                  )}
-                >
-                  Checks:{" "}
-                  {formatChecksStatus(pullRequest.checksState, pullRequest.checksConclusion)}
-                </span>
+                {pullRequest.reviewState != null ? (
+                  <span
+                    className={cn(
+                      "rounded border px-2 py-0.5 text-[11px] font-medium",
+                      getReviewStatusClasses(pullRequest.reviewState),
+                    )}
+                  >
+                    Review: {humanizePullRequestStatus(pullRequest.reviewState)}
+                  </span>
+                ) : null}
+                {pullRequest.checksState != null || pullRequest.checksConclusion != null ? (
+                  <span
+                    className={cn(
+                      "rounded border px-2 py-0.5 text-[11px] font-medium",
+                      getChecksStatusClasses(pullRequest.checksState, pullRequest.checksConclusion),
+                    )}
+                  >
+                    Checks:{" "}
+                    {formatChecksStatus(pullRequest.checksState, pullRequest.checksConclusion)}
+                  </span>
+                ) : null}
               </div>
             </div>
           ) : null}
