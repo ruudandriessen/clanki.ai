@@ -158,6 +158,7 @@ export function TaskPage({
 }: TaskPageProps) {
   const [input, setInput] = useSessionState(sessionStateKeys.taskInput(taskId), "");
   const [sending, setSending] = useState(false);
+  const [optimisticRunning, setOptimisticRunning] = useState(false);
   const runEvents = useTaskEventStream({ taskId, streamId });
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState("");
@@ -188,8 +189,9 @@ export function TaskPage({
   });
   const showEmptyState = timelineEntries.length === 0;
   const runStartedAt = getLatestUserMessageCreatedAt(messages);
+  const effectiveIsRunning = isRunning || optimisticRunning;
   const runningDurationMs =
-    isRunning && runStartedAt !== null ? Math.max(0, now - runStartedAt) : null;
+    effectiveIsRunning && runStartedAt !== null ? Math.max(0, now - runStartedAt) : null;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -200,7 +202,7 @@ export function TaskPage({
   }, [taskId]);
 
   useEffect(() => {
-    if (!isRunning) {
+    if (!effectiveIsRunning) {
       return;
     }
 
@@ -211,7 +213,31 @@ export function TaskPage({
     return () => {
       globalThis.clearInterval(timerId);
     };
+  }, [effectiveIsRunning]);
+
+  useEffect(() => {
+    if (isRunning) {
+      setOptimisticRunning(false);
+    }
   }, [isRunning]);
+
+  useEffect(() => {
+    setOptimisticRunning(false);
+  }, [taskId]);
+
+  useEffect(() => {
+    if (!optimisticRunning) {
+      return;
+    }
+
+    const timeoutId = globalThis.setTimeout(() => {
+      setOptimisticRunning(false);
+    }, 8_000);
+
+    return () => {
+      globalThis.clearTimeout(timeoutId);
+    };
+  }, [optimisticRunning]);
 
   useEffect(() => {
     if (!editingTitle) {
@@ -231,6 +257,7 @@ export function TaskPage({
     if (!content || sending || !taskId) return;
 
     setSending(true);
+    setOptimisticRunning(true);
     setInput("");
 
     try {
@@ -488,7 +515,7 @@ export function TaskPage({
               );
             })}
 
-            {isRunning && (
+            {effectiveIsRunning && (
               <div className="flex items-center gap-2 py-1">
                 <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.3s]" />
                 <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.15s]" />
