@@ -32,6 +32,15 @@ export interface TaskRunParams {
 }
 
 /**
+ * Maximum wall-clock time we allow a single task execution to run before
+ * aborting.  Cloudflare Durable Object alarms are killed after ~15 minutes of
+ * wall-clock time (reported as "exceededCpu").  We set our own timeout a
+ * minute earlier so that we can mark the task as failed with a clear error
+ * message instead of being silently killed.
+ */
+const TASK_EXECUTION_TIMEOUT_MS = 14 * 60 * 1000;
+
+/**
  * Durable Object that runs task execution via alarm(), avoiding the Worker's
  * waitUntil() wallclock time limit (~30s). The Worker calls schedule() which
  * stores params and sets an immediate alarm. The alarm handler then runs the
@@ -55,27 +64,31 @@ export class TaskRunner extends DurableObject<TaskRunnerEnv> {
 
     try {
       const db = getDb(this.env);
-      await executeTaskPrompt({
-        db,
-        env: this.env,
-        executionId: params.executionId,
-        taskId: params.taskId,
-        organizationId: params.organizationId,
-        taskTitle: params.taskTitle,
-        prompt: params.prompt,
-        repoUrl: params.repoUrl,
-        installationId: params.installationId,
-        setupCommand: params.setupCommand,
-        initiatedByUserId: params.initiatedByUserId,
-        initiatedByUserName: params.initiatedByUserName,
-        initiatedByUserEmail: params.initiatedByUserEmail,
-        provider: params.provider,
-        model: params.model,
-      });
+      await Promise.race([
+        executeTaskPrompt({
+          db,
+          env: this.env,
+          executionId: params.executionId,
+          taskId: params.taskId,
+          organizationId: params.organizationId,
+          taskTitle: params.taskTitle,
+          prompt: params.prompt,
+          repoUrl: params.repoUrl,
+          installationId: params.installationId,
+          setupCommand: params.setupCommand,
+          initiatedByUserId: params.initiatedByUserId,
+          initiatedByUserName: params.initiatedByUserName,
+          initiatedByUserEmail: params.initiatedByUserEmail,
+          provider: params.provider,
+          model: params.model,
+        }),
+        rejectAfterTimeout(TASK_EXECUTION_TIMEOUT_MS),
+      ]);
     } catch (error) {
       // executeTaskPrompt has its own try/catch, so this only fires for
-      // unexpected failures (e.g. getDb() failing). Mark the task as failed
-      // so the UI doesn't show it stuck in "running" forever.
+      // unexpected failures (e.g. getDb() failing, or the execution timeout).
+      // Mark the task as failed so the UI doesn't show it stuck in "running"
+      // forever.
       try {
         await markTaskFailed({
           db: getDb(this.env),
@@ -85,4 +98,12 @@ export class TaskRunner extends DurableObject<TaskRunnerEnv> {
       } catch {}
     }
   }
+}
+
+function rejectAfterTimeout(ms: number): Promise<never> {
+  return new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Task execution timed out after ${Math.round(ms / 1000)}s`));
+    }, ms);
+  });
 }
