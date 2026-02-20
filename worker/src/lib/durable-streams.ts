@@ -93,3 +93,34 @@ export async function openTaskEventsSse(args: {
     },
   });
 }
+
+export async function appendTaskEvent(args: {
+  env: DurableStreamsEnv;
+  streamId: string;
+  event: unknown;
+}): Promise<void> {
+  const { env, streamId, event } = args;
+
+  if (!isDurableStreamsConfigured(env)) {
+    return;
+  }
+
+  const url = buildStreamUrl(env, streamId);
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      ...buildHeaders(env),
+      "Content-Type": "application/json",
+    },
+    body: `[${JSON.stringify(event)}]`,
+  });
+
+  if (!response.ok) {
+    const details = (await response.text()).trim();
+    throw new Error(
+      `Failed to append task event (${response.status} ${response.statusText})${
+        details.length > 0 ? `: ${details}` : ""
+      }`,
+    );
+  }
+}
