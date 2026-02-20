@@ -11,10 +11,11 @@ Bun monorepo with a Cloudflare Worker backend (`worker/`) and React + Vite front
 - `bun run dev` — start both worker and frontend in dev mode
 - `bun run format` — format code with oxfmt
 - `bun run lint:fix` — lint and auto-fix with oxlint
+- `bun run knip` — detect unused files, exports, and dependencies
 
 ## Pre-commit
 
-Always run `bun run format` and `bun run lint:fix` before committing.
+Always run `bun run format`, `bun run lint:fix`, and `bun run knip` before committing.
 
 ## Commits
 
