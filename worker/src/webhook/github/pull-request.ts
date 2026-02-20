@@ -1,5 +1,5 @@
 import type { EmitterWebhookEvent } from "@octokit/webhooks";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, lte, or } from "drizzle-orm";
 import type { AppDb } from "../../db/client";
 import { pullRequests } from "../../db/schema";
 
@@ -9,6 +9,7 @@ export async function handlePullRequest(
 ): Promise<void> {
   const { action, pull_request: pr, repository } = event.payload;
   const branch = pr.head.ref;
+  const pullRequestEventAt = toMsTimestamp(pr.updated_at) ?? Date.now();
   const pullRequestWhere = and(
     eq(pullRequests.prNumber, pr.number),
     eq(pullRequests.repository, repository.full_name),
@@ -96,13 +97,41 @@ export async function handlePullRequest(
         .set({
           branch,
           state: pr.draft ? "draft" : "open",
-          reviewState: null,
-          reviewUpdatedAt: Date.now(),
-          checksState: null,
-          checksConclusion: null,
-          checksUpdatedAt: Date.now(),
         })
         .where(pullRequestWhere);
+
+      await db
+        .update(pullRequests)
+        .set({
+          reviewState: null,
+          reviewUpdatedAt: pullRequestEventAt,
+        })
+        .where(
+          and(
+            pullRequestWhere,
+            or(
+              isNull(pullRequests.reviewUpdatedAt),
+              lte(pullRequests.reviewUpdatedAt, pullRequestEventAt),
+            ),
+          ),
+        );
+
+      await db
+        .update(pullRequests)
+        .set({
+          checksState: null,
+          checksConclusion: null,
+          checksUpdatedAt: pullRequestEventAt,
+        })
+        .where(
+          and(
+            pullRequestWhere,
+            or(
+              isNull(pullRequests.checksUpdatedAt),
+              lte(pullRequests.checksUpdatedAt, pullRequestEventAt),
+            ),
+          ),
+        );
       break;
     }
 
@@ -153,4 +182,13 @@ export async function handlePullRequest(
       break;
     }
   }
+}
+
+function toMsTimestamp(value: string | null | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }

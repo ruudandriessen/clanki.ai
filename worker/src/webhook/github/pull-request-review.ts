@@ -1,5 +1,5 @@
 import type { EmitterWebhookEvent } from "@octokit/webhooks";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, lte, or } from "drizzle-orm";
 import type { AppDb } from "../../db/client";
 import { pullRequests } from "../../db/schema";
 
@@ -9,18 +9,14 @@ export async function handlePullRequestReview(
 ): Promise<void> {
   const { action, pull_request: pr, repository, review } = event.payload;
 
-  if (!("installation" in event.payload) || event.payload.installation == null) {
-    throw Error("No installation found");
-  }
-
   let reviewState: string;
   switch (action) {
     case "submitted":
     case "edited":
-      reviewState = review.state;
+      reviewState = review.state.toLowerCase();
       break;
     case "dismissed":
-      reviewState = review.state ?? "dismissed";
+      reviewState = review.state?.toLowerCase() ?? "dismissed";
       break;
     default:
       return;
@@ -28,7 +24,34 @@ export async function handlePullRequestReview(
 
   console.log(`PR #${pr.number} review ${action}: ${reviewState}`);
 
-  const now = Date.now();
+  const reviewEventAt =
+    toMsTimestamp(("submitted_at" in review ? review.submitted_at : undefined) ?? undefined) ??
+    toMsTimestamp(("updated_at" in review ? review.updated_at : undefined) ?? undefined) ??
+    Date.now();
+  const reviewWhere = and(
+    eq(pullRequests.repository, repository.full_name),
+    eq(pullRequests.prNumber, pr.number),
+    or(isNull(pullRequests.reviewUpdatedAt), lte(pullRequests.reviewUpdatedAt, reviewEventAt)),
+  );
+
+  const updated = await db
+    .update(pullRequests)
+    .set({
+      branch: pr.head.ref,
+      reviewState,
+      reviewUpdatedAt: reviewEventAt,
+    })
+    .where(reviewWhere)
+    .returning({ id: pullRequests.id });
+
+  if (updated.length > 0) {
+    return;
+  }
+
+  if (!("installation" in event.payload) || event.payload.installation == null) {
+    return;
+  }
+
   await db
     .insert(pullRequests)
     .values({
@@ -37,8 +60,8 @@ export async function handlePullRequestReview(
       repository: repository.full_name,
       branch: pr.head.ref,
       prNumber: pr.number,
-      openedAt: now,
-      readyAt: pr.draft ? null : now,
+      openedAt: reviewEventAt,
+      readyAt: pr.draft ? null : reviewEventAt,
     })
     .onConflictDoNothing({
       target: [pullRequests.repository, pullRequests.prNumber],
@@ -49,9 +72,16 @@ export async function handlePullRequestReview(
     .set({
       branch: pr.head.ref,
       reviewState,
-      reviewUpdatedAt: now,
+      reviewUpdatedAt: reviewEventAt,
     })
-    .where(
-      and(eq(pullRequests.repository, repository.full_name), eq(pullRequests.prNumber, pr.number)),
-    );
+    .where(reviewWhere);
+}
+
+function toMsTimestamp(value: string | null | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
