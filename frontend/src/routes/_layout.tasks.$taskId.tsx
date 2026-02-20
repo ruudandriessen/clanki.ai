@@ -33,6 +33,23 @@ function getPullRequestStatus(pr: {
   }
 }
 
+const extractOrgRepoFromUrl = (url: string): string | null => {
+  if (!url) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(url);
+    const pathParts = parsed.pathname.split("/");
+    if (pathParts.length < 3) {
+      return null;
+    }
+    return pathParts.slice(1, 3).join("/");
+  } catch {
+    return null;
+  }
+};
+
 export const Route = createFileRoute("/_layout/tasks/$taskId")({
   loader: () =>
     Promise.all([
@@ -55,7 +72,10 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
     );
     const openedTask = taskRows[0];
     const taskBranch = openedTask?.task.branch ?? null;
-    const taskRepository = openedTask?.project?.repo_url ?? null;
+    const taskRepository = openedTask?.project?.repo_url
+      ? extractOrgRepoFromUrl(openedTask?.project?.repo_url)
+      : null;
+
     const { data: pullRequestMatches } = useLiveQuery(
       (q) =>
         q
