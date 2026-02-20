@@ -43,7 +43,7 @@ export async function ensureSession(args: {
   taskId: string;
   taskTitle: string;
   sandboxId: string;
-}): Promise<string> {
+}): Promise<{ sessionId: string; isNewSession: boolean }> {
   const { client, db, taskId, taskTitle, sandboxId } = args;
 
   const task = await db.query.tasks.findFirst({
@@ -52,6 +52,7 @@ export async function ensureSession(args: {
   });
 
   let sessionId = task?.sessionId ?? null;
+  let isNewSession = false;
   if (!sessionId) {
     const { data: session } = await client.session.create({
       body: { title: taskTitle },
@@ -60,6 +61,7 @@ export async function ensureSession(args: {
     if (!sessionId) {
       throw new Error("Failed to create OpenCode session");
     }
+    isNewSession = true;
   }
 
   await db
@@ -67,5 +69,5 @@ export async function ensureSession(args: {
     .set({ sessionId, sandboxId, updatedAt: Date.now() })
     .where(eq(schema.tasks.id, taskId));
 
-  return sessionId;
+  return { sessionId, isNewSession };
 }

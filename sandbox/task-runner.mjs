@@ -92,6 +92,8 @@ async function readResponseText(response) {
 }
 
 function readConfig() {
+  const isFirstMessage = optionalEnv("TASK_IS_FIRST_MESSAGE") === "1";
+
   return {
     workerUrl: requiredEnv("TASK_WORKER_URL"),
     callbackToken: requiredEnv("TASK_CALLBACK_TOKEN"),
@@ -99,11 +101,22 @@ function readConfig() {
     runId: requiredEnv("TASK_RUN_ID"),
     orgId: requiredEnv("TASK_ORG_ID"),
     sessionId: requiredEnv("TASK_SESSION_ID"),
+    isFirstMessage,
     repoDir: requiredEnv("TASK_REPO_DIR"),
     prompt: requiredEnv("TASK_PROMPT"),
     dsServiceId: optionalEnv("TASK_DS_SERVICE_ID"),
     dsSecret: optionalEnv("TASK_DS_SECRET"),
   };
+}
+
+function buildPromptText(config) {
+  if (!config.isFirstMessage) {
+    return config.prompt;
+  }
+
+  const systemPrompt =
+    "System instruction: Before writing or changing any code, create a git branch based on the user message first.";
+  return `${systemPrompt}\n\nUser message:\n${config.prompt}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -704,13 +717,14 @@ async function main() {
     }
 
     const promptQuery = new URLSearchParams({ directory: config.repoDir }).toString();
+    const promptText = buildPromptText(config);
     const promptPromise = fetch(
       `http://localhost:${OPENCODE_PORT}/session/${config.sessionId}/message?${promptQuery}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          parts: [{ type: "text", text: config.prompt }],
+          parts: [{ type: "text", text: promptText }],
         }),
       },
     ).then(async (response) => {

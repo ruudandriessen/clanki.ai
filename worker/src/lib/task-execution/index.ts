@@ -173,6 +173,7 @@ export async function executeTaskPrompt(args: {
     message: "Connecting assistant session",
   });
   let sessionId = "";
+  let isNewSession = false;
   try {
     const { client } = await connectAssistant({
       sandbox,
@@ -183,7 +184,9 @@ export async function executeTaskPrompt(args: {
       env,
       userId: initiatedByUserId,
     });
-    sessionId = await ensureSession({ client, db, taskId, taskTitle, sandboxId });
+    const session = await ensureSession({ client, db, taskId, taskTitle, sandboxId });
+    sessionId = session.sessionId;
+    isNewSession = session.isNewSession;
   } catch (error) {
     await emitLifecycleEvent({
       phase: "assistant",
@@ -212,6 +215,7 @@ export async function executeTaskPrompt(args: {
     TASK_RUN_ID: executionId,
     TASK_ORG_ID: organizationId,
     TASK_SESSION_ID: sessionId,
+    TASK_IS_FIRST_MESSAGE: isNewSession ? "1" : "0",
     TASK_REPO_DIR: repoDir,
     TASK_PROMPT: prompt,
     TASK_DS_SERVICE_ID: env.DURABLE_STREAMS_SERVICE_ID ?? "",
