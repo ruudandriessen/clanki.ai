@@ -57,6 +57,13 @@
       "when": 1771149292430,
       "tag": "0007_useful_sinister_six",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1771587897924,
+      "tag": "0008_organic_blade",
+      "breakpoints": true
     }
   ]
 }

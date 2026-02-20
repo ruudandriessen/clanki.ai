@@ -8,6 +8,7 @@ import type { TaskRunner } from "../../lib/task-runner";
 export type Bindings = {
   HYPERDRIVE: Hyperdrive;
   DATABASE_URL?: string;
+  WORKER_CALLBACK_ORIGIN?: string;
   Sandbox: DurableObjectNamespace<Sandbox>;
   TaskRunner: DurableObjectNamespace<TaskRunner>;
   GITHUB_APP_ID?: string;
@@ -27,6 +28,8 @@ export type OrpcContext = {
   env: Bindings;
   session: SessionContext;
   executionCtx: ExecutionContext;
+  /** Origin of the incoming request (e.g. "https://clanki.ai"). */
+  requestOrigin: string;
 };
 
 export const os = implement(apiContract).$context<OrpcContext>();

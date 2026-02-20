@@ -17,13 +17,13 @@ function isDurableStreamsConfigured(env: DurableStreamsEnv): boolean {
   );
 }
 
-function buildStreamUrl(env: DurableStreamsEnv, streamPath: string): string {
+function buildStreamUrl(env: DurableStreamsEnv, streamId: string): string {
   const serviceId = env.DURABLE_STREAMS_SERVICE_ID?.trim();
   if (!serviceId) {
     throw new Error("Missing DURABLE_STREAMS_SERVICE_ID");
   }
 
-  const encodedPath = streamPath
+  const encodedPath = streamId
     .split("/")
     .map((segment) => encodeURIComponent(segment))
     .join("/");
@@ -39,24 +39,32 @@ function buildHeaders(env: DurableStreamsEnv): Record<string, string> {
   return { Authorization: `Bearer ${secret}` };
 }
 
-export function buildTaskEventsStreamId(args: { organizationId: string; taskId: string }): string {
+function buildTaskEventsStreamId(args: { organizationId: string; taskId: string }): string {
   return `org/${args.organizationId}/tasks/${args.taskId}/events`;
 }
 
-async function ensureStream(env: DurableStreamsEnv, url: string): Promise<boolean> {
+interface CreateStreamProps {
+  env: DurableStreamsEnv;
+  organizationId: string;
+  taskId: string;
+}
+
+export async function createStream({
+  env,
+  organizationId,
+  taskId,
+}: CreateStreamProps): Promise<string> {
+  const streamId = buildTaskEventsStreamId({ organizationId, taskId });
+  const streamUrl = buildStreamUrl(env, streamId);
   const headers = buildHeaders(env);
   try {
-    await DurableStream.create({ url, headers, contentType: "application/json" });
-    return true;
+    await DurableStream.create({ url: streamUrl, headers, contentType: "application/json" });
+    return streamId;
   } catch (error) {
     if (error instanceof DurableStreamError && error.code === "CONFLICT_EXISTS") {
-      return true;
+      return streamId;
     }
-    console.warn("Failed to ensure durable stream", {
-      url,
-      message: error instanceof Error ? error.message : String(error),
-    });
-    return false;
+    throw error;
   }
 }
 
@@ -74,11 +82,6 @@ export async function appendTaskEventToDurableStream(args: {
 
   const streamPath = buildTaskEventsStreamId({ organizationId, taskId });
   const url = buildStreamUrl(env, streamPath);
-
-  const ensured = await ensureStream(env, url);
-  if (!ensured) {
-    return;
-  }
 
   try {
     const handle = new DurableStream({
@@ -99,20 +102,16 @@ export async function appendTaskEventToDurableStream(args: {
 
 export async function openTaskEventsSse(args: {
   env: DurableStreamsEnv;
-  organizationId: string;
-  taskId: string;
+  streamId: string;
   offset: string;
 }): Promise<Response> {
-  const { env, organizationId, taskId, offset } = args;
+  const { env, streamId, offset } = args;
 
   if (!isDurableStreamsConfigured(env)) {
     throw new Error("Durable Streams is not configured");
   }
 
-  const streamPath = buildTaskEventsStreamId({ organizationId, taskId });
-  const url = buildStreamUrl(env, streamPath);
-
-  await ensureStream(env, url);
+  const url = buildStreamUrl(env, streamId);
 
   const readUrl = new URL(url);
   readUrl.searchParams.set("offset", offset);

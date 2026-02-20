@@ -8,11 +8,12 @@ import {
   DEFAULT_OPENCODE_PROVIDER,
   isSupportedOpencodeProvider,
 } from "../../lib/opencode";
-import { buildTaskEventsStreamId } from "../../lib/durable-streams";
 import { getErrorMessage, getOrgId, parseOptionalId, parseOptionalTimestamp } from "./common";
 import type { OrpcContext } from "./context";
 import { badRequest, internalError, notFound } from "./errors";
 import { os } from "./context";
+import { createStream } from "../../lib/durable-streams";
+import { env } from "cloudflare:workers";
 
 type TaskForOrg = { id: string; title: string; projectId: string | null };
 
@@ -51,9 +52,18 @@ async function setTaskRunError(
   } catch {}
 }
 
+function normalizeOrigin(value: string, fieldName: string): string {
+  try {
+    return new URL(value).origin;
+  } catch {
+    throw new Error(`${fieldName} must be an absolute URL`);
+  }
+}
+
 async function queueTaskRun(args: {
   db: AppDb;
   env: OrpcContext["env"];
+  requestOrigin: string;
   orgId: string;
   task: TaskForOrg;
   userId: string;
@@ -66,6 +76,7 @@ async function queueTaskRun(args: {
   const {
     db,
     env,
+    requestOrigin,
     orgId,
     task,
     userId,
@@ -113,6 +124,12 @@ async function queueTaskRun(args: {
     badRequest("Task's project has no repository URL configured");
   }
 
+  const configuredWorkerOrigin = env.WORKER_CALLBACK_ORIGIN;
+  const workerOrigin =
+    configuredWorkerOrigin != null
+      ? normalizeOrigin(configuredWorkerOrigin, "WORKER_CALLBACK_ORIGIN")
+      : requestOrigin;
+
   const now = Date.now();
   const run = {
     id: crypto.randomUUID(),
@@ -137,7 +154,6 @@ async function queueTaskRun(args: {
     .update(schema.tasks)
     .set({
       status: "running",
-      streamId: buildTaskEventsStreamId({ organizationId: orgId, taskId: task.id }),
       error: null,
       updatedAt: now,
     })
@@ -146,6 +162,7 @@ async function queueTaskRun(args: {
   const runnerId = env.TaskRunner.idFromName(run.id);
   const runner = env.TaskRunner.get(runnerId);
   await runner.schedule({
+    workerOrigin,
     executionId: run.id,
     taskId: task.id,
     taskTitle: task.title,
@@ -199,13 +216,19 @@ export const tasksRouter = {
           : "open";
       const taskId = parseOptionalId(input.id) ?? crypto.randomUUID();
 
+      const streamId = await createStream({
+        env,
+        organizationId: orgId,
+        taskId: taskId,
+      });
+
       const task = {
         id: taskId,
         organizationId: orgId,
         projectId: input.projectId,
         title: input.title.trim(),
         status,
-        streamId: buildTaskEventsStreamId({ organizationId: orgId, taskId }),
+        streamId,
         createdAt,
         updatedAt,
       };
@@ -336,6 +359,7 @@ export const tasksRouter = {
         await queueTaskRun({
           db,
           env: context.env,
+          requestOrigin: context.requestOrigin,
           orgId,
           task,
           userId: context.session.user.id,

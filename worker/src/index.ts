@@ -11,6 +11,7 @@ import { projects } from "./routes/projects";
 import { tasks } from "./routes/tasks";
 import { handleGitHubWebhook } from "./webhook/github";
 import type { TaskRunner } from "./lib/task-runner";
+import { internalTasks } from "./routes/internal-tasks";
 
 type Bindings = {
   ASSETS: Fetcher;
@@ -26,6 +27,7 @@ type Bindings = {
   CREDENTIALS_ENCRYPTION_KEY: string;
   DURABLE_STREAMS_SERVICE_ID?: string;
   DURABLE_STREAMS_SECRET?: string;
+  WORKER_CALLBACK_ORIGIN?: string;
   Sandbox: DurableObjectNamespace<Sandbox>;
   TaskRunner: DurableObjectNamespace<TaskRunner>;
   GITHUB_APP_ID?: string;
@@ -76,6 +78,9 @@ app.use("/api/projects/*", requireAuth);
 app.use("/api/tasks/*", requireAuth);
 app.use("/api/rpc/*", requireAuth);
 
+// Internal callback routes (token-based auth, not session auth)
+app.route("/api/internal", internalTasks);
+
 // Data API routes
 app.route("/api/projects", projects);
 app.route("/api/tasks", tasks);
@@ -87,6 +92,7 @@ app.all("/api/rpc/*", async (c) => {
       env: c.env,
       session: c.get("session"),
       executionCtx: c.executionCtx,
+      requestOrigin: new URL(c.req.url).origin,
     },
   });
 

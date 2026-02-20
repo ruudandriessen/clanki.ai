@@ -71,23 +71,6 @@ async function getNextTaskMessageTimestamp(db: AppDb, taskId: string): Promise<n
   return latest.createdAt >= now ? latest.createdAt + 1 : now;
 }
 
-export function extractTextFromParts(parts: unknown): string {
-  if (!Array.isArray(parts)) {
-    return "";
-  }
-
-  const chunks: string[] = [];
-  for (const part of parts) {
-    if (part && typeof part === "object" && "type" in part && part.type === "text") {
-      const text = (part as { text?: string }).text;
-      if (typeof text === "string" && text.trim().length > 0) {
-        chunks.push(text.trim());
-      }
-    }
-  }
-  return chunks.join("\n\n");
-}
-
 export function truncateCommandOutput(value: string, maxLength = 2000): string {
   if (value.length <= maxLength) {
     return value;
@@ -102,12 +85,4 @@ export function getErrorMessage(error: unknown): string {
   }
 
   return "Unknown task execution failure";
-}
-
-export function safeJsonStringify(value: unknown): string {
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
 }

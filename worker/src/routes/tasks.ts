@@ -50,10 +50,10 @@ async function getTaskForOrg(
   db: AppDb,
   taskId: string,
   orgId: string,
-): Promise<{ id: string } | undefined> {
+): Promise<{ id: string; title: string; projectId: string | null; streamId: string } | undefined> {
   return db.query.tasks.findFirst({
     where: and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)),
-    columns: { id: true },
+    columns: { id: true, title: true, projectId: true, streamId: true },
   });
 }
 
@@ -110,8 +110,7 @@ tasks.get("/:taskId/stream", async (c) => {
   try {
     const upstream = await openTaskEventsSse({
       env: c.env,
-      organizationId: orgId,
-      taskId,
+      streamId: task.streamId,
       offset,
     });
 

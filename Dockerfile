@@ -14,6 +14,10 @@ RUN if command -v apt-get >/dev/null 2>&1; then \
       exit 1; \
     fi
 
+# Install the autonomous task-runner script.
+COPY sandbox/task-runner.mjs /usr/local/bin/task-runner
+RUN chmod +x /usr/local/bin/task-runner
+
 WORKDIR /home/user
 USER user
 
