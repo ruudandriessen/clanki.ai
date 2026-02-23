@@ -22,7 +22,7 @@ export function LoginPage() {
           <div className="text-center">
             <h1 className="text-3xl tracking-[0.06em] text-foreground uppercase">Clanki</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Sign in to explore your architecture
+              Start to orchestrate your agents
             </p>
           </div>
 
