@@ -1,39 +1,20 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
-import mkcert from "vite-plugin-mkcert";
-import { fileURLToPath, URL } from "node:url";
+import react from "@vitejs/plugin-react";
+import tsConfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
-  root: "frontend",
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL("./frontend/src", import.meta.url)),
-    },
-  },
   plugins: [
-    mkcert(),
-    tanstackRouter({
-      routesDirectory: "./src/routes",
-      generatedRouteTree: "./src/routeTree.gen.ts",
-    }),
     tailwindcss(),
+    tsConfigPaths({ projects: ["./tsconfig.json"] }),
+    cloudflare({ viteEnvironment: { name: "ssr" } }),
+    tanstackStart({}),
     react({
       babel: {
         plugins: [["babel-plugin-react-compiler"]],
       },
     }),
   ],
-  server: {
-    proxy: {
-      "/api": {
-        target: "http://localhost:8787",
-        changeOrigin: true,
-        headers: {
-          "X-Forwarded-Proto": "https",
-        },
-      },
-    },
-  },
 });

@@ -1,7 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "entry": ["frontend/src/main.tsx", "frontend/src/lib/auth-client.ts"],
-  "project": ["frontend/src/**/*.{ts,tsx}", "worker/src/**/*.ts"],
-  "ignore": ["frontend/src/components/ui/**", "frontend/src/routeTree.gen.ts"],
-  "ignoreDependencies": ["cloudflare"]
+  "entry": ["src/routes/**/*.{ts,tsx}", "src/lib/auth-client.ts"],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignore": ["src/components/ui/**", "src/routeTree.gen.ts", "src/server/db/schema.ts"],
+  "ignoreDependencies": ["cloudflare", "tailwindcss", "shadcn", "tw-animate-css"]
 }

@@ -1,12 +1,9 @@
 {
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "clanki",
-  "main": "worker/src/index.ts",
+  "main": "src/server.ts",
   "compatibility_date": "2025-01-29",
   "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "directory": "frontend/dist",
-    "binding": "ASSETS"
-  },
   "observability": {
     "logs": {
       "enabled": true,

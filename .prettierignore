@@ -1,2 +1,2 @@
 worker/migrations-postgres/
-frontend/src/routeTree.gen.ts
+src/routeTree.gen.ts

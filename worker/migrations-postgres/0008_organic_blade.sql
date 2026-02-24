@@ -1,1 +1,0 @@
-ALTER TABLE "tasks" ALTER COLUMN "stream_id" SET NOT NULL;

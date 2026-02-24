@@ -1,1 +1,0 @@
-ALTER TABLE "projects" ADD COLUMN "setup_command" text;
