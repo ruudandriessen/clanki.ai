@@ -4,13 +4,16 @@ import { z } from "zod";
 import type { AppDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { withTransaction } from "@/server/db/transaction";
+import type { AppEnv } from "@/server/env";
+import { runInBackground } from "@/server/lib/background";
 import {
   DEFAULT_OPENCODE_MODEL,
   DEFAULT_OPENCODE_PROVIDER,
   isSupportedOpencodeProvider,
 } from "@/server/lib/opencode";
+import { createTaskRunCallbackToken } from "@/server/lib/task-run-callback-token";
+import { executeTaskPrompt } from "@/server/lib/task-execution";
 import { createStream } from "@/server/lib/durable-streams";
-import { env } from "cloudflare:workers";
 import { authMiddleware } from "../middleware";
 import {
   badRequest,
@@ -68,7 +71,7 @@ function normalizeOrigin(value: string, fieldName: string): string {
 
 async function queueTaskRun(args: {
   db: AppDb;
-  env: typeof env;
+  env: AppEnv;
   requestOrigin: string;
   orgId: string;
   task: TaskForOrg;
@@ -156,12 +159,24 @@ async function queueTaskRun(args: {
     updatedAt: now,
   };
 
-  const runnerId = ctxEnv.TaskRunner.idFromName(run.id);
-  const runner = ctxEnv.TaskRunner.get(runnerId);
-  await runner.schedule({
+  const callbackToken = createTaskRunCallbackToken(
+    {
+      executionId: run.id,
+      taskId: task.id,
+      organizationId: orgId,
+      userId,
+      provider: providerInput,
+    },
+    ctxEnv,
+  );
+
+  const startTaskPromise = executeTaskPrompt({
+    db,
+    env: ctxEnv,
     workerOrigin,
     executionId: run.id,
     taskId: task.id,
+    organizationId: orgId,
     taskTitle: task.title,
     prompt: inputMessage.content,
     repoUrl: project.repoUrl,
@@ -170,10 +185,21 @@ async function queueTaskRun(args: {
     initiatedByUserId: userId,
     initiatedByUserName: userName,
     initiatedByUserEmail: userEmail,
-    organizationId: orgId,
     provider: providerInput,
     model,
+    callbackToken,
+  }).catch(async (error) => {
+    const message = getErrorMessage(error, "Failed to auto-start task run");
+    console.error("Task run startup failed", {
+      taskId: task.id,
+      executionId: run.id,
+      userId,
+      message,
+    });
+    await setTaskRunError(db, { taskId: task.id, orgId, message });
   });
+
+  runInBackground(startTaskPromise);
 
   return run;
 }
@@ -225,7 +251,7 @@ export const createTask = createServerFn({ method: "POST" })
       const taskId = parseOptionalId(input.id) ?? crypto.randomUUID();
 
       const streamId = await createStream({
-        env,
+        env: context.env,
         organizationId: orgId,
         taskId: taskId,
       });

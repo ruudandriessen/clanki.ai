@@ -8,7 +8,6 @@ import {
   readProviderAuthFromSandbox,
 } from "@/server/lib/opencode-auth";
 import {
-  buildProviderAuthSandboxId,
   DEFAULT_OPENCODE_PROVIDER,
   isSupportedOpencodeProvider,
   PROVIDER_OAUTH_ATTEMPT_TTL_MS,
@@ -24,7 +23,7 @@ import { getOpenCodeClient, getTaskSandbox } from "@/server/lib/sandbox";
 import { authMiddleware } from "../middleware";
 import { badRequest, internalError } from "./common";
 
-const OAUTH_WORKDIR = "/home/user";
+const OAUTH_WORKDIR = "/vercel/sandbox";
 
 function parseProvider(value: string): SupportedOpencodeProvider | null {
   const normalized = value.trim().toLowerCase();
@@ -181,8 +180,8 @@ export const startProviderOauth = createServerFn({ method: "POST" })
     const userId = context.session.user.id;
     console.info("Provider OAuth start requested", { requestId, userId, provider });
 
-    const sandboxId = buildProviderAuthSandboxId({ userId, provider });
-    const sandbox = getTaskSandbox(context.env, sandboxId);
+    const sandbox = await getTaskSandbox(context.env, null);
+    const sandboxId = sandbox.sandboxId;
     const { client } = await getOpenCodeClient(sandbox, OAUTH_WORKDIR);
 
     const methodsResponse = await client.provider.auth();
@@ -274,7 +273,7 @@ export const completeProviderOauth = createServerFn({ method: "POST" })
       badRequest("OAuth attempt not found or expired");
     }
 
-    const sandbox = getTaskSandbox(context.env, attempt.sandboxId);
+    const sandbox = await getTaskSandbox(context.env, attempt.sandboxId);
     const { client } = await getOpenCodeClient(sandbox, OAUTH_WORKDIR);
 
     let callbackResponse: Awaited<ReturnType<typeof client.provider.oauth.callback>>;

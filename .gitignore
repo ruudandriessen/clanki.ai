@@ -1,8 +1,8 @@
 node_modules/
 dist/
-.wrangler/
-.dev.vars
+.vercel/
 .env
 *.log
 *.tsbuildinfo
 .group-cache.json
+.nitro

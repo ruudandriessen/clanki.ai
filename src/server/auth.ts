@@ -41,15 +41,21 @@ function isLocalOrigin(origin: string): boolean {
 }
 
 type AuthEnv = {
-  HYPERDRIVE: Hyperdrive;
   DATABASE_URL?: string;
   ENVIRONMENT?: string;
-  BETTER_AUTH_SECRET: string;
-  GITHUB_CLIENT_ID: string;
-  GITHUB_CLIENT_SECRET: string;
+  BETTER_AUTH_SECRET?: string;
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
 };
 
 export function createAuth(env: AuthEnv, request: Request) {
+  if (!env.BETTER_AUTH_SECRET) {
+    throw new Error("Missing BETTER_AUTH_SECRET");
+  }
+  if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) {
+    throw new Error("Missing GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET");
+  }
+
   const origin = resolveOrigin(request);
   const isLocal = isLocalOrigin(origin);
   const githubRedirectURI = isLocal

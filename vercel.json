@@ -1,0 +1,18 @@
+{
+  "buildCommand": "bun run build",
+  "outputDirectory": "dist/client",
+  "functions": {
+    "api/server.ts": {
+      "maxDuration": 300
+    }
+  },
+  "routes": [
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/server.ts"
+    }
+  ]
+}

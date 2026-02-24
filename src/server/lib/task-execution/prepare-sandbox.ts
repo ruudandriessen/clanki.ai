@@ -1,8 +1,7 @@
-import { buildTaskSandboxId } from "../opencode";
 import { getTaskSandbox, type SandboxEnv } from "../sandbox";
 
-export function prepareSandbox(args: { env: SandboxEnv; taskId: string }) {
-  const sandboxId = buildTaskSandboxId({ taskId: args.taskId });
-  const sandbox = getTaskSandbox(args.env, sandboxId);
+export async function prepareSandbox(args: { env: SandboxEnv; sandboxId?: string | null }) {
+  const sandbox = await getTaskSandbox(args.env, args.sandboxId);
+  const sandboxId = sandbox.sandboxId;
   return { sandbox, sandboxId };
 }

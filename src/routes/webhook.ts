@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { env } from "cloudflare:workers";
 import { Webhooks } from "@octokit/webhooks";
 import { getDb } from "@/server/db/client";
+import { getEnv } from "@/server/env";
 import { handleCheckRun } from "@/server/webhook/github/check-run";
 import { handleCheckSuite } from "@/server/webhook/github/check-suite";
 import { handleInstallation } from "@/server/webhook/github/installation";
@@ -44,6 +44,7 @@ export const Route = createFileRoute("/webhook")({
     handlers: {
       POST: async ({ request }: { request: Request }) => {
         try {
+          const env = getEnv();
           const signature = request.headers.get("x-hub-signature-256");
           const event = request.headers.get("x-github-event");
           const delivery = request.headers.get("x-github-delivery");

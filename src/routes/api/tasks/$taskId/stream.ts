@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { and, eq } from "drizzle-orm";
-import { env } from "cloudflare:workers";
 import { getDb } from "@/server/db/client";
+import { getEnv } from "@/server/env";
 import * as schema from "@/server/db/schema";
 import { openTaskEventsSse } from "@/server/lib/durable-streams";
 import { requireSession } from "@/server/requireSession";
@@ -36,8 +36,8 @@ export const Route = createFileRoute("/api/tasks/$taskId/stream")({
           return Response.json({ error: "No active organization" }, { status: 400 });
         }
 
-        // TODO: Deal with runtime type checking
-        const db = getDb(env as any);
+        const env = getEnv();
+        const db = getDb(env);
         const task = await db.query.tasks.findFirst({
           where: and(eq(schema.tasks.id, params.taskId), eq(schema.tasks.organizationId, orgId)),
           columns: { id: true, streamId: true },

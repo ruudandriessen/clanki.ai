@@ -1,5 +1,5 @@
 import type { Auth } from "@opencode-ai/sdk";
-import type { Sandbox } from "@cloudflare/sandbox";
+import type { TaskSandbox } from "./sandbox";
 import { OPENCODE_AUTH_FILE_FALLBACK_PATHS } from "./opencode";
 
 export type ProviderAuthSandboxInspection = {
@@ -15,7 +15,7 @@ export type ProviderAuthSandboxInspection = {
 };
 
 export async function readProviderAuthFromSandbox(
-  sandbox: Sandbox,
+  sandbox: TaskSandbox,
   provider: string,
 ): Promise<Auth | null> {
   const providerId = provider.trim().toLowerCase();
@@ -45,7 +45,7 @@ export async function readProviderAuthFromSandbox(
 }
 
 export async function inspectProviderAuthFromSandbox(
-  sandbox: Sandbox,
+  sandbox: TaskSandbox,
   provider: string,
 ): Promise<ProviderAuthSandboxInspection> {
   const providerId = provider.trim().toLowerCase();
