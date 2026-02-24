@@ -1,9 +1,11 @@
+import { eq } from "drizzle-orm";
 import type { AppDb } from "../../db/client";
+import * as schema from "../../db/schema";
 import type { DurableStreamsEnv } from "../durable-streams";
 import { appendTaskEvent } from "../durable-streams";
 import type { GitHubAppEnv } from "../github";
 import type { SupportedOpencodeProvider } from "../opencode";
-import type { SandboxEnv } from "../sandbox";
+import { TASK_RUNNER_COMMAND, type SandboxEnv } from "../sandbox";
 import type { SecretCryptoEnv } from "../secret-crypto";
 import type { TaskLifecycleEventPayload } from "@/shared/task-stream-events";
 import { connectAssistant, ensureSession } from "./connect-assistant";
@@ -16,8 +18,6 @@ type TaskExecutionEnv = SandboxEnv & GitHubAppEnv & SecretCryptoEnv & DurableStr
 /**
  * Set up the sandbox and launch the autonomous task-runner script.
  *
- * Returns a callback token that the sandbox will use to authenticate calls
- * back to the worker's internal API.
  */
 export async function executeTaskPrompt(args: {
   db: AppDb;
@@ -36,7 +36,8 @@ export async function executeTaskPrompt(args: {
   initiatedByUserEmail: string;
   provider: SupportedOpencodeProvider;
   model: string;
-}): Promise<string> {
+  callbackToken: string;
+}): Promise<void> {
   const {
     db,
     env,
@@ -54,10 +55,10 @@ export async function executeTaskPrompt(args: {
     initiatedByUserEmail,
     provider,
     model,
+    callbackToken,
   } = args;
 
-  const repoDir = "/home/user/repo";
-  const callbackToken = crypto.randomUUID();
+  const repoDir = "/vercel/sandbox/repo";
   const streamId = `org/${organizationId}/tasks/${taskId}/events`;
 
   const emitLifecycleEvent = async (payload: TaskLifecycleEventPayload): Promise<void> => {
@@ -88,7 +89,14 @@ export async function executeTaskPrompt(args: {
     status: "running",
     message: "Preparing sandbox",
   });
-  const { sandbox, sandboxId } = prepareSandbox({ env, taskId });
+  const task = await db.query.tasks.findFirst({
+    where: eq(schema.tasks.id, taskId),
+    columns: { sandboxId: true },
+  });
+  const { sandbox, sandboxId } = await prepareSandbox({
+    env,
+    sandboxId: task?.sandboxId ?? null,
+  });
   await markTaskRunning({ db, taskId, sandboxId });
   await emitLifecycleEvent({
     phase: "sandbox",
@@ -225,13 +233,11 @@ export async function executeTaskPrompt(args: {
   // Launch the autonomous task-runner in the background.
   // The script reads all context from env vars and handles prompt execution,
   // event streaming, and worker callbacks independently.
-  sandbox.exec("task-runner &").catch((error) => {
+  sandbox.execDetached(TASK_RUNNER_COMMAND).catch((error) => {
     console.error("Failed to start task-runner in sandbox", {
       executionId,
       taskId,
       message: getErrorMessage(error),
     });
   });
-
-  return callbackToken;
 }

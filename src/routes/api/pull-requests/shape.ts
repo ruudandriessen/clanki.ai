@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { eq, inArray } from "drizzle-orm";
-import { env } from "cloudflare:workers";
 import { getDb } from "@/server/db/client";
+import { getEnv } from "@/server/env";
 import * as schema from "@/server/db/schema";
 import { clauseToString } from "@/server/lib/clause-to-string";
 import { electricFn } from "@/server/lib/electric";
@@ -18,8 +18,8 @@ export const Route = createFileRoute("/api/pull-requests/shape")({
           return Response.json({ error: "No active organization" }, { status: 400 });
         }
 
-        // TODO: properly type env
-        const db = getDb(env as any);
+        const env = getEnv();
+        const db = getDb(env);
         const orgProjects = await db.query.projects.findMany({
           where: eq(schema.projects.organizationId, orgId),
           columns: { installationId: true },

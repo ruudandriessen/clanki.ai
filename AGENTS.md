@@ -2,7 +2,7 @@
 
 ## Project
 
-Bun monorepo with a Cloudflare Worker backend (`worker/`) and React + Vite frontend (`frontend/`).
+Bun app with a TanStack Start backend deployed on Vercel and a React + Vite frontend.
 
 ## Commands
 

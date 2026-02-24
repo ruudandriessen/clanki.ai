@@ -3,5 +3,5 @@
   "entry": ["src/routes/**/*.{ts,tsx}", "src/lib/auth-client.ts"],
   "project": ["src/**/*.{ts,tsx}"],
   "ignore": ["src/components/ui/**", "src/routeTree.gen.ts", "src/server/db/schema.ts"],
-  "ignoreDependencies": ["cloudflare", "tailwindcss", "shadcn", "tw-animate-css"]
+  "ignoreDependencies": ["tailwindcss", "shadcn", "tw-animate-css"]
 }

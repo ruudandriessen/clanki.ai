@@ -1,5 +1,5 @@
-import { env } from "cloudflare:workers";
 import { createAuth } from "./auth";
+import { getEnv } from "./env";
 import { SessionContext } from "./middleware";
 
 /**
@@ -7,8 +7,8 @@ import { SessionContext } from "./middleware";
  * Returns the session context or throws a 401 Response.
  */
 export async function requireSession(request: Request): Promise<SessionContext> {
-  // TODO properly type env
-  const auth = createAuth(env as any, request);
+  const env = getEnv();
+  const auth = createAuth(env, request);
   const result = await auth.api.getSession({ headers: request.headers });
 
   if (!result) {

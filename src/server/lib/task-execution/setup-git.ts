@@ -1,10 +1,10 @@
-import type { Sandbox } from "@cloudflare/sandbox";
 import { createInstallationToken, buildAuthenticatedCloneUrl, type GitHubAppEnv } from "../github";
+import type { TaskSandbox } from "../sandbox";
 import { truncateCommandOutput } from "./helpers";
 
 export async function setupGitToken(args: {
   env: GitHubAppEnv;
-  sandbox: Sandbox;
+  sandbox: TaskSandbox;
   installationId: number | null;
 }): Promise<string | null> {
   if (!args.installationId) {
@@ -17,7 +17,7 @@ export async function setupGitToken(args: {
 }
 
 export async function setupGitIdentity(args: {
-  sandbox: Sandbox;
+  sandbox: TaskSandbox;
   userId: string;
   userName: string;
   userEmail: string;
@@ -44,7 +44,7 @@ export async function setupGitIdentity(args: {
 }
 
 export async function cloneRepository(args: {
-  sandbox: Sandbox;
+  sandbox: TaskSandbox;
   repoUrl: string;
   repoDir: string;
   gitToken: string | null;
@@ -64,7 +64,7 @@ export async function cloneRepository(args: {
 }
 
 export async function runSetupScript(args: {
-  sandbox: Sandbox;
+  sandbox: TaskSandbox;
   command: string | null;
   repoDir: string;
 }): Promise<void> {

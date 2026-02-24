@@ -1,15 +1,14 @@
-import type { Sandbox } from "@cloudflare/sandbox";
 import { eq } from "drizzle-orm";
 import type { AppDb } from "../../db/client";
 import * as schema from "../../db/schema";
 import type { SupportedOpencodeProvider } from "../opencode";
 import { toProviderModelRef } from "../opencode";
 import { getDecryptedProviderAuth } from "../provider-credentials";
-import { getOpenCodeClient } from "../sandbox";
+import { getOpenCodeClient, type TaskSandbox } from "../sandbox";
 import type { SecretCryptoEnv } from "../secret-crypto";
 
 export async function connectAssistant(args: {
-  sandbox: Sandbox;
+  sandbox: TaskSandbox;
   repoDir: string;
   provider: SupportedOpencodeProvider;
   model: string;
@@ -53,6 +52,17 @@ export async function ensureSession(args: {
 
   let sessionId = task?.sessionId ?? null;
   let isNewSession = false;
+  if (sessionId) {
+    try {
+      const existing = await client.session.get({ path: { id: sessionId } });
+      if (!existing.data) {
+        sessionId = null;
+      }
+    } catch {
+      sessionId = null;
+    }
+  }
+
   if (!sessionId) {
     const { data: session } = await client.session.create({
       body: { title: taskTitle },

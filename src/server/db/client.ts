@@ -5,13 +5,11 @@ import * as schema from "./schema";
 export type AppDb = PostgresJsDatabase<typeof schema>;
 
 type DbEnv = {
-  HYPERDRIVE?: Hyperdrive;
   DATABASE_URL?: string;
-  ENVIRONMENT?: string;
 };
 
 export function getDb(env: DbEnv): AppDb {
-  const url = env.DATABASE_URL ?? env.HYPERDRIVE?.connectionString;
+  const url = env.DATABASE_URL;
   if (!url) {
     throw new Error("Database connection string is missing");
   }

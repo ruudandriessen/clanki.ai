@@ -1,5 +1,5 @@
-import { env } from "cloudflare:workers";
 import { ELECTRIC_PROTOCOL_QUERY_PARAMS } from "@electric-sql/client";
+import { getEnv } from "../env";
 
 interface ElectricOptions {
   table: string;
@@ -8,6 +8,10 @@ interface ElectricOptions {
 }
 
 export const electricFn = async ({ request, table, where }: ElectricOptions) => {
+  const env = getEnv();
+  if (!env.ELECTRIC_SECRET || !env.ELECTRIC_SOURCE_ID) {
+    throw new Error("Missing ELECTRIC_SECRET or ELECTRIC_SOURCE_ID");
+  }
   const requestUrl = new URL(request.url);
 
   const targetUrl = new URL(`https://api.electric-sql.cloud/v1/shape`);

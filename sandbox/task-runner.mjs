@@ -5,7 +5,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 /**
- * Autonomous task runner that executes inside the Cloudflare sandbox.
+ * Autonomous task runner that executes inside an isolated sandbox VM.
  *
  * Reads configuration from TASK_* environment variables, then:
  * 1. Triggers a prompt on the local OpenCode server

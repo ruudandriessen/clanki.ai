@@ -5,6 +5,8 @@ export const OPENCODE_AUTH_FILE_FALLBACK_PATHS = [
   OPENCODE_AUTH_FILE_PATH,
   "/root/.local/share/opencode/auth.json",
   "/home/sandbox/.local/share/opencode/auth.json",
+  "/home/vercel-sandbox/.local/share/opencode/auth.json",
+  "/vercel/sandbox/.local/share/opencode/auth.json",
 ] as const;
 export const PROVIDER_OAUTH_ATTEMPT_TTL_MS = 15 * 60 * 1000;
 
@@ -18,34 +20,4 @@ export function isSupportedOpencodeProvider(value: string): value is SupportedOp
 
 export function toProviderModelRef(provider: string, model: string): string {
   return `${provider}/${model}`;
-}
-
-export function buildTaskSandboxId(args: { taskId: string }): string {
-  return buildBoundedSandboxId("task", [args.taskId]);
-}
-
-export function buildProviderAuthSandboxId(args: { userId: string; provider: string }): string {
-  return buildBoundedSandboxId("provider-auth", [args.userId, args.provider]);
-}
-
-function buildBoundedSandboxId(prefix: string, parts: string[]): string {
-  const raw = [prefix, ...parts].join(":");
-  const slug = raw
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  const hash = toFnv1aHex(raw);
-  const maxSlugLength = 63 - hash.length - 1;
-  const trimmedSlug = slug.slice(0, Math.max(1, maxSlugLength)).replace(/-+$/g, "");
-  return `${trimmedSlug || "sandbox"}-${hash}`;
-}
-
-function toFnv1aHex(value: string): string {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < value.length; i++) {
-    hash ^= value.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return (hash >>> 0).toString(16).padStart(8, "0");
 }
