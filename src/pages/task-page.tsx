@@ -352,7 +352,7 @@ export function TaskPage({
   if (!taskId) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
-        Select a task to get started
+        <Loader2 className="h-5 w-5 animate-spin" aria-label="Loading task" />
       </div>
     );
   }
