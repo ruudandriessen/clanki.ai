@@ -65,6 +65,7 @@ interface TaskPageProps {
   taskId: string;
   projectName: string;
   streamId: string | null;
+  isPullRequestLoading: boolean;
   pullRequest: {
     prNumber: number;
     url: string;
@@ -153,6 +154,7 @@ export function TaskPage({
   title,
   projectName,
   streamId,
+  isPullRequestLoading,
   pullRequest,
   error,
   isRunning,
@@ -419,7 +421,12 @@ export function TaskPage({
               </div>
             )}
           </div>
-          {pullRequest ? (
+          {isPullRequestLoading ? (
+            <div className="shrink-0 space-y-1 text-right">
+              <div className="h-6 w-32 animate-pulse rounded border border-border bg-muted/40" />
+              <div className="h-5 w-44 animate-pulse rounded border border-border bg-muted/30" />
+            </div>
+          ) : pullRequest ? (
             <div className="shrink-0 space-y-1 text-right">
               <Button
                 asChild

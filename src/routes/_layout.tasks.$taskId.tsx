@@ -40,7 +40,7 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
       ? extractOrgRepoFromUrl(openedTask?.project?.repo_url)
       : null;
 
-    const { data: pullRequestMatches } = useLiveQuery(
+    const { data: pullRequestMatches, isLoading: isPullRequestLoading } = useLiveQuery(
       (q) =>
         q
           .from({ pr: pullRequestsCollection })
@@ -83,6 +83,7 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
         }
         error={openedTask.task.error ?? null}
         isRunning={openedTask.task.status === "running"}
+        isPullRequestLoading={isPullRequestLoading}
       />
     );
   },
