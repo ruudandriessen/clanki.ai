@@ -116,6 +116,10 @@ h6 {
 }
 
 @layer components {
+  .neo-surface {
+    @apply border border-border bg-card shadow-[3px_3px_0_0_var(--color-border)];
+  }
+
   .ai-markdown {
     @apply break-words text-sm leading-relaxed;
   }
