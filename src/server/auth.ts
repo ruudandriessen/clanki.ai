@@ -6,7 +6,7 @@ import { eq, and } from "drizzle-orm";
 import * as schema from "./db/schema";
 import { getDb } from "./db/client";
 
-const PRODUCTION_URL = "https://clanki.ai";
+const PRODUCTION_URL = "https://www.clanki.ai";
 const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
 
 function resolveOrigin(request: Request): string {
