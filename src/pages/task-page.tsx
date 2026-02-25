@@ -165,9 +165,11 @@ export function TaskPage({
   const [savingTitle, setSavingTitle] = useState(false);
   const [titleError, setTitleError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const messageListRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const shouldStickToBottomRef = useRef(true);
 
   const { data: messages, isLoading } = useLiveQuery(
     (q) =>
@@ -193,8 +195,16 @@ export function TaskPage({
     isRunning && runStartedAt !== null ? Math.max(0, now - runStartedAt) : null;
 
   useEffect(() => {
+    if (!shouldStickToBottomRef.current) {
+      return;
+    }
+
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, runEvents]);
+
+  useEffect(() => {
+    shouldStickToBottomRef.current = true;
+  }, [taskId]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -231,6 +241,7 @@ export function TaskPage({
     const content = input.trim();
     if (!content || sending || isRunning || !taskId) return;
 
+    shouldStickToBottomRef.current = true;
     setSending(true);
     setInput("");
 
@@ -321,6 +332,16 @@ export function TaskPage({
       e.preventDefault();
       handleTitleEditCancel();
     }
+  }
+
+  function handleMessageListScroll() {
+    const container = messageListRef.current;
+    if (!container) {
+      return;
+    }
+
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    shouldStickToBottomRef.current = distanceFromBottom <= 80;
   }
 
   if (!taskId) {
@@ -449,7 +470,11 @@ export function TaskPage({
         </div>
       ) : null}
 
-      <div className="neo-scroll flex-1 overflow-y-auto">
+      <div
+        ref={messageListRef}
+        onScroll={handleMessageListScroll}
+        className="neo-scroll flex-1 overflow-y-auto"
+      >
         {isLoading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
