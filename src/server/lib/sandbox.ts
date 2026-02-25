@@ -521,10 +521,11 @@ async function createSandboxFromFreshBaseSnapshot(args: {
       },
     );
   } catch (error) {
-    await stopSandboxQuietly(builder);
     console.warn("Failed to build base sandbox snapshot; using cold sandbox", {
       message: getErrorMessage(error),
     });
+  } finally {
+    await stopSandboxQuietly(builder);
   }
 
   const runtime = await createFreshSandbox(timeout);
