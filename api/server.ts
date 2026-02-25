@@ -15,7 +15,16 @@ async function loadServer(): Promise<AppServer> {
   return appServerPromise;
 }
 
-function toRequest(req: any): Request {
+function collectBody(req: any): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
+}
+
+async function toRequest(req: any): Promise<Request> {
   const proto = String(req.headers["x-forwarded-proto"] ?? "https");
   const host = String(req.headers.host ?? "localhost");
   const url = `${proto}://${host}${req.url ?? "/"}`;
@@ -41,12 +50,8 @@ function toRequest(req: any): Request {
     return new Request(url, { method, headers });
   }
 
-  return new Request(url, {
-    method,
-    headers,
-    body: Readable.toWeb(req) as ReadableStream,
-    duplex: "half",
-  } as RequestInit);
+  const body = await collectBody(req);
+  return new Request(url, { method, headers, body });
 }
 
 async function sendResponse(res: any, response: Response): Promise<void> {
@@ -72,7 +77,7 @@ async function sendResponse(res: any, response: Response): Promise<void> {
 export default async function handler(req: any, res: any) {
   try {
     const appServer = await loadServer();
-    const request = toRequest(req);
+    const request = await toRequest(req);
     const response = await appServer.fetch(request);
     await sendResponse(res, response);
   } catch (error) {
