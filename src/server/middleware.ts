@@ -13,7 +13,14 @@ export const authMiddleware = createMiddleware().server(async ({ next }) => {
   const request = getRequest();
   const env = getEnv();
   const auth = createAuth(env, request);
-  const result = await auth.api.getSession({ headers: request.headers });
+
+  let result;
+  try {
+    result = await auth.api.getSession({ headers: request.headers });
+  } catch (error) {
+    console.error("auth.api.getSession threw:", error);
+    throw new Error("Unauthorized", { cause: error });
+  }
 
   if (!result) {
     throw new Error("Unauthorized");

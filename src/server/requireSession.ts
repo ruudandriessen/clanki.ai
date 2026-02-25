@@ -9,7 +9,14 @@ import { SessionContext } from "./middleware";
 export async function requireSession(request: Request): Promise<SessionContext> {
   const env = getEnv();
   const auth = createAuth(env, request);
-  const result = await auth.api.getSession({ headers: request.headers });
+
+  let result;
+  try {
+    result = await auth.api.getSession({ headers: request.headers });
+  } catch (error) {
+    console.error("auth.api.getSession threw:", error);
+    throw new Response("Unauthorized", { status: 401 });
+  }
 
   if (!result) {
     throw new Response("Unauthorized", { status: 401 });
