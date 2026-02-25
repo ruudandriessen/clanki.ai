@@ -188,6 +188,7 @@ class VercelTaskSandbox implements TaskSandbox {
 
   async ensureBaseTooling(): Promise<void> {
     await this.#ensureTaskRunnerScript();
+    await this.#ensureBun();
 
     if (!(await this.#commandExists("opencode"))) {
       const install = await this.exec("npm install -g opencode-ai");
@@ -248,6 +249,43 @@ class VercelTaskSandbox implements TaskSandbox {
   async #commandExists(command: string): Promise<boolean> {
     const check = await this.exec(`command -v ${command} >/dev/null 2>&1`);
     return check.success;
+  }
+
+  async #ensureBun(): Promise<void> {
+    if (await this.#commandExists("bun")) {
+      return;
+    }
+
+    const homeDirectory = await this.#resolveHomeDirectory();
+    const bunInstallDirectory = `${homeDirectory}/.bun`;
+    const bunBinDirectory = `${bunInstallDirectory}/bin`;
+
+    const install = await this.exec(
+      [
+        `export BUN_INSTALL=${shellQuote(bunInstallDirectory)}`,
+        'export PATH="$BUN_INSTALL/bin:$PATH"',
+        "if ! command -v bun >/dev/null 2>&1; then curl -fsSL https://bun.sh/install | bash; fi",
+      ].join(" && "),
+    );
+
+    if (!install.success) {
+      throw new Error(
+        `Failed to install Bun: ${install.stderr || install.stdout || "unknown error"}`,
+      );
+    }
+
+    this.#commandEnv.BUN_INSTALL = bunInstallDirectory;
+    await this.#prependPath(bunBinDirectory);
+
+    if (!(await this.#commandExists("bun"))) {
+      throw new Error("Bun is still unavailable after installation");
+    }
+  }
+
+  async #resolveHomeDirectory(): Promise<string> {
+    const homeResult = await this.exec("printf '%s' \"$HOME\"");
+    const homeDirectory = homeResult.stdout.trim();
+    return homeDirectory.length > 0 ? homeDirectory : "/root";
   }
 
   async #ensureGithubCli(): Promise<void> {
