@@ -15,7 +15,6 @@ import {
 } from "@/server/lib/opencode";
 import {
   deleteProviderCredential as deleteProviderCredentialDb,
-  getProviderCredentialStatus as getProviderCredentialStatusDb,
   upsertProviderApiKeyCredential,
   upsertProviderAuthCredential,
 } from "@/server/lib/provider-credentials";
@@ -106,18 +105,6 @@ function toCredentialPersistError(error: unknown): string {
   }
   return message;
 }
-
-export const getProviderCredentialStatus = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
-  .inputValidator(z.object({ provider: z.string() }))
-  .handler(async ({ data: input, context }) => {
-    const provider = parseProvider(input.provider);
-    if (!provider) {
-      badRequest("Unsupported provider");
-    }
-
-    return getProviderCredentialStatusDb(context.db, context.session.user.id, provider);
-  });
 
 export const upsertProviderCredential = createServerFn({ method: "POST" })
   .middleware([authMiddleware])

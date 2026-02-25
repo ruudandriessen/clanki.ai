@@ -13,30 +13,6 @@ type ProviderCredentialStatus = {
   updatedAt: number | null;
 };
 
-export async function getProviderCredentialStatus(
-  db: AppDb,
-  userId: string,
-  provider: SupportedOpencodeProvider,
-): Promise<ProviderCredentialStatus> {
-  const row = await db.query.userProviderCredentials.findFirst({
-    where: and(
-      eq(schema.userProviderCredentials.userId, userId),
-      eq(schema.userProviderCredentials.provider, provider),
-    ),
-    columns: {
-      authType: true,
-      updatedAt: true,
-    },
-  });
-
-  return {
-    provider,
-    configured: Boolean(row),
-    authType: row?.authType ? toAuthType(row.authType) : null,
-    updatedAt: row?.updatedAt ?? null,
-  };
-}
-
 export async function upsertProviderApiKeyCredential(
   db: AppDb,
   env: SecretCryptoEnv,
@@ -199,12 +175,5 @@ async function decryptAuthJson(
     }
   } catch {}
 
-  return null;
-}
-
-function toAuthType(value: string): ProviderAuthType | null {
-  if (value === "api" || value === "oauth" || value === "wellknown") {
-    return value;
-  }
   return null;
 }

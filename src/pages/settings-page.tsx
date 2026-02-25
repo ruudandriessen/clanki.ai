@@ -1,27 +1,19 @@
 import { useEffect, useState } from "react";
-import { useLiveQuery } from "@tanstack/react-db";
+import { eq, useLiveQuery } from "@tanstack/react-db";
 import { BookMarked, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AddProjectDialog } from "../components/add-project-dialog";
 import { useOrganization } from "../components/layout/use-organization";
-import { projectsCollection } from "../lib/collections";
+import { projectsCollection, providerCredentialsCollection } from "../lib/collections";
 import {
   completeProviderOauth,
   deleteProviderCredential,
-  getProviderCredentialStatus,
   startProviderOauth,
   upsertProviderCredential,
 } from "@/server/functions/settings";
 import { updateProjectSetupCommand } from "@/server/functions/projects";
-
-type ProviderCredentialStatus = {
-  provider: string;
-  configured: boolean;
-  authType: "api" | "oauth" | "wellknown" | null;
-  updatedAt: number | null;
-};
 
 type ProviderOauthStart = {
   attemptId: string;
@@ -41,12 +33,15 @@ export function SettingsPage() {
   const { data: projects, isLoading } = useLiveQuery((q) =>
     q.from({ p: projectsCollection }).orderBy(({ p }) => p.created_at, "asc"),
   );
+  const { data: openAiCredentialRows, isLoading: isOpenAiCredentialLoading } = useLiveQuery((q) =>
+    q
+      .from({ credential: providerCredentialsCollection })
+      .where(({ credential }) => eq(credential.provider, OPENAI_PROVIDER)),
+  );
   const activeOrganization = useOrganization();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openaiApiKey, setOpenaiApiKey] = useState("");
-  const [openaiStatus, setOpenaiStatus] = useState<ProviderCredentialStatus | null>(null);
-  const [loadingStatus, setLoadingStatus] = useState(true);
   const [savingKey, setSavingKey] = useState(false);
   const [removingKey, setRemovingKey] = useState(false);
   const [startingOauth, setStartingOauth] = useState(false);
@@ -56,10 +51,9 @@ export function SettingsPage() {
   const [projectSetupDrafts, setProjectSetupDrafts] = useState<Record<string, string>>({});
   const [savingProjectId, setSavingProjectId] = useState<string | null>(null);
   const [projectSetupErrors, setProjectSetupErrors] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    void loadOpenAiStatus();
-  }, []);
+  const openAiCredential = openAiCredentialRows[0] ?? null;
+  const openAiAuthType = openAiCredential?.auth_type ?? null;
+  const openAiUpdatedAt = openAiCredential ? Number(openAiCredential.updated_at) : null;
 
   useEffect(() => {
     setProjectSetupDrafts((previous) => {
@@ -71,19 +65,6 @@ export function SettingsPage() {
     });
   }, [projects]);
 
-  async function loadOpenAiStatus() {
-    setLoadingStatus(true);
-    setProviderError(null);
-    try {
-      const status = await getProviderCredentialStatus({ data: { provider: OPENAI_PROVIDER } });
-      setOpenaiStatus(status);
-    } catch (error) {
-      setProviderError(error instanceof Error ? error.message : "Failed to load OpenAI settings");
-    } finally {
-      setLoadingStatus(false);
-    }
-  }
-
   async function handleSaveOpenAiKey() {
     const apiKey = openaiApiKey.trim();
     if (apiKey.length === 0 || savingKey) {
@@ -93,10 +74,9 @@ export function SettingsPage() {
     setSavingKey(true);
     setProviderError(null);
     try {
-      const status = await upsertProviderCredential({
+      await upsertProviderCredential({
         data: { provider: OPENAI_PROVIDER, apiKey },
       });
-      setOpenaiStatus(status);
       setOpenaiApiKey("");
     } catch (error) {
       setProviderError(error instanceof Error ? error.message : "Failed to save OpenAI key");
@@ -106,7 +86,7 @@ export function SettingsPage() {
   }
 
   async function handleDeleteOpenAiKey() {
-    if (!openaiStatus?.configured || removingKey) {
+    if (!openAiCredential || removingKey) {
       return;
     }
 
@@ -114,12 +94,6 @@ export function SettingsPage() {
     setProviderError(null);
     try {
       await deleteProviderCredential({ data: { provider: OPENAI_PROVIDER } });
-      setOpenaiStatus({
-        provider: OPENAI_PROVIDER,
-        configured: false,
-        authType: null,
-        updatedAt: null,
-      });
       setOauthAttempt(null);
     } catch (error) {
       setProviderError(error instanceof Error ? error.message : "Failed to remove OpenAI key");
@@ -154,10 +128,9 @@ export function SettingsPage() {
     setCompletingOauth(true);
     setProviderError(null);
     try {
-      const status = await completeProviderOauth({
+      await completeProviderOauth({
         data: { provider: OPENAI_PROVIDER, attemptId: oauthAttempt.attemptId },
       });
-      setOpenaiStatus(status);
       setOauthAttempt(null);
     } catch (error) {
       setProviderError(error instanceof Error ? error.message : "OAuth flow is not complete yet");
@@ -212,21 +185,21 @@ export function SettingsPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium">OpenAI (Codex)</p>
-                {loadingStatus ? (
+                {isOpenAiCredentialLoading ? (
                   <p className="text-xs text-muted-foreground">Loading configuration...</p>
-                ) : openaiStatus?.configured ? (
+                ) : openAiCredential ? (
                   <p className="text-xs text-muted-foreground">
                     Configured
-                    {openaiStatus.authType === "oauth" ? " via ChatGPT Plus/Pro" : " via API key"}
-                    {openaiStatus.updatedAt !== null
-                      ? ` · Updated ${new Date(openaiStatus.updatedAt).toLocaleString()}`
+                    {openAiAuthType === "oauth" ? " via ChatGPT Plus/Pro" : " via API key"}
+                    {openAiUpdatedAt !== null
+                      ? ` · Updated ${new Date(openAiUpdatedAt).toLocaleString()}`
                       : ""}
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">No credentials configured</p>
                 )}
               </div>
-              {loadingStatus ? (
+              {isOpenAiCredentialLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               ) : null}
             </div>
@@ -250,7 +223,7 @@ export function SettingsPage() {
                 type="button"
                 variant="outline"
                 onClick={() => void handleDeleteOpenAiKey()}
-                disabled={removingKey || !openaiStatus?.configured}
+                disabled={removingKey || !openAiCredential}
               >
                 {removingKey ? "Removing..." : "Remove key"}
               </Button>
