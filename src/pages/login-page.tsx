@@ -44,9 +44,7 @@ export function LoginPage() {
         <CardContent className="space-y-6 px-6 py-8">
           <div className="text-center">
             <h1 className="text-3xl tracking-[0.06em] text-foreground uppercase">Clanki</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Sign in to explore your architecture
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">Build your ideas from anywhere</p>
           </div>
 
           <Button
