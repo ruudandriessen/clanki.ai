@@ -6,3 +6,4 @@ dist/
 *.tsbuildinfo
 .group-cache.json
 .nitro
+.output
