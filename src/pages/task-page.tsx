@@ -1,16 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLiveQuery, eq } from "@tanstack/react-db";
-import {
-  AlertCircle,
-  Check,
-  ChevronRight,
-  ExternalLink,
-  Loader2,
-  Pencil,
-  Send,
-  Wrench,
-  X,
-} from "lucide-react";
+import { AlertCircle, ChevronRight, ExternalLink, Loader2, Send, Wrench } from "lucide-react";
 import {
   TaskStreamActivity,
   type TaskStreamActivityIcon,
@@ -18,7 +8,6 @@ import {
 } from "@/components/task-stream-activity";
 import { MarkdownContent } from "@/components/markdown-content";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { sessionStateKeys, useSessionState } from "@/lib/session-state";
 import { cn } from "@/lib/utils";
@@ -163,15 +152,10 @@ export function TaskPage({
   const [input, setInput] = useSessionState(sessionStateKeys.taskInput(taskId), "");
   const [sending, setSending] = useState(false);
   const runEvents = useTaskEventStream({ taskId, streamId });
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [titleInput, setTitleInput] = useState("");
-  const [savingTitle, setSavingTitle] = useState(false);
-  const [titleError, setTitleError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const messageListRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const titleInputRef = useRef<HTMLInputElement>(null);
   const shouldStickToBottomRef = useRef(true);
 
   const { data: messages, isLoading } = useLiveQuery(
@@ -231,19 +215,6 @@ export function TaskPage({
     };
   }, [isRunning]);
 
-  useEffect(() => {
-    if (!editingTitle) {
-      setTitleInput(title ?? "");
-    }
-  }, [title, editingTitle]);
-
-  useEffect(() => {
-    if (editingTitle) {
-      titleInputRef.current?.focus();
-      titleInputRef.current?.select();
-    }
-  }, [editingTitle]);
-
   async function handleSend() {
     const content = input.trim();
     if (!content || sending || isRunning || !taskId) return;
@@ -282,65 +253,6 @@ export function TaskPage({
     }
   }
 
-  function handleTitleEditStart() {
-    setEditingTitle(true);
-    setTitleInput(title);
-    setTitleError(null);
-  }
-
-  function handleTitleEditCancel() {
-    setEditingTitle(false);
-    setTitleInput(title);
-    setTitleError(null);
-  }
-
-  async function handleTitleEditSave() {
-    if (savingTitle) {
-      return;
-    }
-
-    const nextTitle = titleInput.trim();
-    if (nextTitle.length === 0) {
-      setTitleError("Title cannot be empty");
-      return;
-    }
-
-    if (nextTitle === title) {
-      setEditingTitle(false);
-      setTitleError(null);
-      return;
-    }
-
-    setSavingTitle(true);
-    setTitleError(null);
-
-    try {
-      const tx = tasksCollection.update(taskId, (draft) => {
-        draft.title = nextTitle;
-        draft.updated_at = BigInt(Date.now());
-      });
-      setEditingTitle(false);
-      await tx.isPersisted.promise;
-    } catch (error) {
-      setTitleError(error instanceof Error ? error.message : "Failed to update task title");
-    } finally {
-      setSavingTitle(false);
-    }
-  }
-
-  function handleTitleInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      void handleTitleEditSave();
-      return;
-    }
-
-    if (e.key === "Escape") {
-      e.preventDefault();
-      handleTitleEditCancel();
-    }
-  }
-
   function handleMessageListScroll() {
     const container = messageListRef.current;
     if (!container) {
@@ -365,62 +277,14 @@ export function TaskPage({
       <div className="shrink-0 border-b border-border bg-card px-4 py-3 md:px-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            {editingTitle ? (
-              <div className="flex min-h-8 items-center gap-2">
-                <Input
-                  ref={titleInputRef}
-                  value={titleInput}
-                  onChange={(e) => setTitleInput(e.target.value)}
-                  onKeyDown={handleTitleInputKeyDown}
-                  className="h-8 w-full max-w-lg px-2 text-sm"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => void handleTitleEditSave()}
-                  disabled={savingTitle}
-                  className="text-foreground"
-                  title="Save task name"
-                >
-                  {savingTitle ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Check className="h-4 w-4" />
-                  )}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={handleTitleEditCancel}
-                  disabled={savingTitle}
-                  className="text-foreground"
-                  title="Cancel"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+            <div className="min-w-0">
+              <div className="flex min-h-8 min-w-0 items-center gap-2">
+                <h2 className="m-0 truncate text-sm font-bold tracking-[0.04em] uppercase">
+                  {displayTitle}
+                </h2>
               </div>
-            ) : (
-              <div className="min-w-0">
-                <div className="flex min-h-8 min-w-0 items-center gap-2">
-                  <h2 className="m-0 truncate text-sm font-bold tracking-[0.04em] uppercase">
-                    {displayTitle}
-                  </h2>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={handleTitleEditStart}
-                    className="text-foreground"
-                    title="Edit task name"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-                <p className="truncate text-xs text-muted-foreground">{projectName}</p>
-              </div>
-            )}
+              <p className="truncate text-xs text-muted-foreground">{projectName}</p>
+            </div>
           </div>
           {pullRequest ? (
             <div className="shrink-0 space-y-1 text-right">
@@ -466,7 +330,6 @@ export function TaskPage({
             </div>
           ) : null}
         </div>
-        {titleError ? <p className="mt-1 text-xs text-destructive">{titleError}</p> : null}
       </div>
 
       {error ? (
