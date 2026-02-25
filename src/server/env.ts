@@ -22,7 +22,6 @@ export type AppEnv = {
 
   VERCEL_OIDC_TOKEN?: string;
   VERCEL_SANDBOX_TIMEOUT_MS?: string;
-  VERCEL_SANDBOX_BASE_VERSION?: string;
 };
 
 function requireEnv(name: keyof AppEnv): string {
@@ -59,7 +58,6 @@ export function getEnv(): AppEnv {
 
     VERCEL_OIDC_TOKEN: process.env.VERCEL_OIDC_TOKEN,
     VERCEL_SANDBOX_TIMEOUT_MS: process.env.VERCEL_SANDBOX_TIMEOUT_MS,
-    VERCEL_SANDBOX_BASE_VERSION: process.env.VERCEL_SANDBOX_BASE_VERSION,
   };
 }
 

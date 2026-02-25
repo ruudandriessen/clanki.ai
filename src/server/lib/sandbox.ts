@@ -92,7 +92,6 @@ export type TaskSandbox = {
 
 export type SandboxEnv = {
   VERCEL_SANDBOX_TIMEOUT_MS?: string;
-  VERCEL_SANDBOX_BASE_VERSION?: string;
 };
 
 class VercelTaskSandbox implements TaskSandbox {
@@ -425,7 +424,7 @@ export async function getTaskSandbox(
   }
 
   const client = new VercelTaskSandbox(sandbox);
-  const baseVersion = resolveSandboxBaseVersion(env);
+  const baseVersion = SANDBOX_BASE_VERSION_DEFAULT;
   await client.ensureBaseToolingForVersion(baseVersion);
   return client;
 }
@@ -466,7 +465,7 @@ function resolveSandboxTimeout(env: SandboxEnv): number {
 
 async function createSandboxWithSnapshotBootstrap(env: SandboxEnv): Promise<VercelSandbox> {
   const timeout = resolveSandboxTimeout(env);
-  const baseVersion = resolveSandboxBaseVersion(env);
+  const baseVersion = SANDBOX_BASE_VERSION_DEFAULT;
 
   const latestSnapshotId = await resolveLatestSnapshotId();
   if (!latestSnapshotId) {
@@ -591,24 +590,6 @@ async function stopSandboxQuietly(sandbox: VercelSandbox): Promise<void> {
   try {
     await sandbox.stop();
   } catch {}
-}
-
-function resolveSandboxBaseVersion(env: SandboxEnv): string {
-  const configuredBaseVersion = normalizeOptionalValue(env.VERCEL_SANDBOX_BASE_VERSION);
-  return configuredBaseVersion ?? SANDBOX_BASE_VERSION_DEFAULT;
-}
-
-function normalizeOptionalValue(value: string | undefined): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  if (trimmed.length === 0) {
-    return null;
-  }
-
-  return trimmed;
 }
 
 function getErrorMessage(error: unknown): string {
