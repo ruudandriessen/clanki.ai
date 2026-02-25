@@ -20,9 +20,6 @@ export type AppEnv = {
 
   TASK_RUNNER_CALLBACK_SECRET?: string;
 
-  VERCEL_TOKEN?: string;
-  VERCEL_PROJECT_ID?: string;
-  VERCEL_TEAM_ID?: string;
   VERCEL_OIDC_TOKEN?: string;
   VERCEL_SANDBOX_TIMEOUT_MS?: string;
 };
@@ -59,9 +56,6 @@ export function getEnv(): AppEnv {
 
     TASK_RUNNER_CALLBACK_SECRET: process.env.TASK_RUNNER_CALLBACK_SECRET,
 
-    VERCEL_TOKEN: process.env.VERCEL_TOKEN,
-    VERCEL_PROJECT_ID: process.env.VERCEL_PROJECT_ID,
-    VERCEL_TEAM_ID: process.env.VERCEL_TEAM_ID,
     VERCEL_OIDC_TOKEN: process.env.VERCEL_OIDC_TOKEN,
     VERCEL_SANDBOX_TIMEOUT_MS: process.env.VERCEL_SANDBOX_TIMEOUT_MS,
   };

@@ -32,9 +32,6 @@ export type TaskSandbox = {
 };
 
 export type SandboxEnv = {
-  VERCEL_TOKEN?: string;
-  VERCEL_PROJECT_ID?: string;
-  VERCEL_TEAM_ID?: string;
   VERCEL_SANDBOX_TIMEOUT_MS?: string;
 };
 
@@ -202,15 +199,12 @@ export async function getTaskSandbox(
   env: SandboxEnv,
   sandboxId?: string | null,
 ): Promise<TaskSandbox> {
-  const credentials = resolveCredentials(env);
-
   let sandbox: VercelSandbox | null = null;
   const normalizedSandboxId = sandboxId?.trim() ?? "";
 
   if (normalizedSandboxId.length > 0) {
     try {
       const existing = await VercelSandbox.get({
-        ...credentials,
         sandboxId: normalizedSandboxId,
       });
       if (existing.status === "running" || existing.status === "pending") {
@@ -223,7 +217,6 @@ export async function getTaskSandbox(
 
   if (!sandbox) {
     sandbox = await VercelSandbox.create({
-      ...credentials,
       ports: [OPENCODE_PORT],
       runtime: "node24",
       timeout: resolveSandboxTimeout(env),
@@ -253,33 +246,6 @@ export async function getOpenCodeClient(sandbox: TaskSandbox, directory: string,
       directory,
     }) as OpencodeClient,
   };
-}
-
-function resolveCredentials(env: SandboxEnv): {
-  token?: string;
-  projectId?: string;
-  teamId?: string;
-} {
-  const token = env.VERCEL_TOKEN?.trim();
-  const projectId = env.VERCEL_PROJECT_ID?.trim();
-  const teamId = env.VERCEL_TEAM_ID?.trim();
-
-  const hasAnyExplicit = Boolean(token || projectId || teamId);
-  const hasAllExplicit = Boolean(token && projectId && teamId);
-
-  if (hasAnyExplicit && !hasAllExplicit) {
-    throw new Error("Set VERCEL_TOKEN, VERCEL_PROJECT_ID, and VERCEL_TEAM_ID together.");
-  }
-
-  if (hasAllExplicit) {
-    return {
-      token,
-      projectId,
-      teamId,
-    };
-  }
-
-  return {};
 }
 
 function resolveSandboxTimeout(env: SandboxEnv): number {
