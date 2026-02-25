@@ -275,19 +275,21 @@ export function TaskPage({
   return (
     <div className="neo-enter flex h-full flex-col">
       <div className="shrink-0 border-b border-border bg-card px-4 py-3 md:px-6">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0 flex-1">
             <div className="min-w-0">
-              <div className="flex min-h-8 min-w-0 items-center gap-2">
-                <h2 className="m-0 truncate text-sm font-bold tracking-[0.04em] uppercase">
-                  {displayTitle}
-                </h2>
+              <div className="min-w-0 md:flex md:items-center md:gap-2">
+                <div className="flex min-h-8 min-w-0 items-center gap-2">
+                  <h2 className="m-0 truncate text-sm font-bold tracking-[0.04em] uppercase">
+                    {displayTitle}
+                  </h2>
+                </div>
+                <p className="truncate text-xs text-muted-foreground">{projectName}</p>
               </div>
-              <p className="truncate text-xs text-muted-foreground">{projectName}</p>
             </div>
           </div>
           {pullRequest ? (
-            <div className="shrink-0 space-y-1 text-right">
+            <div className="shrink-0 space-y-1 text-left md:flex md:items-center md:gap-2 md:space-y-0 md:text-right">
               <Button
                 asChild
                 variant="outline"
@@ -304,7 +306,7 @@ export function TaskPage({
                   <ExternalLink className="h-3 w-3" />
                 </a>
               </Button>
-              <div className="flex flex-wrap justify-end gap-1">
+              <div className="flex flex-wrap gap-1 md:flex-nowrap md:justify-end">
                 {pullRequest.reviewState != null ? (
                   <span
                     className={cn(
