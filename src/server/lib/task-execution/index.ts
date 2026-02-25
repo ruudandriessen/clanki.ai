@@ -11,7 +11,15 @@ import type { TaskLifecycleEventPayload } from "@/shared/task-stream-events";
 import { connectAssistant, ensureSession } from "./connect-assistant";
 import { getErrorMessage, markTaskRunning } from "./helpers";
 import { prepareSandbox } from "./prepare-sandbox";
-import { cloneRepository, runSetupScript, setupGitIdentity, setupGitToken } from "./setup-git";
+import {
+  cloneRepository,
+  decideSetupScriptRun,
+  persistSetupFingerprint,
+  runSetupScript,
+  setupGitIdentity,
+  setupGitToken,
+  syncRepositoryCheckout,
+} from "./setup-git";
 
 type TaskExecutionEnv = SandboxEnv & GitHubAppEnv & SecretCryptoEnv & DurableStreamsEnv;
 const FIRST_MESSAGE_SYSTEM_PROMPT =
@@ -147,6 +155,7 @@ export async function executeTaskPrompt(args: {
     message: "Cloning repository",
   });
   let freshClone = false;
+  let syncMessage: string | null = null;
   try {
     const [, cloneResult] = await Promise.all([
       setupGitIdentity({
@@ -158,6 +167,21 @@ export async function executeTaskPrompt(args: {
       cloneRepository({ sandbox, repoUrl, repoDir, gitToken }),
     ]);
     freshClone = cloneResult.freshClone;
+
+    if (!freshClone) {
+      const syncResult = await syncRepositoryCheckout({ sandbox, repoDir });
+      switch (syncResult.status) {
+        case "updated":
+          syncMessage = `Updated repository from ${syncResult.previousHead.slice(0, 7)} to ${syncResult.currentHead.slice(0, 7)}`;
+          break;
+        case "up-to-date":
+          syncMessage = `Repository already up to date at ${syncResult.currentHead.slice(0, 7)}`;
+          break;
+        case "skipped":
+          syncMessage = `Skipped repository sync: ${syncResult.reason}`;
+          break;
+      }
+    }
   } catch (error) {
     await emitLifecycleEvent({
       phase: "clone",
@@ -172,21 +196,35 @@ export async function executeTaskPrompt(args: {
     phase: "clone",
     status: freshClone ? "completed" : "skipped",
     message: freshClone ? "Repository cloned" : "Using existing repository checkout",
+    details: syncMessage ?? undefined,
   });
 
-  if (freshClone) {
+  const setupDecision = await decideSetupScriptRun({
+    sandbox,
+    repoDir,
+    command: setupCommand,
+    freshClone,
+  });
+
+  if (setupDecision.shouldRun) {
     const trimmedSetupCommand = setupCommand?.trim() ?? "";
-    if (trimmedSetupCommand.length > 0) {
+    if (trimmedSetupCommand.length > 0 || setupDecision.reason.length > 0) {
       await emitLifecycleEvent({
         phase: "setup",
         status: "running",
         message: "Running setup command",
-        details: trimmedSetupCommand,
+        details: [trimmedSetupCommand, setupDecision.reason]
+          .filter((part) => part.length > 0)
+          .join("\n"),
       });
     }
 
     try {
       await runSetupScript({ sandbox, command: setupCommand, repoDir });
+      await persistSetupFingerprint({
+        sandbox,
+        fingerprint: setupDecision.fingerprint,
+      });
     } catch (error) {
       await emitLifecycleEvent({
         phase: "setup",
@@ -199,15 +237,16 @@ export async function executeTaskPrompt(args: {
 
     await emitLifecycleEvent({
       phase: "setup",
-      status: trimmedSetupCommand.length > 0 ? "completed" : "skipped",
-      message:
-        trimmedSetupCommand.length > 0 ? "Setup command completed" : "No setup command configured",
+      status: "completed",
+      message: "Setup command completed",
+      details: setupDecision.reason,
     });
   } else {
     await emitLifecycleEvent({
       phase: "setup",
       status: "skipped",
-      message: "Setup command skipped for existing checkout",
+      message: "Setup command skipped",
+      details: setupDecision.reason,
     });
   }
 
