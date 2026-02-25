@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Github } from "lucide-react";
+import { Github, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { signIn, useSession } from "../lib/auth-client";
@@ -8,6 +8,29 @@ import { signIn, useSession } from "../lib/auth-client";
 export function LoginPage() {
   const { data: session, isPending } = useSession();
   const navigate = useNavigate();
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
+
+  const handleGitHubSignIn = async () => {
+    setSignInError(null);
+    setIsSigningIn(true);
+
+    try {
+      const result = await signIn.social({
+        provider: "github",
+        callbackURL: new URL("/", window.location.origin).toString(),
+      });
+      const error = result?.error;
+
+      if (error) {
+        setSignInError(error.message ?? "Unable to sign in with GitHub. Please try again.");
+        setIsSigningIn(false);
+      }
+    } catch {
+      setSignInError("Unable to sign in with GitHub. Please try again.");
+      setIsSigningIn(false);
+    }
+  };
 
   useEffect(() => {
     if (!isPending && session) {
@@ -30,16 +53,27 @@ export function LoginPage() {
             type="button"
             variant="outline"
             className="w-full"
-            onClick={() =>
-              signIn.social({
-                provider: "github",
-                callbackURL: new URL("/", window.location.origin).toString(),
-              })
-            }
+            onClick={handleGitHubSignIn}
+            disabled={isSigningIn}
           >
-            <Github className="h-4 w-4" />
-            Continue with GitHub
+            {isSigningIn ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              <>
+                <Github className="h-4 w-4" />
+                Continue with GitHub
+              </>
+            )}
           </Button>
+
+          {signInError ? (
+            <p className="text-center text-sm text-destructive" role="alert">
+              {signInError}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
     </div>
