@@ -21,6 +21,8 @@ import {
   TaskLifecycleEventPayload,
 } from "@/shared/task-stream-events";
 
+const CREATE_PR_MESSAGE = "Create a PR for me";
+
 function CollapsedActivityGroup({ items }: { items: TaskStreamActivityItem[] }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -215,13 +217,15 @@ export function TaskPage({
     };
   }, [isRunning]);
 
-  async function handleSend() {
-    const content = input.trim();
+  async function handleSend(contentOverride?: string) {
+    const content = (contentOverride ?? input).trim();
     if (!content || sending || isRunning || !taskId) return;
 
     shouldStickToBottomRef.current = true;
     setSending(true);
-    setInput("");
+    if (contentOverride === undefined) {
+      setInput("");
+    }
 
     try {
       const optimisticUpdatedAt = BigInt(Date.now());
@@ -327,6 +331,18 @@ export function TaskPage({
                   </span>
                 ) : null}
               </div>
+            </div>
+          ) : branchName ? (
+            <div className="shrink-0 space-y-1 text-right">
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                disabled={sending || isRunning}
+                onClick={() => void handleSend(CREATE_PR_MESSAGE)}
+              >
+                Create a PR
+              </Button>
             </div>
           ) : null}
         </div>
