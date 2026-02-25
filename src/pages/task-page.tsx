@@ -207,8 +207,12 @@ export function TaskPage({
   }, [taskId]);
 
   useEffect(() => {
+    if (isLoading || messages.length > 0) {
+      return;
+    }
+
     inputRef.current?.focus();
-  }, [taskId]);
+  }, [taskId, isLoading, messages.length]);
 
   useEffect(() => {
     if (!isRunning) {
