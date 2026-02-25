@@ -7,3 +7,5 @@ dist/
 .group-cache.json
 .nitro
 .output
+.vercel
+.env*.local
