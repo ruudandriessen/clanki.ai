@@ -33,6 +33,7 @@ export const electricFn = async ({ request, table, where }: ElectricOptions) => 
   const headers = new Headers(response.headers);
   headers.delete(`content-encoding`);
   headers.delete(`content-length`);
+  headers.set(`cache-control`, `no-store`);
 
   return new Response(response.body, {
     status: response.status,
