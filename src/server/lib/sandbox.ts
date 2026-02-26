@@ -401,6 +401,7 @@ class VercelTaskSandbox implements TaskSandbox {
 /** Get or create a sandbox for a given id. */
 export async function getTaskSandbox(
   env: SandboxEnv,
+  userPorts: number[],
   sandboxId?: string | null,
 ): Promise<TaskSandbox> {
   let sandbox: VercelSandbox | null = null;
@@ -420,7 +421,7 @@ export async function getTaskSandbox(
   }
 
   if (!sandbox) {
-    sandbox = await createSandboxWithSnapshotBootstrap(env);
+    sandbox = await createSandboxWithSnapshotBootstrap(env, userPorts);
   }
 
   const client = new VercelTaskSandbox(sandbox);
@@ -463,18 +464,21 @@ function resolveSandboxTimeout(env: SandboxEnv): number {
   return Math.trunc(parsed);
 }
 
-async function createSandboxWithSnapshotBootstrap(env: SandboxEnv): Promise<VercelSandbox> {
+async function createSandboxWithSnapshotBootstrap(
+  env: SandboxEnv,
+  userPorts: number[],
+): Promise<VercelSandbox> {
   const timeout = resolveSandboxTimeout(env);
   const baseVersion = SANDBOX_BASE_VERSION_DEFAULT;
 
   const latestSnapshotId = await resolveLatestSnapshotId();
   if (!latestSnapshotId) {
-    return await createSandboxFromFreshBaseSnapshot({ timeout, baseVersion });
+    return await createSandboxFromFreshBaseSnapshot({ timeout, baseVersion, userPorts });
   }
 
-  const fromSnapshot = await tryCreateSandboxFromSnapshot(latestSnapshotId, timeout);
+  const fromSnapshot = await tryCreateSandboxFromSnapshot(latestSnapshotId, timeout, userPorts);
   if (!fromSnapshot) {
-    return await createSandboxFromFreshBaseSnapshot({ timeout, baseVersion });
+    return await createSandboxFromFreshBaseSnapshot({ timeout, baseVersion, userPorts });
   }
 
   const snapshotClient = new VercelTaskSandbox(fromSnapshot);
@@ -488,15 +492,16 @@ async function createSandboxWithSnapshotBootstrap(env: SandboxEnv): Promise<Verc
     currentVersion: snapshotBaseVersion ?? null,
     expectedVersion: baseVersion,
   });
-  return await createSandboxFromFreshBaseSnapshot({ timeout, baseVersion });
+  return await createSandboxFromFreshBaseSnapshot({ timeout, baseVersion, userPorts });
 }
 
 async function createSandboxFromFreshBaseSnapshot(args: {
   timeout: number;
   baseVersion: string;
+  userPorts: number[];
 }): Promise<VercelSandbox> {
-  const { timeout, baseVersion } = args;
-  const builder = await createFreshSandbox(timeout);
+  const { timeout, baseVersion, userPorts } = args;
+  const builder = await createFreshSandbox(timeout, userPorts);
   const builderClient = new VercelTaskSandbox(builder);
 
   try {
@@ -508,7 +513,7 @@ async function createSandboxFromFreshBaseSnapshot(args: {
       baseVersion,
     });
 
-    const runtime = await tryCreateSandboxFromSnapshot(snapshotId, timeout);
+    const runtime = await tryCreateSandboxFromSnapshot(snapshotId, timeout, userPorts);
     if (runtime) {
       return runtime;
     }
@@ -527,15 +532,15 @@ async function createSandboxFromFreshBaseSnapshot(args: {
     await stopSandboxQuietly(builder);
   }
 
-  const runtime = await createFreshSandbox(timeout);
+  const runtime = await createFreshSandbox(timeout, userPorts);
   const runtimeClient = new VercelTaskSandbox(runtime);
   await runtimeClient.ensureBaseToolingForVersion(baseVersion);
   return runtime;
 }
 
-async function createFreshSandbox(timeout: number): Promise<VercelSandbox> {
+async function createFreshSandbox(timeout: number, ports: number[]): Promise<VercelSandbox> {
   return await VercelSandbox.create({
-    ports: [OPENCODE_PORT],
+    ports: [OPENCODE_PORT, ...ports],
     runtime: "node24",
     timeout,
   });
@@ -544,10 +549,11 @@ async function createFreshSandbox(timeout: number): Promise<VercelSandbox> {
 async function tryCreateSandboxFromSnapshot(
   snapshotId: string,
   timeout: number,
+  ports: number[],
 ): Promise<VercelSandbox | null> {
   try {
     return await VercelSandbox.create({
-      ports: [OPENCODE_PORT],
+      ports: [OPENCODE_PORT, ...ports],
       timeout,
       source: {
         type: "snapshot",

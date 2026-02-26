@@ -167,7 +167,7 @@ export const startProviderOauth = createServerFn({ method: "POST" })
     const userId = context.session.user.id;
     console.info("Provider OAuth start requested", { requestId, userId, provider });
 
-    const sandbox = await getTaskSandbox(context.env, null);
+    const sandbox = await getTaskSandbox(context.env, [], null);
     const sandboxId = sandbox.sandboxId;
     const { client } = await getOpenCodeClient(sandbox, OAUTH_WORKDIR);
 
@@ -260,7 +260,7 @@ export const completeProviderOauth = createServerFn({ method: "POST" })
       badRequest("OAuth attempt not found or expired");
     }
 
-    const sandbox = await getTaskSandbox(context.env, attempt.sandboxId);
+    const sandbox = await getTaskSandbox(context.env, [], attempt.sandboxId);
     const { client } = await getOpenCodeClient(sandbox, OAUTH_WORKDIR);
 
     let callbackResponse: Awaited<ReturnType<typeof client.provider.oauth.callback>>;
