@@ -57,7 +57,7 @@ export function Layout() {
 
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <main className="neo-scroll flex-1 overflow-hidden pb-16 md:pb-0">
+        <main className="neo-scroll flex-1 overflow-hidden pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
           <Outlet />
         </main>
 
