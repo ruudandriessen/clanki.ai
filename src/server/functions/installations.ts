@@ -1,19 +1,22 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import * as schema from "@/server/db/schema";
 import { badGateway, badRequest, forbidden } from "./common";
 import { authMiddleware } from "../middleware";
 
-export const fetchInstallations = createServerFn({ method: "GET" })
+export const fetchInstallations = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const { db, session } = context;
     const userId = session.session.userId;
 
-    const githubAccount = await db.query.account.findFirst({
+    const githubAccounts = await db.query.account.findMany({
       where: and(eq(schema.account.providerId, "github"), eq(schema.account.userId, userId)),
+      orderBy: [desc(schema.account.updatedAt)],
+      limit: 1,
     });
+    const githubAccount = githubAccounts[0] ?? null;
 
     if (!githubAccount?.accessToken) return [];
 
@@ -43,16 +46,19 @@ export const fetchInstallations = createServerFn({ method: "GET" })
     });
   });
 
-export const fetchInstallationRepos = createServerFn({ method: "GET" })
+export const fetchInstallationRepos = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(z.object({ installationId: z.number().int() }))
   .handler(async ({ data: input, context }) => {
     const { db, session } = context;
     const userId = session.session.userId;
 
-    const githubAccount = await db.query.account.findFirst({
+    const githubAccounts = await db.query.account.findMany({
       where: and(eq(schema.account.providerId, "github"), eq(schema.account.userId, userId)),
+      orderBy: [desc(schema.account.updatedAt)],
+      limit: 1,
     });
+    const githubAccount = githubAccounts[0] ?? null;
 
     if (!githubAccount?.accessToken) badRequest("No GitHub account linked");
 
