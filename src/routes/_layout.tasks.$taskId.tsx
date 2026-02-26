@@ -84,6 +84,7 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
         }
         error={openedTask.task.error ?? null}
         isRunning={openedTask.task.status === "running"}
+        previewUrl={openedTask.task.preview_url ?? null}
       />
     );
   },

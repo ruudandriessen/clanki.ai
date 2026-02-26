@@ -141,6 +141,7 @@ export async function executeTaskPrompt(args: {
   });
   const { sandbox, sandboxId } = await prepareSandbox({
     env,
+    userPorts: runPort ? [runPort] : [],
     sandboxId: task?.sandboxId ?? null,
   });
   await markTaskRunning({ db, taskId, sandboxId });
@@ -219,6 +220,22 @@ export async function executeTaskPrompt(args: {
       status: "skipped",
       message: "Setup command skipped for existing checkout",
     });
+  }
+
+  // Set Vite allowed hosts BEFORE starting the dev server
+  if (runPort !== null) {
+    try {
+      const previewHost = new URL(sandbox.domain(runPort)).hostname;
+      await sandbox.setEnvVars({
+        __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: previewHost,
+      });
+      console.log("Set Vite preview host before starting dev server:", previewHost);
+    } catch (error) {
+      console.warn("Failed to set Vite preview hostname", {
+        taskId,
+        message: getErrorMessage(error),
+      });
+    }
   }
 
   const trimmedRunCommand = runCommand?.trim() ?? "";
@@ -320,7 +337,7 @@ export async function executeTaskPrompt(args: {
     throw new Error("workerOrigin is required");
   }
 
-  await sandbox.setEnvVars({
+  const envVars: Record<string, string> = {
     TASK_WORKER_URL: workerUrl,
     TASK_CALLBACK_TOKEN: callbackToken,
     TASK_ID: taskId,
@@ -330,7 +347,9 @@ export async function executeTaskPrompt(args: {
     TASK_REPO_DIR: repoDir,
     TASK_DS_SERVICE_ID: env.DURABLE_STREAMS_SERVICE_ID ?? "",
     TASK_DS_SECRET: env.DURABLE_STREAMS_SECRET ?? "",
-  });
+  };
+
+  await sandbox.setEnvVars(envVars);
 
   await verifySandboxCallbackReachability({ sandbox, repoDir });
 
