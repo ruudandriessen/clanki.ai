@@ -126,7 +126,13 @@ async function queueTaskRun(args: {
           eq(schema.projects.id, task.projectId),
           eq(schema.projects.organizationId, orgId),
         ),
-        columns: { repoUrl: true, installationId: true, setupCommand: true },
+        columns: {
+          repoUrl: true,
+          installationId: true,
+          setupCommand: true,
+          runCommand: true,
+          runPort: true,
+        },
       })
     : null;
 
@@ -188,6 +194,8 @@ async function queueTaskRun(args: {
     repoUrl: project.repoUrl,
     installationId: project.installationId ?? null,
     setupCommand: project.setupCommand ?? null,
+    runCommand: project.runCommand ?? null,
+    runPort: project.runPort ?? null,
     initiatedByUserId: userId,
     initiatedByUserName: userName,
     initiatedByUserEmail: userEmail,

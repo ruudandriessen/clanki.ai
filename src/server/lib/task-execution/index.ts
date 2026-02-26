@@ -9,9 +9,15 @@ import { TASK_RUNNER_COMMAND, type SandboxEnv } from "../sandbox";
 import type { SecretCryptoEnv } from "../secret-crypto";
 import type { TaskLifecycleEventPayload } from "@/shared/task-stream-events";
 import { connectAssistant, ensureSession } from "./connect-assistant";
-import { getErrorMessage, markTaskRunning } from "./helpers";
+import { getErrorMessage, markTaskRunning, setTaskPreviewUrl } from "./helpers";
 import { prepareSandbox } from "./prepare-sandbox";
-import { cloneRepository, runSetupScript, setupGitIdentity, setupGitToken } from "./setup-git";
+import {
+  cloneRepository,
+  runSetupScript,
+  setupGitIdentity,
+  setupGitToken,
+  startRunScript,
+} from "./setup-git";
 
 type TaskExecutionEnv = SandboxEnv & GitHubAppEnv & SecretCryptoEnv & DurableStreamsEnv;
 const FIRST_MESSAGE_SYSTEM_PROMPT =
@@ -67,6 +73,8 @@ export async function executeTaskPrompt(args: {
   repoUrl: string;
   installationId: number | null;
   setupCommand: string | null;
+  runCommand: string | null;
+  runPort: number | null;
   initiatedByUserId: string;
   initiatedByUserName: string;
   initiatedByUserEmail: string;
@@ -86,6 +94,8 @@ export async function executeTaskPrompt(args: {
     repoUrl,
     installationId,
     setupCommand,
+    runCommand,
+    runPort,
     initiatedByUserId,
     initiatedByUserName,
     initiatedByUserEmail,
@@ -208,6 +218,41 @@ export async function executeTaskPrompt(args: {
       phase: "setup",
       status: "skipped",
       message: "Setup command skipped for existing checkout",
+    });
+  }
+
+  const trimmedRunCommand = runCommand?.trim() ?? "";
+  if (trimmedRunCommand.length > 0) {
+    if (runPort === null) {
+      throw new Error("Run port is required when run command is configured");
+    }
+
+    await emitLifecycleEvent({
+      phase: "setup",
+      status: "running",
+      message: "Starting run command",
+      details: `${trimmedRunCommand} (port ${runPort})`,
+    });
+
+    try {
+      await startRunScript({ sandbox, command: runCommand, repoDir });
+    } catch (error) {
+      await emitLifecycleEvent({
+        phase: "setup",
+        status: "error",
+        message: "Run command failed to start",
+        details: getErrorMessage(error),
+      });
+      throw error;
+    }
+
+    const previewUrl = sandbox.domain(runPort);
+    await setTaskPreviewUrl({ db, taskId, previewUrl });
+    await emitLifecycleEvent({
+      phase: "setup",
+      status: "completed",
+      message: "Run command started",
+      details: previewUrl,
     });
   }
 

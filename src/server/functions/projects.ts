@@ -67,6 +67,8 @@ export const createProjects = createServerFn({ method: "POST" })
           repoUrl: repo.repoUrl,
           installationId: repo.installationId,
           setupCommand: null,
+          runCommand: null,
+          runPort: null,
           createdAt,
           updatedAt,
         };
@@ -121,6 +123,75 @@ export const updateProjectSetupCommand = createServerFn({ method: "POST" })
       await tx
         .update(schema.projects)
         .set({ setupCommand, updatedAt })
+        .where(
+          and(eq(schema.projects.id, input.projectId), eq(schema.projects.organizationId, orgId)),
+        );
+
+      const updated = await tx.query.projects.findFirst({
+        where: and(
+          eq(schema.projects.id, input.projectId),
+          eq(schema.projects.organizationId, orgId),
+        ),
+      });
+
+      if (!updated) {
+        return { notFound: true as const };
+      }
+
+      return { data: updated, txid };
+    });
+
+    if ("notFound" in result) {
+      notFound("Project not found");
+    }
+
+    return result;
+  });
+
+export const updateProjectRunCommand = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      projectId: z.string(),
+      runCommand: z.string().nullable(),
+      runPort: z.number().int().min(1).max(65535).nullable(),
+    }),
+  )
+  .handler(async ({ data: input, context }) => {
+    const db = context.db;
+    const orgId = getOrgId(context);
+
+    if (!orgId) {
+      badRequest("No active organization");
+    }
+
+    const runCommand =
+      typeof input.runCommand === "string" && input.runCommand.trim().length > 0
+        ? input.runCommand.trim()
+        : null;
+    const runPort = input.runPort ?? null;
+
+    if ((runCommand === null) !== (runPort === null)) {
+      badRequest("Run command and run port must both be provided");
+    }
+
+    const result = await withTransaction(db, async (tx, txid) => {
+      const existing = await tx.query.projects.findFirst({
+        where: and(
+          eq(schema.projects.id, input.projectId),
+          eq(schema.projects.organizationId, orgId),
+        ),
+        columns: { id: true },
+      });
+
+      if (!existing) {
+        return { notFound: true as const };
+      }
+
+      const updatedAt = Date.now();
+      await tx
+        .update(schema.projects)
+        .set({ runCommand, runPort, updatedAt })
         .where(
           and(eq(schema.projects.id, input.projectId), eq(schema.projects.organizationId, orgId)),
         );

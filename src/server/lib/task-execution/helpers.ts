@@ -9,7 +9,18 @@ export async function markTaskRunning(args: {
 }): Promise<void> {
   await args.db
     .update(schema.tasks)
-    .set({ sandboxId: args.sandboxId, status: "running", updatedAt: Date.now() })
+    .set({ sandboxId: args.sandboxId, status: "running", previewUrl: null, updatedAt: Date.now() })
+    .where(eq(schema.tasks.id, args.taskId));
+}
+
+export async function setTaskPreviewUrl(args: {
+  db: AppDb;
+  taskId: string;
+  previewUrl: string;
+}): Promise<void> {
+  await args.db
+    .update(schema.tasks)
+    .set({ previewUrl: args.previewUrl, updatedAt: Date.now() })
     .where(eq(schema.tasks.id, args.taskId));
 }
 

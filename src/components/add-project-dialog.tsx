@@ -115,6 +115,8 @@ export function AddProjectDialog({
             repo_url: r.htmlUrl,
             installation_id: r.installationId,
             setup_command: null,
+            run_command: null,
+            run_port: null,
           };
         });
 

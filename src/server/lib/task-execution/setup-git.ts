@@ -106,6 +106,52 @@ export async function runSetupScript(args: {
   }
 }
 
+export async function startRunScript(args: {
+  sandbox: TaskSandbox;
+  command: string | null;
+  repoDir: string;
+}): Promise<void> {
+  const normalizedCommand = args.command?.trim() ?? "";
+  if (normalizedCommand.length === 0) {
+    return;
+  }
+
+  const commandNeedsBun = /\bbun\b/.test(normalizedCommand);
+  const commandToRun = commandNeedsBun
+    ? [buildBunPathCommand(), normalizedCommand].join(" && ")
+    : normalizedCommand;
+
+  if (commandNeedsBun) {
+    const installBunResult = await args.sandbox.exec(buildInstallBunCommand(), {
+      cwd: args.repoDir,
+    });
+    if (!installBunResult.success) {
+      throw new Error(
+        formatBunInstallFailure({
+          exitCode: installBunResult.exitCode,
+          stdout: installBunResult.stdout,
+          stderr: installBunResult.stderr,
+        }),
+      );
+    }
+  }
+
+  const launchResult = await args.sandbox.exec(
+    `nohup bash -lc ${shellQuote(commandToRun)} >/tmp/clanki-preview.log 2>&1 &`,
+    { cwd: args.repoDir },
+  );
+  if (!launchResult.success) {
+    throw new Error(
+      formatRunCommandFailure({
+        command: normalizedCommand,
+        exitCode: launchResult.exitCode,
+        stdout: launchResult.stdout,
+        stderr: launchResult.stderr,
+      }),
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -188,4 +234,21 @@ function formatBunInstallFailure(args: {
   }
 
   return `${base}\n${output}`;
+}
+
+function formatRunCommandFailure(args: {
+  command: string;
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}): string {
+  const stdout = truncateCommandOutput(args.stdout.trim());
+  const stderr = truncateCommandOutput(args.stderr.trim());
+  const output = [stderr, stdout].filter((part) => part.length > 0).join("\n\n");
+
+  if (output.length === 0) {
+    return `Project run command failed to launch (exit code ${args.exitCode}): ${args.command}`;
+  }
+
+  return `Project run command failed to launch (exit code ${args.exitCode}): ${args.command}\n${output}`;
 }

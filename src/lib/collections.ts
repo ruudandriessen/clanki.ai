@@ -18,6 +18,8 @@ const projectSchema = z.object({
   repo_url: z.string().nullable(),
   installation_id: z.number().nullable(),
   setup_command: z.string().nullable(),
+  run_command: z.string().nullable(),
+  run_port: z.number().nullable(),
   created_at: z.bigint(),
   updated_at: z.bigint(),
 });
@@ -31,6 +33,7 @@ const taskSchema = z.object({
   status: z.string(),
   stream_id: z.string().nullable(),
   branch: z.string().nullable(),
+  preview_url: z.string().nullable().optional(),
   error: z.string().nullable(),
   created_at: z.bigint(),
   updated_at: z.bigint(),

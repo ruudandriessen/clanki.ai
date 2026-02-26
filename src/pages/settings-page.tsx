@@ -13,7 +13,7 @@ import {
   startProviderOauth,
   upsertProviderCredential,
 } from "@/server/functions/settings";
-import { updateProjectSetupCommand } from "@/server/functions/projects";
+import { updateProjectRunCommand, updateProjectSetupCommand } from "@/server/functions/projects";
 
 type ProviderOauthStart = {
   attemptId: string;
@@ -49,8 +49,12 @@ export function SettingsPage() {
   const [oauthAttempt, setOauthAttempt] = useState<ProviderOauthStart | null>(null);
   const [providerError, setProviderError] = useState<string | null>(null);
   const [projectSetupDrafts, setProjectSetupDrafts] = useState<Record<string, string>>({});
+  const [projectRunDrafts, setProjectRunDrafts] = useState<Record<string, string>>({});
+  const [projectRunPortDrafts, setProjectRunPortDrafts] = useState<Record<string, string>>({});
   const [savingProjectId, setSavingProjectId] = useState<string | null>(null);
+  const [savingProjectRunId, setSavingProjectRunId] = useState<string | null>(null);
   const [projectSetupErrors, setProjectSetupErrors] = useState<Record<string, string>>({});
+  const [projectRunErrors, setProjectRunErrors] = useState<Record<string, string>>({});
   const openAiCredential = openAiCredentialRows[0] ?? null;
   const openAiAuthType = openAiCredential?.auth_type ?? null;
   const openAiUpdatedAt = openAiCredential ? Number(openAiCredential.updated_at) : null;
@@ -60,6 +64,26 @@ export function SettingsPage() {
       const next: Record<string, string> = {};
       for (const project of projects) {
         next[project.id] = previous[project.id] ?? project.setup_command ?? "";
+      }
+      return next;
+    });
+
+    setProjectRunDrafts((previous) => {
+      const next: Record<string, string> = {};
+      for (const project of projects) {
+        next[project.id] = previous[project.id] ?? project.run_command ?? "";
+      }
+      return next;
+    });
+
+    setProjectRunPortDrafts((previous) => {
+      const next: Record<string, string> = {};
+      for (const project of projects) {
+        next[project.id] =
+          previous[project.id] ??
+          (project.run_port === null || project.run_port === undefined
+            ? ""
+            : String(project.run_port));
       }
       return next;
     });
@@ -168,6 +192,60 @@ export function SettingsPage() {
       }));
     } finally {
       setSavingProjectId(null);
+    }
+  }
+
+  async function handleSaveProjectRunCommand(projectId: string) {
+    if (savingProjectRunId) {
+      return;
+    }
+
+    const draftRunCommand = projectRunDrafts[projectId] ?? "";
+    const draftRunPort = projectRunPortDrafts[projectId] ?? "";
+    const runCommand = draftRunCommand.trim().length > 0 ? draftRunCommand.trim() : null;
+    const runPortInput = draftRunPort.trim();
+    const runPort = runPortInput.length > 0 ? Number(runPortInput) : null;
+
+    if ((runCommand === null) !== (runPort === null)) {
+      setProjectRunErrors((previous) => ({
+        ...previous,
+        [projectId]: "Run command and run port must both be provided",
+      }));
+      return;
+    }
+
+    if (runPort !== null && (!Number.isInteger(runPort) || runPort < 1 || runPort > 65535)) {
+      setProjectRunErrors((previous) => ({
+        ...previous,
+        [projectId]: "Run port must be an integer between 1 and 65535",
+      }));
+      return;
+    }
+
+    setSavingProjectRunId(projectId);
+    setProjectRunErrors((previous) => {
+      const next = { ...previous };
+      delete next[projectId];
+      return next;
+    });
+
+    try {
+      await updateProjectRunCommand({ data: { projectId, runCommand, runPort } });
+      setProjectRunDrafts((previous) => ({
+        ...previous,
+        [projectId]: runCommand ?? "",
+      }));
+      setProjectRunPortDrafts((previous) => ({
+        ...previous,
+        [projectId]: runPort === null ? "" : String(runPort),
+      }));
+    } catch (error) {
+      setProjectRunErrors((previous) => ({
+        ...previous,
+        [projectId]: error instanceof Error ? error.message : "Failed to save project run command",
+      }));
+    } finally {
+      setSavingProjectRunId(null);
     }
   }
 
@@ -348,6 +426,71 @@ export function SettingsPage() {
                           <p className="text-xs text-destructive">
                             {projectSetupErrors[project.id]}
                           </p>
+                        ) : null}
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">
+                          Run command + port (starts after setup and stores preview URL)
+                        </p>
+                        <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_8rem_auto]">
+                          <Input
+                            value={projectRunDrafts[project.id] ?? project.run_command ?? ""}
+                            onChange={(event) =>
+                              setProjectRunDrafts((previous) => ({
+                                ...previous,
+                                [project.id]: event.target.value,
+                              }))
+                            }
+                            placeholder="bun run dev"
+                          />
+                          <Input
+                            type="number"
+                            min={1}
+                            max={65535}
+                            value={
+                              projectRunPortDrafts[project.id] ??
+                              (project.run_port === null || project.run_port === undefined
+                                ? ""
+                                : String(project.run_port))
+                            }
+                            onChange={(event) =>
+                              setProjectRunPortDrafts((previous) => ({
+                                ...previous,
+                                [project.id]: event.target.value,
+                              }))
+                            }
+                            placeholder="3000"
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => void handleSaveProjectRunCommand(project.id)}
+                            disabled={
+                              savingProjectRunId !== null ||
+                              ((
+                                projectRunDrafts[project.id] ??
+                                project.run_command ??
+                                ""
+                              ).trim() === (project.run_command ?? "") &&
+                                (
+                                  projectRunPortDrafts[project.id] ??
+                                  (project.run_port === null || project.run_port === undefined
+                                    ? ""
+                                    : String(project.run_port))
+                                ).trim() ===
+                                  (project.run_port === null || project.run_port === undefined
+                                    ? ""
+                                    : String(project.run_port)))
+                            }
+                          >
+                            {savingProjectRunId === project.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : null}
+                            Save
+                          </Button>
+                        </div>
+                        {projectRunErrors[project.id] ? (
+                          <p className="text-xs text-destructive">{projectRunErrors[project.id]}</p>
                         ) : null}
                       </div>
                     </div>
