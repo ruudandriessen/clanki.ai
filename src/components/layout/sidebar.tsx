@@ -1,32 +1,19 @@
-import { X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { OrgSwitcher } from "./org-switcher";
 import { TaskList } from "./task-list";
 import { UserMenu } from "./user-menu";
 
-type SidebarProps = {
-  onClose: () => void;
-};
-
-export function Sidebar({ onClose }: SidebarProps) {
+export function Sidebar() {
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex justify-end border-b border-border px-4 py-3 md:hidden">
-        <Button
-          className="text-foreground md:hidden"
-          variant="ghost"
-          size="icon-sm"
-          onClick={onClose}
-        >
-          <X className="w-5 h-5" />
-        </Button>
+    <div className="flex h-full flex-col">
+      <div className="hidden md:block">
+        <OrgSwitcher />
       </div>
 
-      <OrgSwitcher />
+      <div className="flex min-h-0 flex-1">
+        <TaskList />
+      </div>
 
-      <TaskList />
-
-      <div className="border-t border-border bg-muted/20">
+      <div className="hidden border-t border-border bg-muted/20 md:block">
         <div className="p-2">
           <UserMenu showIdentity menuDirection="up" />
         </div>

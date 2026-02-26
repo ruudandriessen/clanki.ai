@@ -52,16 +52,19 @@ export function Layout() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <Sidebar onClose={() => setSidebarOpen(false)} />
+        <Sidebar />
       </div>
 
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <MobileHeader onOpenSidebar={() => setSidebarOpen(true)} />
-
-        <main className="flex-1 overflow-hidden neo-scroll">
+        <main className="neo-scroll flex-1 overflow-hidden pb-20 md:pb-0">
           <Outlet />
         </main>
+
+        <MobileHeader
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen((currentOpen) => !currentOpen)}
+        />
       </div>
     </div>
   );
