@@ -43,7 +43,7 @@ export function LoginPage() {
       <Card className="neo-enter w-full max-w-sm">
         <CardContent className="space-y-6 px-6 py-8">
           <div className="text-center">
-            <h1 className="text-3xl tracking-[0.06em] text-foreground">hello!</h1>
+            <h1 className="text-3xl tracking-[0.06em] text-foreground">Clanki</h1>
             <p className="mt-2 text-sm text-muted-foreground">Build your ideas from anywhere</p>
           </div>
 
