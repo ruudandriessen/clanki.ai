@@ -7,6 +7,8 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
+import { useLiveQuery } from "@tanstack/react-db";
+import { projectsCollection } from "@/lib/collections";
 import { createDesktopRunnerSession, listDesktopRunnerSessions } from "@/lib/desktop-runner";
 import type { RunnerSessionSummary } from "@/shared/runner-session";
 
@@ -29,13 +31,25 @@ export function RunnerSessionsProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { data: projects, isLoading: isProjectLoading } = useLiveQuery((q) =>
+    q.from({ project: projectsCollection }).orderBy(({ project }) => project.created_at, "asc"),
+  );
   const isDesktopApp = detectDesktopApp();
+  const repoUrl = projects.find((project) => project.repo_url)?.repo_url ?? null;
   const loadSessions = useEffectEvent(async () => {
+    if (!repoUrl) {
+      setSessions([]);
+      setWorkspaceDirectory(null);
+      setError("Add a project with a repository URL to use runner sessions.");
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await listDesktopRunnerSessions();
+      const response = await listDesktopRunnerSessions(repoUrl);
       startTransition(() => {
         setSessions(response.sessions);
         setWorkspaceDirectory(response.workspaceDirectory);
@@ -56,8 +70,13 @@ export function RunnerSessionsProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    if (isProjectLoading) {
+      setIsLoading(true);
+      return;
+    }
+
     void loadSessions();
-  }, [isDesktopApp]);
+  }, [isDesktopApp, isProjectLoading, repoUrl]);
 
   async function refreshSessions(): Promise<void> {
     if (!isDesktopApp) {
@@ -68,11 +87,17 @@ export function RunnerSessionsProvider({ children }: { children: ReactNode }) {
   }
 
   async function createSession(title: string): Promise<{ sessionId: string }> {
+    if (!repoUrl) {
+      const message = "Add a project with a repository URL before creating a runner session.";
+      setError(message);
+      throw new Error(message);
+    }
+
     setIsCreating(true);
     setError(null);
 
     try {
-      const response = await createDesktopRunnerSession(title);
+      const response = await createDesktopRunnerSession(title, repoUrl);
       await refreshSessions();
       return response;
     } catch (createError) {
