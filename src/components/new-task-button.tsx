@@ -21,7 +21,7 @@ export function NewTaskButton({ iconOnly = false, title, ...props }: NewTaskButt
 
   const [defaultProject] = projects;
 
-  async function handleNewTask() {
+  function handleNewTask() {
     const repoUrl = defaultProject?.repo_url;
     if (creating || !defaultProject || !repoUrl) {
       return;
@@ -29,32 +29,41 @@ export function NewTaskButton({ iconOnly = false, title, ...props }: NewTaskButt
 
     setCreating(true);
 
-    try {
-      const taskTitle = "New task";
-      const response = await createDesktopRunnerSession(taskTitle, repoUrl);
-      const now = Date.now();
-      const taskId = crypto.randomUUID();
-      const tx = tasksCollection.insert({
-        id: taskId,
-        organization_id: defaultProject.organization_id,
-        project_id: defaultProject.id,
-        title: taskTitle,
-        status: "open",
-        stream_id: null,
-        branch: null,
-        runner_type: response.runnerType,
-        runner_session_id: response.sessionId,
-        workspace_path: response.workspaceDirectory,
-        error: null,
-        created_at: BigInt(now),
-        updated_at: BigInt(now),
-      });
+    const taskTitle = "New task";
+    const now = Date.now();
+    const taskId = crypto.randomUUID();
+    tasksCollection.insert({
+      id: taskId,
+      organization_id: defaultProject.organization_id,
+      project_id: defaultProject.id,
+      title: taskTitle,
+      status: "open",
+      stream_id: null,
+      branch: null,
+      runner_type: null,
+      runner_session_id: null,
+      workspace_path: null,
+      error: null,
+      created_at: BigInt(now),
+      updated_at: BigInt(now),
+    });
 
-      navigate({ to: "/tasks/$taskId", params: { taskId } });
-      await tx.isPersisted.promise;
-    } finally {
-      setCreating(false);
-    }
+    navigate({ to: "/tasks/$taskId", params: { taskId } });
+    setCreating(false);
+
+    createDesktopRunnerSession(taskTitle, repoUrl)
+      .then((response) => {
+        tasksCollection.update(taskId, (draft) => {
+          draft.runner_type = response.runnerType;
+          draft.runner_session_id = response.sessionId;
+          draft.workspace_path = response.workspaceDirectory;
+        });
+      })
+      .catch((err) => {
+        tasksCollection.update(taskId, (draft) => {
+          draft.error = err instanceof Error ? err.message : "Failed to create workspace";
+        });
+      });
   }
 
   return (
@@ -62,7 +71,7 @@ export function NewTaskButton({ iconOnly = false, title, ...props }: NewTaskButt
       type="button"
       title={title ?? "New task"}
       disabled={creating || !defaultProject}
-      onClick={() => void handleNewTask()}
+      onClick={() => handleNewTask()}
       {...props}
     >
       {creating ? (

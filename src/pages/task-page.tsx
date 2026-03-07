@@ -88,7 +88,7 @@ export function TaskPage({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const shouldStickToBottomRef = useRef(true);
 
-  const { data: messages, isLoading } = useLiveQuery(
+  const { data: messages } = useLiveQuery(
     (q) =>
       q
         .from({ m: taskMessagesCollection })
@@ -113,6 +113,7 @@ export function TaskPage({
   const desktopApp = isDesktopApp();
   const isRunnerBackedTask =
     runnerType === "local-worktree" && !!runnerSessionId && !!workspacePath;
+  const willBeRunnerBacked = desktopApp && (!runnerType || isRunnerBackedTask);
   const isReadOnlyRemoteTask = isRunnerBackedTask && !desktopApp;
   const {
     data: runnerModels,
@@ -125,7 +126,9 @@ export function TaskPage({
     ? selectedModel
     : isRunnerModelSelectionAvailable(lastUsedModel, availableModelOptions)
       ? lastUsedModel
-      : defaultModelSelection;
+      : availableModelOptions.length > 0
+        ? defaultModelSelection
+        : (selectedModel ?? lastUsedModel ?? defaultModelSelection);
   const runnerModelErrorMessage =
     runnerModelsError instanceof Error ? runnerModelsError.message : null;
   const displayError = localError ?? error;
@@ -143,12 +146,12 @@ export function TaskPage({
   }, [taskId]);
 
   useEffect(() => {
-    if (isLoading || messages.length > 0) {
+    if (messages.length > 0) {
       return;
     }
 
     inputRef.current?.focus();
-  }, [taskId, isLoading, messages.length]);
+  }, [taskId, messages.length]);
 
   useEffect(() => {
     if (!isRunning) {
@@ -177,11 +180,6 @@ export function TaskPage({
     if (!content || sending || isRunning || !taskId) return;
     if (isReadOnlyRemoteTask) {
       setLocalError("This task is attached to a local runner session and is read-only here.");
-      return;
-    }
-
-    if (runnerType === "local-worktree" && (!runnerSessionId || !workspacePath)) {
-      setLocalError("This task is missing local runner metadata.");
       return;
     }
 
@@ -300,7 +298,6 @@ export function TaskPage({
         messageListRef={messageListRef}
         messagesEndRef={messagesEndRef}
         onScroll={handleMessageListScroll}
-        isLoading={isLoading}
         showEmptyState={showEmptyState}
         timelineEntries={timelineEntries}
         isRunning={isRunning}
@@ -315,15 +312,16 @@ export function TaskPage({
         isRunning={isRunning}
         isReadOnlyRemoteTask={isReadOnlyRemoteTask}
         sending={sending}
+        preparingWorkspace={willBeRunnerBacked && !isRunnerBackedTask}
         isRunnerBackedTask={isRunnerBackedTask}
-        desktopApp={desktopApp}
+        willBeRunnerBacked={willBeRunnerBacked}
         activeModelSelection={activeModelSelection}
         onModelChange={(nextSelection) => {
           setSelectedModel(nextSelection);
           setLastUsedModel(nextSelection);
         }}
         availableModelOptions={availableModelOptions}
-        isRunnerModelsLoading={isRunnerModelsLoading}
+        isRunnerModelsLoading={isRunnerModelsLoading || !isRunnerBackedTask}
         runnerModelErrorMessage={runnerModelErrorMessage}
       />
     </div>

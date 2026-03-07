@@ -55,15 +55,17 @@ export function TaskModelPicker({
             <Button
               type="button"
               variant="outline"
-              disabled={disabled || isLoading || !hasOptions}
+              disabled={disabled || (!hasOptions && !value)}
               className={cn(
                 "border-input hover:bg-input flex h-9 min-w-[220px] max-w-full justify-between rounded-[var(--radius-sm)] bg-input px-3 text-sm font-medium normal-case tracking-normal shadow-[2px_2px_0_0_var(--color-border)]",
                 "focus-visible:ring-2 focus-visible:ring-ring/50",
                 !selectedOption && "text-muted-foreground",
               )}
             >
-              <span className="truncate">{selectedOption?.modelName ?? placeholder}</span>
-              {isLoading ? (
+              <span className="truncate">
+                {selectedOption?.modelName ?? value?.model ?? placeholder}
+              </span>
+              {isLoading && !value ? (
                 <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
               ) : (
                 <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />

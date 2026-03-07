@@ -14,8 +14,9 @@ interface TaskPageInputProps {
   isRunning: boolean;
   isReadOnlyRemoteTask: boolean;
   sending: boolean;
+  preparingWorkspace: boolean;
   isRunnerBackedTask: boolean;
-  desktopApp: boolean;
+  willBeRunnerBacked: boolean;
   activeModelSelection: { provider: string; model: string } | null;
   onModelChange: (selection: { provider: string; model: string } | null) => void;
   availableModelOptions: ReturnType<typeof getRunnerModelOptions>;
@@ -31,8 +32,9 @@ export function TaskPageInput({
   isRunning,
   isReadOnlyRemoteTask,
   sending,
+  preparingWorkspace,
   isRunnerBackedTask,
-  desktopApp,
+  willBeRunnerBacked,
   activeModelSelection,
   onModelChange,
   availableModelOptions,
@@ -72,7 +74,7 @@ export function TaskPageInput({
           }}
         />
         <div className="flex flex-wrap items-end justify-between gap-3 px-4 pt-0 pb-4">
-          {isRunnerBackedTask && desktopApp ? (
+          {willBeRunnerBacked ? (
             <TaskModelPicker
               value={activeModelSelection}
               onChange={onModelChange}
@@ -80,7 +82,7 @@ export function TaskPageInput({
               isLoading={isRunnerModelsLoading}
               error={
                 runnerModelErrorMessage ??
-                (!isRunnerModelsLoading && availableModelOptions.length === 0
+                (isRunnerBackedTask && !isRunnerModelsLoading && availableModelOptions.length === 0
                   ? "No connected OpenCode providers were found in the runner."
                   : null)
               }
@@ -90,10 +92,12 @@ export function TaskPageInput({
           <Button
             type="button"
             onClick={onSend}
-            disabled={!input.trim() || isReadOnlyRemoteTask || sending || isRunning}
+            disabled={
+              !input.trim() || isReadOnlyRemoteTask || sending || isRunning || preparingWorkspace
+            }
             className={cn(
               "h-[42px] w-[42px] shrink-0 rounded-[var(--radius-md)] p-0",
-              !(isRunnerBackedTask && desktopApp) && "ml-auto",
+              !willBeRunnerBacked && "ml-auto",
             )}
           >
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

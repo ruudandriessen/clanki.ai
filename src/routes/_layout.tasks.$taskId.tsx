@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
       return;
     }
 
-    return Promise.all([
+    void Promise.all([
       tasksCollection.preload(),
       projectsCollection.preload(),
       pullRequestsCollection.preload(),
@@ -54,11 +54,7 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
     );
 
     const pullRequest = pullRequestMatches[0];
-    if (isLoading) {
-      return null;
-    }
-
-    if (!openedTask) {
+    if (!isLoading && !openedTask) {
       return <Navigate to="/" replace />;
     }
 
@@ -66,10 +62,10 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
       <TaskPage
         key={taskId}
         taskId={taskId}
-        title={openedTask.task.title}
-        branchName={openedTask.task.branch ?? null}
-        projectName={openedTask.project?.name ?? "No project"}
-        streamId={openedTask.task.stream_id ?? null}
+        title={openedTask?.task.title ?? "New task"}
+        branchName={openedTask?.task.branch ?? null}
+        projectName={openedTask?.project?.name ?? ""}
+        streamId={openedTask?.task.stream_id ?? null}
         pullRequest={
           pullRequest
             ? {
@@ -84,11 +80,11 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
               }
             : null
         }
-        error={openedTask.task.error ?? null}
-        isRunning={openedTask.task.status === "running"}
-        runnerSessionId={openedTask.task.runner_session_id ?? null}
-        runnerType={openedTask.task.runner_type ?? null}
-        workspacePath={openedTask.task.workspace_path ?? null}
+        error={openedTask?.task.error ?? null}
+        isRunning={(openedTask?.task.status ?? "") === "running"}
+        runnerSessionId={openedTask?.task.runner_session_id ?? null}
+        runnerType={openedTask?.task.runner_type ?? null}
+        workspacePath={openedTask?.task.workspace_path ?? null}
       />
     );
   },

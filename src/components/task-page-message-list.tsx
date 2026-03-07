@@ -1,5 +1,4 @@
 import type { RefObject } from "react";
-import { Loader2 } from "lucide-react";
 import { TaskStreamActivity } from "@/components/task-stream-activity";
 import { MarkdownContent } from "@/components/markdown-content";
 import { AnimatedStreamItem } from "@/components/animated-stream-item";
@@ -11,7 +10,6 @@ interface TaskPageMessageListProps {
   messageListRef: RefObject<HTMLDivElement | null>;
   messagesEndRef: RefObject<HTMLDivElement | null>;
   onScroll: () => void;
-  isLoading: boolean;
   showEmptyState: boolean;
   timelineEntries: TimelineEntry[];
   isRunning: boolean;
@@ -22,7 +20,6 @@ export function TaskPageMessageList({
   messageListRef,
   messagesEndRef,
   onScroll,
-  isLoading,
   showEmptyState,
   timelineEntries,
   isRunning,
@@ -34,11 +31,7 @@ export function TaskPageMessageList({
       onScroll={onScroll}
       className="neo-scroll flex-1 overflow-y-auto bg-background"
     >
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-        </div>
-      ) : showEmptyState ? (
+      {showEmptyState ? (
         <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-muted-foreground">
           <p className="text-sm">No messages yet</p>
           <p className="text-xs">Send a message to start a task discussion.</p>
