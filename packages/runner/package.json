@@ -9,6 +9,8 @@
     "dev": "bun run ./src/cli.ts"
   },
   "dependencies": {
-    "@opencode-ai/sdk": "^1.2.1"
+    "@hono/node-server": "^1.19.9",
+    "@opencode-ai/sdk": "^1.2.1",
+    "hono": "^4.11.7"
   }
 }

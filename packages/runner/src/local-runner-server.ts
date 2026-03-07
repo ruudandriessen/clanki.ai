@@ -1,4 +1,6 @@
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import type { Server } from "node:http";
+import { createAdaptorServer } from "@hono/node-server";
+import { Hono, type Context } from "hono";
 import { ensureAssistantSession, promptAssistantSession } from "./assistant-session";
 import { listAssistantSessions } from "./list-assistant-sessions";
 import {
@@ -15,10 +17,91 @@ export type LocalRunnerServerOptions = {
   port?: number;
 };
 
+export function createLocalRunnerApp(): Hono {
+  const app = new Hono();
+
+  app.use("*", async (c, next) => {
+    try {
+      await next();
+    } finally {
+      setCorsHeaders(c);
+    }
+  });
+
+  app.options("*", (c) => c.body(null, 204));
+
+  app.onError((error, c) => {
+    return c.json(
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+      error instanceof RequestError ? error.statusCode : 500,
+    );
+  });
+
+  app.get("/health", (c) => c.json({ ok: true }));
+
+  app.get("/runner/info", (c) =>
+    c.json({
+      capabilities: {
+        assistantSessions: true,
+      },
+      protocolVersion: LOCAL_RUNNER_PROTOCOL_VERSION,
+      runnerType: "local-worktree",
+    }),
+  );
+
+  app.get("/opencode/models", async (c) => {
+    const directory = readDirectoryQuery(c);
+
+    return c.json(
+      await listOpencodeModels({
+        directory,
+      } satisfies ListOpencodeModelsRequest),
+    );
+  });
+
+  app.get("/assistant/sessions", async (c) => {
+    const directory = readDirectoryQuery(c);
+
+    return c.json({
+      sessions: await listAssistantSessions({
+        directory,
+      } satisfies ListAssistantSessionsRequest),
+    });
+  });
+
+  app.post("/assistant/session/ensure", async (c) => {
+    const body = await readJson<EnsureAssistantSessionRequest>(c);
+
+    return c.json(
+      await ensureAssistantSession({
+        directory: body.directory,
+        existingSessionId: body.sessionId,
+        model: body.model,
+        provider: body.provider,
+        taskTitle: body.taskTitle,
+      }),
+    );
+  });
+
+  app.post("/assistant/session/prompt", async (c) => {
+    const body = await readJson<PromptAssistantSessionRequest>(c);
+
+    await promptAssistantSession(body);
+
+    return c.json({ ok: true });
+  });
+
+  app.notFound((c) => c.json({ error: `Unknown route: ${c.req.method} ${c.req.path}` }, 404));
+
+  return app;
+}
+
 class RequestError extends Error {
   constructor(
     message: string,
-    readonly statusCode: number = 400,
+    readonly statusCode: 400 | 404 = 400,
   ) {
     super(message);
   }
@@ -27,16 +110,12 @@ class RequestError extends Error {
 export function startLocalRunnerServer(options?: LocalRunnerServerOptions): Promise<Server> {
   const host = options?.host ?? "127.0.0.1";
   const port = options?.port ?? 4318;
-
-  const server = createServer(async (request, response) => {
-    try {
-      await routeRequest(request, response);
-    } catch (error) {
-      sendJson(response, error instanceof RequestError ? error.statusCode : 500, {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  });
+  const app = createLocalRunnerApp();
+  const server = createAdaptorServer({
+    fetch: app.fetch,
+    hostname: host,
+    port,
+  }) as Server;
 
   return new Promise((resolve, reject) => {
     server.once("error", reject);
@@ -47,117 +126,27 @@ export function startLocalRunnerServer(options?: LocalRunnerServerOptions): Prom
   });
 }
 
-async function routeRequest(request: IncomingMessage, response: ServerResponse): Promise<void> {
-  const method = request.method?.toUpperCase() ?? "GET";
-  const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
-  const pathname = requestUrl.pathname;
-
-  if (method === "OPTIONS") {
-    sendNoContent(response);
-    return;
-  }
-
-  if (method === "GET" && pathname === "/health") {
-    sendJson(response, 200, { ok: true });
-    return;
-  }
-
-  if (method === "GET" && pathname === "/runner/info") {
-    sendJson(response, 200, {
-      capabilities: {
-        assistantSessions: true,
-      },
-      protocolVersion: LOCAL_RUNNER_PROTOCOL_VERSION,
-      runnerType: "local-worktree",
-    });
-    return;
-  }
-
-  if (method === "GET" && pathname === "/opencode/models") {
-    const directory = readDirectoryQuery(requestUrl);
-    sendJson(
-      response,
-      200,
-      await listOpencodeModels({
-        directory,
-      } satisfies ListOpencodeModelsRequest),
-    );
-    return;
-  }
-
-  if (method === "GET" && pathname === "/assistant/sessions") {
-    const directory = readDirectoryQuery(requestUrl);
-    sendJson(response, 200, {
-      sessions: await listAssistantSessions({
-        directory,
-      } satisfies ListAssistantSessionsRequest),
-    });
-    return;
-  }
-
-  if (method === "POST" && pathname === "/assistant/session/ensure") {
-    const body = await readJson<EnsureAssistantSessionRequest>(request);
-    sendJson(
-      response,
-      200,
-      await ensureAssistantSession({
-        directory: body.directory,
-        existingSessionId: body.sessionId,
-        model: body.model,
-        provider: body.provider,
-        taskTitle: body.taskTitle,
-      }),
-    );
-    return;
-  }
-
-  if (method === "POST" && pathname === "/assistant/session/prompt") {
-    const body = await readJson<PromptAssistantSessionRequest>(request);
-    await promptAssistantSession(body);
-    sendJson(response, 200, { ok: true });
-    return;
-  }
-
-  sendJson(response, 404, { error: `Unknown route: ${method} ${pathname}` });
-}
-
-async function readJson<T>(request: IncomingMessage): Promise<T> {
-  const chunks: Buffer[] = [];
-
-  for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-
-  const body = Buffer.concat(chunks).toString("utf8").trim();
+async function readJson<T>(c: Context): Promise<T> {
+  const body = (await c.req.text()).trim();
   if (body.length === 0) {
-    throw new Error("Expected JSON request body");
+    throw new RequestError("Expected JSON request body");
   }
 
-  return JSON.parse(body) as T;
+  try {
+    return JSON.parse(body) as T;
+  } catch {
+    throw new RequestError("Invalid JSON request body");
+  }
 }
 
-function sendJson(response: ServerResponse, statusCode: number, body: unknown): void {
-  setCorsHeaders(response);
-  response.writeHead(statusCode, {
-    "Content-Type": "application/json",
-  });
-  response.end(JSON.stringify(body));
+function setCorsHeaders(c: Context): void {
+  c.header("Access-Control-Allow-Headers", "Content-Type");
+  c.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  c.header("Access-Control-Allow-Origin", "*");
 }
 
-function sendNoContent(response: ServerResponse): void {
-  setCorsHeaders(response);
-  response.writeHead(204);
-  response.end();
-}
-
-function setCorsHeaders(response: ServerResponse): void {
-  response.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  response.setHeader("Access-Control-Allow-Origin", "*");
-}
-
-function readDirectoryQuery(requestUrl: URL): string {
-  const directory = requestUrl.searchParams.get("directory")?.trim() ?? "";
+function readDirectoryQuery(c: Context): string {
+  const directory = c.req.query("directory")?.trim() ?? "";
   if (directory.length === 0) {
     throw new RequestError("directory query parameter is required");
   }
