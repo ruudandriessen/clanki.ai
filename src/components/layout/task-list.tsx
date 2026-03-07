@@ -282,7 +282,7 @@ export function TaskList() {
                       <div
                         key={task.id}
                         className={cn(
-                          "group flex items-center gap-1 rounded-[var(--radius-sm)] transition-colors",
+                          "group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1 rounded-[var(--radius-sm)] pr-1 transition-colors",
                           isActive
                             ? "bg-accent/70 text-accent-foreground"
                             : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
@@ -291,9 +291,9 @@ export function TaskList() {
                         <Link
                           to="/tasks/$taskId"
                           params={{ taskId: task.id }}
-                          className="flex min-w-0 flex-1 px-2.5 py-2 text-sm"
+                          className="min-w-0 px-2.5 py-2 text-sm"
                         >
-                          <div className="min-w-0 flex-1">
+                          <div className="min-w-0">
                             <p className="truncate">{taskLabel}</p>
                             {secondaryLabel ? (
                               <p
@@ -312,7 +312,7 @@ export function TaskList() {
                           variant="ghost"
                           size="icon-xs"
                           className={cn(
-                            "mr-1 shrink-0 text-muted-foreground shadow-none hover:border-transparent hover:text-destructive hover:shadow-none",
+                            "shrink-0 text-muted-foreground shadow-none hover:border-transparent hover:text-destructive hover:shadow-none",
                             isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100",
                           )}
                           onClick={() => {
