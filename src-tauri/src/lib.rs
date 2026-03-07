@@ -1,5 +1,6 @@
 use reqwest::blocking::Client;
-use serde::Serialize;
+use reqwest::blocking::Response;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
     env,
@@ -42,11 +43,76 @@ struct PreparedWorktree {
     default_directory: PathBuf,
 }
 
+const DEFAULT_OPENCODE_MODEL: &str = "gpt-5.3-codex";
+const DEFAULT_OPENCODE_PROVIDER: &str = "openai";
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct RunnerConnectionPayload {
-    base_url: String,
+struct CreateRunnerSessionResponse {
+    runner_type: String,
+    session_id: String,
     workspace_directory: String,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EnsureAssistantSessionRequest {
+    directory: String,
+    model: String,
+    provider: String,
+    task_title: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EnsureAssistantSessionResponse {
+    session_id: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ListAssistantSessionsResponse {
+    sessions: Vec<RunnerSessionSummary>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PromptTaskAssistantSessionRequest {
+    directory: String,
+    prompt: String,
+    session_id: String,
+    task_run: PromptTaskRunnerCallback,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PromptTaskAssistantSessionResponse {
+    ok: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PromptTaskRunnerCallback {
+    backend_base_url: String,
+    callback_token: String,
+    execution_id: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RunnerSessionsPayload {
+    sessions: Vec<RunnerSessionSummary>,
+    workspace_directory: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct RunnerSessionSummary {
+    created_at: u64,
+    directory: String,
+    id: String,
+    title: String,
+    updated_at: u64,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -55,7 +121,11 @@ pub fn run() {
         .manage(ServerProcess(Mutex::new(None)))
         .manage(RunnerProcess(Mutex::new(None)))
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![ensure_runner_connection])
+        .invoke_handler(tauri::generate_handler![
+            create_runner_session,
+            ensure_runner_connection,
+            prompt_runner_task
+        ])
         .setup(|app| {
             let app_url = resolve_app_url(app.handle())?;
 
@@ -138,8 +208,46 @@ fn create_runner_session(
     };
 
     Ok(CreateRunnerSessionResponse {
+        runner_type: "local-worktree".to_string(),
         session_id: payload.session_id,
+        workspace_directory: worktree.directory.display().to_string(),
     })
+}
+
+#[tauri::command]
+fn prompt_runner_task(
+    app: AppHandle,
+    runner_process: State<'_, RunnerProcess>,
+    backend_base_url: String,
+    callback_token: String,
+    directory: String,
+    execution_id: String,
+    prompt: String,
+    session_id: String,
+) -> Result<(), String> {
+    let runner = ensure_runner(&app, runner_process.inner())?;
+    let client = runner_http_client()?;
+    let response = client
+        .post(format!("{}/assistant/session/task-prompt", runner.base_url))
+        .json(&PromptTaskAssistantSessionRequest {
+            directory,
+            prompt,
+            session_id,
+            task_run: PromptTaskRunnerCallback {
+                backend_base_url,
+                callback_token,
+                execution_id,
+            },
+        })
+        .send()
+        .map_err(|error| format!("Failed to reach local runner: {error}"))?;
+
+    let payload: PromptTaskAssistantSessionResponse = parse_runner_json(response)?;
+    if payload.ok {
+        Ok(())
+    } else {
+        Err("Local runner task prompt did not complete successfully".to_string())
+    }
 }
 fn ensure_runner(
     app: &AppHandle,
@@ -636,6 +744,36 @@ fn runner_http_client() -> Result<Client, String> {
         .timeout(Duration::from_secs(30))
         .build()
         .map_err(|error| format!("Failed to create runner HTTP client: {error}"))
+}
+
+fn parse_runner_json<T>(response: Response) -> Result<T, String>
+where
+    T: for<'de> Deserialize<'de>,
+{
+    let status = response.status();
+    let status_text = status
+        .canonical_reason()
+        .map(ToString::to_string)
+        .unwrap_or_else(|| "Unknown status".to_string());
+
+    if status.is_success() {
+        return response
+            .json::<T>()
+            .map_err(|error| format!("Failed to decode local runner response: {error}"));
+    }
+
+    let body = response
+        .text()
+        .map_err(|error| format!("Failed to read local runner error response: {error}"))?;
+    let details = body.trim();
+
+    if details.is_empty() {
+        Err(format!("Local runner request failed ({status} {status_text})"))
+    } else {
+        Err(format!(
+            "Local runner request failed ({status} {status_text}): {details}"
+        ))
+    }
 }
 
 #[cfg(debug_assertions)]

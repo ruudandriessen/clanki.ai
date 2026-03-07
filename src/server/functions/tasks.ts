@@ -38,7 +38,10 @@ export const createTask = createServerFn({ method: "POST" })
       id: z.string().optional(),
       title: z.string(),
       projectId: z.string(),
+      runnerSessionId: z.string().optional(),
+      runnerType: z.string().optional(),
       status: z.string().optional(),
+      workspacePath: z.string().optional(),
       createdAt: z.number().optional(),
       updatedAt: z.number().optional(),
     }),
@@ -89,7 +92,16 @@ export const createTask = createServerFn({ method: "POST" })
         projectId: input.projectId,
         title: input.title.trim(),
         status,
+        runnerSessionId: parseOptionalId(input.runnerSessionId) ?? null,
+        runnerType:
+          typeof input.runnerType === "string" && input.runnerType.trim().length > 0
+            ? input.runnerType.trim()
+            : null,
         streamId,
+        workspacePath:
+          typeof input.workspacePath === "string" && input.workspacePath.trim().length > 0
+            ? input.workspacePath.trim()
+            : null,
         createdAt,
         updatedAt,
       };

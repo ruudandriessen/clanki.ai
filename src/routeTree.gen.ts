@@ -27,6 +27,7 @@ import { Route as ApiTasksTaskIdStreamRouteImport } from './routes/api/tasks/$ta
 import { Route as ApiInternalTaskRunsExecutionIdMessageRouteImport } from './routes/api/internal/task-runs/$executionId/message'
 import { Route as ApiInternalTaskRunsExecutionIdHeartbeatRouteImport } from './routes/api/internal/task-runs/$executionId/heartbeat'
 import { Route as ApiInternalTaskRunsExecutionIdFailRouteImport } from './routes/api/internal/task-runs/$executionId/fail'
+import { Route as ApiInternalTaskRunsExecutionIdEventRouteImport } from './routes/api/internal/task-runs/$executionId/event'
 import { Route as ApiInternalTaskRunsExecutionIdCompleteRouteImport } from './routes/api/internal/task-runs/$executionId/complete'
 import { Route as ApiInternalTaskRunsExecutionIdBranchRouteImport } from './routes/api/internal/task-runs/$executionId/branch'
 
@@ -123,6 +124,12 @@ const ApiInternalTaskRunsExecutionIdFailRoute =
     path: '/api/internal/task-runs/$executionId/fail',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiInternalTaskRunsExecutionIdEventRoute =
+  ApiInternalTaskRunsExecutionIdEventRouteImport.update({
+    id: '/api/internal/task-runs/$executionId/event',
+    path: '/api/internal/task-runs/$executionId/event',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiInternalTaskRunsExecutionIdCompleteRoute =
   ApiInternalTaskRunsExecutionIdCompleteRouteImport.update({
     id: '/api/internal/task-runs/$executionId/complete',
@@ -153,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/api/tasks/messages/shape': typeof ApiTasksMessagesShapeRoute
   '/api/internal/task-runs/$executionId/branch': typeof ApiInternalTaskRunsExecutionIdBranchRoute
   '/api/internal/task-runs/$executionId/complete': typeof ApiInternalTaskRunsExecutionIdCompleteRoute
+  '/api/internal/task-runs/$executionId/event': typeof ApiInternalTaskRunsExecutionIdEventRoute
   '/api/internal/task-runs/$executionId/fail': typeof ApiInternalTaskRunsExecutionIdFailRoute
   '/api/internal/task-runs/$executionId/heartbeat': typeof ApiInternalTaskRunsExecutionIdHeartbeatRoute
   '/api/internal/task-runs/$executionId/message': typeof ApiInternalTaskRunsExecutionIdMessageRoute
@@ -174,6 +182,7 @@ export interface FileRoutesByTo {
   '/api/tasks/messages/shape': typeof ApiTasksMessagesShapeRoute
   '/api/internal/task-runs/$executionId/branch': typeof ApiInternalTaskRunsExecutionIdBranchRoute
   '/api/internal/task-runs/$executionId/complete': typeof ApiInternalTaskRunsExecutionIdCompleteRoute
+  '/api/internal/task-runs/$executionId/event': typeof ApiInternalTaskRunsExecutionIdEventRoute
   '/api/internal/task-runs/$executionId/fail': typeof ApiInternalTaskRunsExecutionIdFailRoute
   '/api/internal/task-runs/$executionId/heartbeat': typeof ApiInternalTaskRunsExecutionIdHeartbeatRoute
   '/api/internal/task-runs/$executionId/message': typeof ApiInternalTaskRunsExecutionIdMessageRoute
@@ -197,6 +206,7 @@ export interface FileRoutesById {
   '/api/tasks/messages/shape': typeof ApiTasksMessagesShapeRoute
   '/api/internal/task-runs/$executionId/branch': typeof ApiInternalTaskRunsExecutionIdBranchRoute
   '/api/internal/task-runs/$executionId/complete': typeof ApiInternalTaskRunsExecutionIdCompleteRoute
+  '/api/internal/task-runs/$executionId/event': typeof ApiInternalTaskRunsExecutionIdEventRoute
   '/api/internal/task-runs/$executionId/fail': typeof ApiInternalTaskRunsExecutionIdFailRoute
   '/api/internal/task-runs/$executionId/heartbeat': typeof ApiInternalTaskRunsExecutionIdHeartbeatRoute
   '/api/internal/task-runs/$executionId/message': typeof ApiInternalTaskRunsExecutionIdMessageRoute
@@ -220,6 +230,7 @@ export interface FileRouteTypes {
     | '/api/tasks/messages/shape'
     | '/api/internal/task-runs/$executionId/branch'
     | '/api/internal/task-runs/$executionId/complete'
+    | '/api/internal/task-runs/$executionId/event'
     | '/api/internal/task-runs/$executionId/fail'
     | '/api/internal/task-runs/$executionId/heartbeat'
     | '/api/internal/task-runs/$executionId/message'
@@ -241,6 +252,7 @@ export interface FileRouteTypes {
     | '/api/tasks/messages/shape'
     | '/api/internal/task-runs/$executionId/branch'
     | '/api/internal/task-runs/$executionId/complete'
+    | '/api/internal/task-runs/$executionId/event'
     | '/api/internal/task-runs/$executionId/fail'
     | '/api/internal/task-runs/$executionId/heartbeat'
     | '/api/internal/task-runs/$executionId/message'
@@ -263,6 +275,7 @@ export interface FileRouteTypes {
     | '/api/tasks/messages/shape'
     | '/api/internal/task-runs/$executionId/branch'
     | '/api/internal/task-runs/$executionId/complete'
+    | '/api/internal/task-runs/$executionId/event'
     | '/api/internal/task-runs/$executionId/fail'
     | '/api/internal/task-runs/$executionId/heartbeat'
     | '/api/internal/task-runs/$executionId/message'
@@ -281,6 +294,7 @@ export interface RootRouteChildren {
   ApiTasksMessagesShapeRoute: typeof ApiTasksMessagesShapeRoute
   ApiInternalTaskRunsExecutionIdBranchRoute: typeof ApiInternalTaskRunsExecutionIdBranchRoute
   ApiInternalTaskRunsExecutionIdCompleteRoute: typeof ApiInternalTaskRunsExecutionIdCompleteRoute
+  ApiInternalTaskRunsExecutionIdEventRoute: typeof ApiInternalTaskRunsExecutionIdEventRoute
   ApiInternalTaskRunsExecutionIdFailRoute: typeof ApiInternalTaskRunsExecutionIdFailRoute
   ApiInternalTaskRunsExecutionIdHeartbeatRoute: typeof ApiInternalTaskRunsExecutionIdHeartbeatRoute
   ApiInternalTaskRunsExecutionIdMessageRoute: typeof ApiInternalTaskRunsExecutionIdMessageRoute
@@ -414,6 +428,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdFailRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/internal/task-runs/$executionId/event': {
+      id: '/api/internal/task-runs/$executionId/event'
+      path: '/api/internal/task-runs/$executionId/event'
+      fullPath: '/api/internal/task-runs/$executionId/event'
+      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdEventRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/internal/task-runs/$executionId/complete': {
       id: '/api/internal/task-runs/$executionId/complete'
       path: '/api/internal/task-runs/$executionId/complete'
@@ -465,6 +486,8 @@ const rootRouteChildren: RootRouteChildren = {
     ApiInternalTaskRunsExecutionIdBranchRoute,
   ApiInternalTaskRunsExecutionIdCompleteRoute:
     ApiInternalTaskRunsExecutionIdCompleteRoute,
+  ApiInternalTaskRunsExecutionIdEventRoute:
+    ApiInternalTaskRunsExecutionIdEventRoute,
   ApiInternalTaskRunsExecutionIdFailRoute:
     ApiInternalTaskRunsExecutionIdFailRoute,
   ApiInternalTaskRunsExecutionIdHeartbeatRoute:

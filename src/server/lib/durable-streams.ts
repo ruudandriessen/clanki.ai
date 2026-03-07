@@ -1,4 +1,5 @@
 import { DurableStream, DurableStreamError } from "@durable-streams/client";
+import type { TaskStreamEvent } from "@/shared/task-stream-events";
 
 export type DurableStreamsEnv = {
   DURABLE_STREAMS_SERVICE_ID?: string;
@@ -92,4 +93,24 @@ export async function openTaskEventsSse(args: {
       "Cache-Control": "no-cache",
     },
   });
+}
+
+export async function appendTaskEvent(args: {
+  env: DurableStreamsEnv;
+  event: TaskStreamEvent;
+  streamId: string;
+}): Promise<void> {
+  const { env, event, streamId } = args;
+
+  if (!isDurableStreamsConfigured(env)) {
+    throw new Error("Durable Streams is not configured");
+  }
+
+  const stream = new DurableStream({
+    url: buildStreamUrl(env, streamId),
+    headers: buildHeaders(env),
+    contentType: "application/json",
+  });
+
+  await stream.append(JSON.stringify(event));
 }

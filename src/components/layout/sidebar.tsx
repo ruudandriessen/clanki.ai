@@ -1,5 +1,5 @@
 import { OrgSwitcher } from "./org-switcher";
-import { RunnerSessionList } from "./runner-session-list";
+import { TaskList } from "./task-list";
 import { UserMenu } from "./user-menu";
 
 export function Sidebar() {
@@ -8,7 +8,7 @@ export function Sidebar() {
       <OrgSwitcher />
 
       <div className="flex min-h-0 flex-1">
-        <RunnerSessionList />
+        <TaskList />
       </div>
 
       <div className="hidden border-t border-border bg-muted/20 md:block">

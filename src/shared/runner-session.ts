@@ -5,8 +5,3 @@ export type RunnerSessionSummary = {
   title: string;
   updatedAt: number;
 };
-
-export type RunnerSessionsPayload = {
-  sessions: RunnerSessionSummary[];
-  workspaceDirectory: string;
-};

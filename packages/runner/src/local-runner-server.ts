@@ -9,8 +9,10 @@ import {
   type ListAssistantSessionsRequest,
   type ListOpencodeModelsRequest,
   type PromptAssistantSessionRequest,
+  type PromptTaskAssistantSessionRequest,
 } from "./local-runner-protocol";
 import { listOpencodeModels } from "./opencode-models";
+import { promptTaskAssistantSession } from "./task-assistant-session";
 
 export type LocalRunnerServerOptions = {
   host?: string;
@@ -89,6 +91,14 @@ export function createLocalRunnerApp(): Hono {
     const body = await readJson<PromptAssistantSessionRequest>(c);
 
     await promptAssistantSession(body);
+
+    return c.json({ ok: true });
+  });
+
+  app.post("/assistant/session/task-prompt", async (c) => {
+    const body = await readJson<PromptTaskAssistantSessionRequest>(c);
+
+    await promptTaskAssistantSession(body);
 
     return c.json({ ok: true });
   });

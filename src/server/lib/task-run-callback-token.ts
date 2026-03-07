@@ -10,6 +10,12 @@ export type TaskRunCallbackClaims = {
   issuedAt: number;
 };
 
+export function createTaskRunCallbackToken(claims: TaskRunCallbackClaims, env: AppEnv): string {
+  const encodedPayload = Buffer.from(JSON.stringify(claims), "utf8").toString("base64url");
+  const signature = signPayload(encodedPayload, getTaskRunnerCallbackSecret(env));
+  return `${encodedPayload}.${signature}`;
+}
+
 export function verifyTaskRunCallbackToken(
   token: string,
   env: AppEnv,

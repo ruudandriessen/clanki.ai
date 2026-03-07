@@ -1,19 +1,13 @@
-import {
-  createContext,
-  startTransition,
-  useContext,
-  useEffect,
-  useEffectEvent,
-  useState,
-} from "react";
+import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
 import { useLiveQuery } from "@tanstack/react-db";
-import { projectsCollection } from "@/lib/collections";
-import { createDesktopRunnerSession, listDesktopRunnerSessions } from "@/lib/desktop-runner";
+import { projectsCollection, tasksCollection } from "@/lib/collections";
+import { createDesktopRunnerSession } from "@/lib/desktop-runner";
+import { isDesktopApp } from "@/lib/is-desktop-app";
 import type { RunnerSessionSummary } from "@/shared/runner-session";
 
 type RunnerSessionsContextValue = {
-  createSession: (title: string) => Promise<{ sessionId: string }>;
+  createSession: (title: string) => Promise<{ sessionId: string; taskId: string }>;
   error: string | null;
   isCreating: boolean;
   isDesktopApp: boolean;
@@ -24,70 +18,20 @@ type RunnerSessionsContextValue = {
 };
 
 const RunnerSessionsContext = createContext<RunnerSessionsContextValue | null>(null);
+const refreshRunnerSessions = async (): Promise<void> => {};
 
 export function RunnerSessionsProvider({ children }: { children: ReactNode }) {
-  const [sessions, setSessions] = useState<RunnerSessionSummary[]>([]);
-  const [workspaceDirectory, setWorkspaceDirectory] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { data: projects, isLoading: isProjectLoading } = useLiveQuery((q) =>
     q.from({ project: projectsCollection }).orderBy(({ project }) => project.created_at, "asc"),
   );
-  const isDesktopApp = detectDesktopApp();
-  const repoUrl = projects.find((project) => project.repo_url)?.repo_url ?? null;
-  const loadSessions = useEffectEvent(async () => {
-    if (!repoUrl) {
-      setSessions([]);
-      setWorkspaceDirectory(null);
-      setError("Add a project with a repository URL to use runner sessions.");
-      setIsLoading(false);
-      return;
-    }
+  const desktopApp = isDesktopApp();
+  const activeProject = projects.find((project) => project.repo_url) ?? null;
+  const repoUrl = activeProject?.repo_url ?? null;
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await listDesktopRunnerSessions(repoUrl);
-      startTransition(() => {
-        setSessions(response.sessions);
-        setWorkspaceDirectory(response.workspaceDirectory);
-      });
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Failed to load runner sessions");
-    } finally {
-      setIsLoading(false);
-    }
-  });
-
-  useEffect(() => {
-    if (!isDesktopApp) {
-      setSessions([]);
-      setWorkspaceDirectory(null);
-      setError("Runner sessions are only available in the desktop app.");
-      setIsLoading(false);
-      return;
-    }
-
-    if (isProjectLoading) {
-      setIsLoading(true);
-      return;
-    }
-
-    void loadSessions();
-  }, [isDesktopApp, isProjectLoading, repoUrl]);
-
-  async function refreshSessions(): Promise<void> {
-    if (!isDesktopApp) {
-      return;
-    }
-
-    await loadSessions();
-  }
-
-  async function createSession(title: string): Promise<{ sessionId: string }> {
-    if (!repoUrl) {
+  async function createSession(title: string): Promise<{ sessionId: string; taskId: string }> {
+    if (!repoUrl || !activeProject) {
       const message = "Add a project with a repository URL before creating a runner session.";
       setError(message);
       throw new Error(message);
@@ -98,8 +42,29 @@ export function RunnerSessionsProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await createDesktopRunnerSession(title, repoUrl);
-      await refreshSessions();
-      return response;
+      const createdAt = BigInt(Date.now());
+      const taskId = crypto.randomUUID();
+      const taskInsert = tasksCollection.insert({
+        id: taskId,
+        organization_id: activeProject.organization_id,
+        project_id: activeProject.id,
+        title: title.trim(),
+        status: "open",
+        runner_type: response.runnerType,
+        runner_session_id: response.sessionId,
+        stream_id: null,
+        workspace_path: response.workspaceDirectory,
+        branch: null,
+        error: null,
+        created_at: createdAt,
+        updated_at: createdAt,
+      });
+
+      await taskInsert.isPersisted.promise;
+      return {
+        sessionId: response.sessionId,
+        taskId,
+      };
     } catch (createError) {
       const message =
         createError instanceof Error ? createError.message : "Failed to create runner session";
@@ -116,11 +81,11 @@ export function RunnerSessionsProvider({ children }: { children: ReactNode }) {
         createSession,
         error,
         isCreating,
-        isDesktopApp,
-        isLoading,
-        refreshSessions,
-        sessions,
-        workspaceDirectory,
+        isDesktopApp: desktopApp,
+        isLoading: isProjectLoading,
+        refreshSessions: refreshRunnerSessions,
+        sessions: [] satisfies RunnerSessionSummary[],
+        workspaceDirectory: null,
       }}
     >
       {children}
@@ -135,12 +100,4 @@ export function useRunnerSessions() {
   }
 
   return context;
-}
-
-function detectDesktopApp(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return "__TAURI_INTERNALS__" in (window as Window & { __TAURI_INTERNALS__?: unknown });
 }

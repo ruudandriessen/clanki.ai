@@ -8,9 +8,12 @@ import {
 } from "@/components/task-stream-activity";
 import { MarkdownContent } from "@/components/markdown-content";
 import { Button } from "@/components/ui/button";
+import { promptDesktopRunnerTask } from "@/lib/desktop-runner";
+import { isDesktopApp } from "@/lib/is-desktop-app";
 import { Textarea } from "@/components/ui/textarea";
 import { sessionStateKeys, useSessionState } from "@/lib/session-state";
 import { cn } from "@/lib/utils";
+import { startTaskRun } from "@/server/functions/task-runs";
 import type { Event as OpenCodeEvent } from "@opencode-ai/sdk";
 import { taskMessagesCollection, tasksCollection } from "../lib/collections";
 import { useTaskEventStream } from "../lib/use-task-event-stream";
@@ -68,6 +71,9 @@ interface TaskPageProps {
   title: string;
   error: string | null;
   isRunning: boolean;
+  runnerSessionId: string | null;
+  runnerType: string | null;
+  workspacePath: string | null;
 }
 
 function getPullRequestButtonClasses(status: "open" | "merged" | "closed" | "draft"): string {
@@ -149,9 +155,13 @@ export function TaskPage({
   pullRequest,
   error,
   isRunning,
+  runnerSessionId,
+  runnerType,
+  workspacePath,
 }: TaskPageProps) {
   const displayTitle = branchName ?? title;
   const [input, setInput] = useSessionState(sessionStateKeys.taskInput(taskId), "");
+  const [localError, setLocalError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const runEvents = useTaskEventStream({ taskId, streamId });
   const [now, setNow] = useState(() => Date.now());
@@ -182,6 +192,11 @@ export function TaskPage({
   const runStartedAt = getLatestUserMessageCreatedAt(messages);
   const runningDurationMs =
     isRunning && runStartedAt !== null ? Math.max(0, now - runStartedAt) : null;
+  const desktopApp = isDesktopApp();
+  const isRunnerBackedTask =
+    runnerType === "local-worktree" && !!runnerSessionId && !!workspacePath;
+  const isReadOnlyRemoteTask = isRunnerBackedTask && !desktopApp;
+  const displayError = localError ?? error;
 
   useEffect(() => {
     if (!shouldStickToBottomRef.current) {
@@ -220,12 +235,24 @@ export function TaskPage({
   async function handleSend(contentOverride?: string) {
     const content = (contentOverride ?? input).trim();
     if (!content || sending || isRunning || !taskId) return;
+    if (isReadOnlyRemoteTask) {
+      setLocalError("This task is attached to a local runner session and is read-only here.");
+      return;
+    }
+
+    if (runnerType === "local-worktree" && (!runnerSessionId || !workspacePath)) {
+      setLocalError("This task is missing local runner metadata.");
+      return;
+    }
 
     shouldStickToBottomRef.current = true;
     setSending(true);
+    setLocalError(null);
     if (contentOverride === undefined) {
       setInput("");
     }
+
+    let taskRun: Awaited<ReturnType<typeof startTaskRun>> | null = null;
 
     try {
       const optimisticUpdatedAt = BigInt(Date.now());
@@ -244,6 +271,35 @@ export function TaskPage({
       };
       const messageTx = taskMessagesCollection.insert(userMessage);
       await messageTx.isPersisted.promise;
+
+      if (isRunnerBackedTask && runnerSessionId && workspacePath) {
+        taskRun = await startTaskRun({
+          data: {
+            taskId,
+          },
+        });
+
+        await promptDesktopRunnerTask({
+          backendBaseUrl: globalThis.location.origin,
+          callbackToken: taskRun.callbackToken,
+          directory: workspacePath,
+          executionId: taskRun.executionId,
+          prompt: content,
+          sessionId: runnerSessionId,
+        });
+      }
+    } catch (sendError) {
+      setLocalError(sendError instanceof Error ? sendError.message : "Failed to send message");
+
+      if (taskRun) {
+        await failTaskRun({
+          backendBaseUrl: globalThis.location.origin,
+          callbackToken: taskRun.callbackToken,
+          errorMessage:
+            sendError instanceof Error ? sendError.message : "Failed to send message to runner",
+          executionId: taskRun.executionId,
+        }).catch(() => undefined);
+      }
     } finally {
       setSending(false);
       inputRef.current?.focus();
@@ -355,11 +411,11 @@ export function TaskPage({
         </div>
       </div>
 
-      {error ? (
+      {displayError ? (
         <div className="shrink-0 border-b border-destructive/30 bg-destructive/10 px-4 py-2.5 md:px-6">
           <div className="flex items-start gap-2 text-sm text-destructive">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span className="break-words">{error}</span>
+            <span className="break-words">{displayError}</span>
           </div>
         </div>
       ) : null}
@@ -445,9 +501,15 @@ export function TaskPage({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isRunning ? "Wait for the current run to finish..." : "Send a message..."}
+            placeholder={
+              isReadOnlyRemoteTask
+                ? "This runner-backed task is read-only on this device."
+                : isRunning
+                  ? "Wait for the current run to finish..."
+                  : "Send a message..."
+            }
             rows={1}
-            disabled={isRunning || sending}
+            disabled={isRunning || isReadOnlyRemoteTask || sending}
             className="min-h-[42px] max-h-[200px] flex-1 resize-none rounded-[var(--radius-md)] px-4 py-2.5 text-base md:text-sm"
             style={{ height: "auto" }}
             onInput={(e) => {
@@ -459,7 +521,7 @@ export function TaskPage({
           <Button
             type="button"
             onClick={() => void handleSend()}
-            disabled={!input.trim() || sending || isRunning}
+            disabled={!input.trim() || isReadOnlyRemoteTask || sending || isRunning}
             className="h-[42px] w-[42px] shrink-0 rounded-[var(--radius-md)] p-0"
           >
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -524,6 +586,31 @@ function getLatestAssistantMessage(
   }
 
   return null;
+}
+
+async function failTaskRun(args: {
+  backendBaseUrl: string;
+  callbackToken: string;
+  errorMessage: string;
+  executionId: string;
+}): Promise<void> {
+  const response = await fetch(
+    `${args.backendBaseUrl}/api/internal/task-runs/${args.executionId}/fail`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${args.callbackToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        error: args.errorMessage,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to report task-run failure");
+  }
 }
 
 function getLatestStreamAssistantPreview(

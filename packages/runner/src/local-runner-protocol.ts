@@ -64,3 +64,18 @@ export type PromptAssistantSessionRequest = {
 export type PromptAssistantSessionResponse = {
   ok: true;
 };
+
+export type PromptTaskAssistantSessionRequest = {
+  directory: string;
+  prompt: string;
+  sessionId: string;
+  taskRun: {
+    backendBaseUrl: string;
+    callbackToken: string;
+    executionId: string;
+  };
+};
+
+export type PromptTaskAssistantSessionResponse = {
+  ok: true;
+};
