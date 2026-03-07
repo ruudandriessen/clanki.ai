@@ -9,6 +9,7 @@ import {
   Terminal,
   Wrench,
 } from "lucide-react";
+import { AnimatedStreamItem } from "@/components/animated-stream-item";
 import { cn } from "@/lib/utils";
 
 export type TaskStreamActivityIcon =
@@ -43,52 +44,54 @@ export function TaskStreamActivity({ items }: { items: TaskStreamActivityItem[] 
           const Icon = getActivityIcon(item.icon);
           const { action, details } = splitActivityLabel(item.label);
           return (
-            <div key={item.id} className="flex items-start gap-2 py-0.5 text-xs">
-              <Icon
-                className={cn(
-                  "mt-0.5 h-3.5 w-3.5 shrink-0",
-                  item.spinning ? "animate-spin" : "",
-                  item.tone === "error" ? "text-destructive" : "text-muted-foreground",
-                )}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-start gap-1">
-                  <span
-                    className={cn(
-                      "whitespace-pre-wrap",
-                      item.tone === "error" ? "text-destructive" : "text-foreground",
-                    )}
-                  >
-                    {action}
-                  </span>
-                  {details ? (
+            <AnimatedStreamItem key={item.id}>
+              <div className="flex items-start gap-2 py-0.5 text-xs">
+                <Icon
+                  className={cn(
+                    "mt-0.5 h-3.5 w-3.5 shrink-0",
+                    item.spinning ? "animate-spin" : "",
+                    item.tone === "error" ? "text-destructive" : "text-muted-foreground",
+                  )}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-start gap-1">
                     <span
                       className={cn(
-                        "whitespace-pre-wrap text-muted-foreground",
-                        item.tone === "error" && "text-destructive/80",
+                        "whitespace-pre-wrap",
+                        item.tone === "error" ? "text-destructive" : "text-foreground",
                       )}
                     >
-                      {details}
+                      {action}
                     </span>
-                  ) : null}
-                </div>
-                {item.details && item.details.length > 0 ? (
-                  <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
-                    {item.details.map((detail) => (
-                      <div
-                        key={`${item.id}-${detail}`}
+                    {details ? (
+                      <span
                         className={cn(
-                          "whitespace-pre-wrap break-words",
+                          "whitespace-pre-wrap text-muted-foreground",
                           item.tone === "error" && "text-destructive/80",
                         )}
                       >
-                        {detail}
-                      </div>
-                    ))}
+                        {details}
+                      </span>
+                    ) : null}
                   </div>
-                ) : null}
+                  {item.details && item.details.length > 0 ? (
+                    <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+                      {item.details.map((detail) => (
+                        <div
+                          key={`${item.id}-${detail}`}
+                          className={cn(
+                            "whitespace-pre-wrap break-words",
+                            item.tone === "error" && "text-destructive/80",
+                          )}
+                        >
+                          {detail}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               </div>
-            </div>
+            </AnimatedStreamItem>
           );
         })}
       </div>

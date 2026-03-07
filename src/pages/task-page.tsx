@@ -7,6 +7,7 @@ import {
   type TaskStreamActivityItem,
 } from "@/components/task-stream-activity";
 import { MarkdownContent } from "@/components/markdown-content";
+import { AnimatedStreamItem } from "@/components/animated-stream-item";
 import { OpenEditorDropdown } from "@/components/open-editor-dropdown";
 import { TaskModelPicker } from "@/components/task-model-picker";
 import { Button } from "@/components/ui/button";
@@ -524,39 +525,44 @@ export function TaskPage({
               }
 
               if (entry.type === "activity-group") {
-                return <CollapsedActivityGroup key={entry.id} items={entry.items} />;
+                return (
+                  <AnimatedStreamItem key={entry.id}>
+                    <CollapsedActivityGroup items={entry.items} />
+                  </AnimatedStreamItem>
+                );
               }
 
               if (entry.type === "assistant-draft") {
                 return (
-                  <div
-                    key={entry.id}
-                    className="max-w-3xl rounded-[var(--radius-md)] border border-border/70 bg-card/80 p-4"
-                  >
-                    <MarkdownContent content={entry.content} className="text-foreground" />
-                  </div>
+                  <AnimatedStreamItem key={entry.id}>
+                    <div className="max-w-3xl rounded-[var(--radius-md)] border border-border/70 bg-card/80 p-4">
+                      <MarkdownContent content={entry.content} className="text-foreground" />
+                    </div>
+                  </AnimatedStreamItem>
                 );
               }
 
               const isUserMessage = entry.role === "user";
               return (
-                <div key={entry.id} className={isUserMessage ? "flex justify-end" : ""}>
-                  <div
-                    className={`${
-                      isUserMessage
-                        ? "w-fit rounded-[var(--radius-md)] border border-border/60 bg-primary/95 px-4 py-2.5 text-primary-foreground"
-                        : "max-w-3xl rounded-[var(--radius-md)] border border-border/70 bg-card/80 px-4 py-2.5 text-foreground"
-                    }`}
-                  >
-                    {isUserMessage ? (
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                        {entry.content}
-                      </div>
-                    ) : (
-                      <MarkdownContent content={entry.content} />
-                    )}
+                <AnimatedStreamItem key={entry.id}>
+                  <div className={isUserMessage ? "flex justify-end" : ""}>
+                    <div
+                      className={`${
+                        isUserMessage
+                          ? "w-fit rounded-[var(--radius-md)] border border-border/60 bg-primary/95 px-4 py-2.5 text-primary-foreground"
+                          : "max-w-3xl rounded-[var(--radius-md)] border border-border/70 bg-card/80 px-4 py-2.5 text-foreground"
+                      }`}
+                    >
+                      {isUserMessage ? (
+                        <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                          {entry.content}
+                        </div>
+                      ) : (
+                        <MarkdownContent content={entry.content} />
+                      )}
+                    </div>
                   </div>
-                </div>
+                </AnimatedStreamItem>
               );
             })}
 
