@@ -367,7 +367,7 @@ export function TaskPage({
   }
 
   return (
-    <div className="neo-enter flex h-full flex-col">
+    <div className="neo-enter flex h-full flex-col bg-card">
       <div className="shrink-0 border-b border-border bg-card px-4 py-3 md:px-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0 flex-1">
@@ -528,8 +528,8 @@ export function TaskPage({
         )}
       </div>
 
-      <div className="shrink-0 border-t border-border bg-card p-4">
-        <div className="rounded-[var(--radius-md)] border border-border bg-background shadow-[3px_3px_0_0_var(--color-border)]">
+      <div className="shrink-0 p-4 pt-0">
+        <div className="rounded-[var(--radius-md)] border border-border bg-muted/55 shadow-[3px_3px_0_0_var(--color-border)]">
           <Textarea
             ref={inputRef}
             value={input}
@@ -544,7 +544,7 @@ export function TaskPage({
             }
             rows={4}
             disabled={isRunning || isReadOnlyRemoteTask || sending}
-            className="min-h-[120px] max-h-[240px] resize-none rounded-none border-0 bg-transparent px-4 py-4 text-base leading-relaxed shadow-none focus-visible:ring-0 md:text-sm"
+            className="min-h-[120px] max-h-[240px] resize-none rounded-none border-0 bg-muted/55 px-4 py-4 text-base leading-relaxed shadow-none focus-visible:ring-0 md:text-sm"
             style={{ height: "auto" }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
