@@ -4,6 +4,12 @@ import { Hono, type Context } from "hono";
 import { ensureAssistantSession, promptAssistantSession } from "./assistant-session";
 import { listAssistantSessions } from "./list-assistant-sessions";
 import {
+  cleanupWorktree,
+  listWorktreeDirectories,
+  prepareWorktree,
+  resolveRepoRoot,
+} from "./managed-worktrees";
+import {
   LOCAL_RUNNER_PROTOCOL_VERSION,
   type EnsureAssistantSessionRequest,
   type ListAssistantSessionsRequest,
@@ -11,6 +17,7 @@ import {
   type PromptAssistantSessionRequest,
 } from "./local-runner-protocol";
 import { listOpencodeModels } from "./opencode-models";
+import { DEFAULT_OPENCODE_MODEL, DEFAULT_OPENCODE_PROVIDER } from "./opencode";
 
 export type LocalRunnerServerOptions = {
   host?: string;
@@ -91,6 +98,53 @@ export function createLocalRunnerApp(): Hono {
     await promptAssistantSession(body);
 
     return c.json({ ok: true });
+  });
+
+  app.get("/repo/sessions", async (c) => {
+    const repoUrl = c.req.query("repoUrl")?.trim() ?? "";
+    if (!repoUrl) throw new RequestError("repoUrl query parameter is required");
+
+    const repoRoot = resolveRepoRoot(repoUrl);
+    const directories = listWorktreeDirectories(repoRoot);
+    const seenIds = new Set<string>();
+    const allSessions = [];
+
+    for (const directory of directories) {
+      const sessions = await listAssistantSessions({ directory });
+      for (const session of sessions) {
+        if (!seenIds.has(session.id)) {
+          seenIds.add(session.id);
+          allSessions.push(session);
+        }
+      }
+    }
+
+    allSessions.sort(
+      (a, b) => b.updatedAt - a.updatedAt || b.createdAt - a.createdAt,
+    );
+
+    return c.json({ sessions: allSessions, workspaceDirectory: repoRoot });
+  });
+
+  app.post("/repo/session", async (c) => {
+    const body = await readJson<{ repoUrl: string; title: string }>(c);
+    const title = body.title?.trim() ?? "";
+    if (!title) throw new RequestError("title is required");
+
+    const { directory, defaultDirectory, branchName } = prepareWorktree(body.repoUrl, title);
+
+    try {
+      const result = await ensureAssistantSession({
+        directory,
+        model: DEFAULT_OPENCODE_MODEL,
+        provider: DEFAULT_OPENCODE_PROVIDER,
+        taskTitle: title,
+      });
+      return c.json({ sessionId: result.sessionId });
+    } catch (error) {
+      cleanupWorktree(defaultDirectory, directory, branchName);
+      throw error;
+    }
   });
 
   app.notFound((c) => c.json({ error: `Unknown route: ${c.req.method} ${c.req.path}` }, 404));
