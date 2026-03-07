@@ -1,6 +1,8 @@
 import type {
   EnsureAssistantSessionRequest,
   EnsureAssistantSessionResponse,
+  ListAssistantSessionsRequest,
+  ListAssistantSessionsResponse,
   ListOpencodeModelsRequest,
   ListOpencodeModelsResponse,
   LocalRunnerHealthResponse,
@@ -23,6 +25,15 @@ export function createLocalRunnerClient(baseUrl: string) {
     },
     async info(): Promise<LocalRunnerInfoResponse> {
       return await getJson(`${normalizedBaseUrl}/runner/info`);
+    },
+    async listAssistantSessions(
+      params: ListAssistantSessionsRequest,
+    ): Promise<ListAssistantSessionsResponse> {
+      return await getJson(
+        `${normalizedBaseUrl}/assistant/sessions?${new URLSearchParams({
+          directory: params.directory,
+        }).toString()}`,
+      );
     },
     async listOpencodeModels(
       params: ListOpencodeModelsRequest,

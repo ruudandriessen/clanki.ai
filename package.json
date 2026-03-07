@@ -35,6 +35,7 @@
     "@tanstack/react-db": "0.1.70",
     "@tanstack/react-router": "^1.162.8",
     "@tanstack/react-start": "^1.162.8",
+    "@tauri-apps/api": "^2.10.0",
     "@vercel/functions": "^3.4.2",
     "@vercel/sandbox": "^1.7.1",
     "better-auth": "^1.4.18",

@@ -39,6 +39,22 @@ export type EnsureAssistantSessionResponse = {
   sessionId: string;
 };
 
+export type AssistantSessionSummary = {
+  createdAt: number;
+  directory: string;
+  id: string;
+  title: string;
+  updatedAt: number;
+};
+
+export type ListAssistantSessionsRequest = {
+  directory: string;
+};
+
+export type ListAssistantSessionsResponse = {
+  sessions: AssistantSessionSummary[];
+};
+
 export type PromptAssistantSessionRequest = {
   directory: string;
   prompt: string;

@@ -1,8 +1,10 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { ensureAssistantSession, promptAssistantSession } from "./assistant-session";
+import { listAssistantSessions } from "./list-assistant-sessions";
 import {
   LOCAL_RUNNER_PROTOCOL_VERSION,
   type EnsureAssistantSessionRequest,
+  type ListAssistantSessionsRequest,
   type ListOpencodeModelsRequest,
   type PromptAssistantSessionRequest,
 } from "./local-runner-protocol";
@@ -75,6 +77,16 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse):
         directory,
       } satisfies ListOpencodeModelsRequest),
     );
+    return;
+  }
+
+  if (method === "GET" && pathname === "/assistant/sessions") {
+    const directory = readDirectoryQuery(requestUrl);
+    sendJson(response, 200, {
+      sessions: await listAssistantSessions({
+        directory,
+      } satisfies ListAssistantSessionsRequest),
+    });
     return;
   }
 

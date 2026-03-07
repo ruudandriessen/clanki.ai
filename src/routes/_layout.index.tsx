@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { IndexRedirect } from "@/pages/index-redirect";
+import { Navigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_layout/")({
-  component: IndexRedirect,
+  component: () => <Navigate to="/runner" replace />,
 });

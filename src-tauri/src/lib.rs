@@ -1,20 +1,97 @@
+use reqwest::blocking::{Client, Response};
+use serde::{Deserialize, Serialize};
 use std::{
     error::Error,
     net::{TcpListener, TcpStream},
+    path::{Path, PathBuf},
+    process::{Child, Command, Stdio},
     sync::Mutex,
     thread::sleep,
     time::{Duration, Instant},
 };
-use tauri::{webview::WebviewWindowBuilder, AppHandle, Manager, RunEvent, WebviewUrl};
-use tauri_plugin_shell::{process::CommandChild, ShellExt};
+use tauri::{webview::WebviewWindowBuilder, AppHandle, Manager, RunEvent, State, WebviewUrl};
+use tauri_plugin_shell::process::CommandChild;
+
+#[cfg(not(debug_assertions))]
+use tauri_plugin_shell::ShellExt;
+
+const DEFAULT_OPENCODE_MODEL: &str = "gpt-5.3-codex";
+const DEFAULT_OPENCODE_PROVIDER: &str = "openai";
 
 struct ServerProcess(Mutex<Option<CommandChild>>);
+struct RunnerProcess(Mutex<Option<RunnerInstance>>);
+
+struct RunnerInstance {
+    base_url: String,
+    child: Child,
+    workspace_directory: String,
+}
+
+#[derive(Clone)]
+struct RunnerConnection {
+    base_url: String,
+    workspace_directory: String,
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct RunnerSessionSummary {
+    created_at: u64,
+    directory: String,
+    id: String,
+    title: String,
+    updated_at: u64,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ListAssistantSessionsResponse {
+    sessions: Vec<RunnerSessionSummary>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RunnerSessionsPayload {
+    sessions: Vec<RunnerSessionSummary>,
+    workspace_directory: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateRunnerSessionResponse {
+    session_id: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EnsureAssistantSessionRequest {
+    directory: String,
+    model: String,
+    provider: String,
+    task_title: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EnsureAssistantSessionResponse {
+    session_id: String,
+}
+
+#[derive(Deserialize)]
+struct RunnerErrorResponse {
+    error: String,
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
         .manage(ServerProcess(Mutex::new(None)))
+        .manage(RunnerProcess(Mutex::new(None)))
         .plugin(tauri_plugin_shell::init())
+        .invoke_handler(tauri::generate_handler![
+            create_runner_session,
+            list_runner_sessions
+        ])
         .setup(|app| {
             let app_url = resolve_app_url(app.handle())?;
 
@@ -32,16 +109,207 @@ pub fn run() {
     app.run(|app_handle, event| {
         if let RunEvent::Exit = event {
             let server_process = app_handle.state::<ServerProcess>();
-            let child = {
+            let server_child = {
                 let mut process = server_process.0.lock().expect("server process lock");
                 process.take()
             };
 
-            if let Some(child) = child {
+            if let Some(child) = server_child {
                 let _ = child.kill();
             }
+
+            stop_runner(app_handle.state::<RunnerProcess>().inner());
         }
     });
+}
+
+#[tauri::command]
+fn list_runner_sessions(
+    app: AppHandle,
+    runner_process: State<'_, RunnerProcess>,
+) -> Result<RunnerSessionsPayload, String> {
+    let runner = ensure_runner(&app, runner_process.inner())?;
+    let client = runner_http_client()?;
+    let response = client
+        .get(format!("{}/assistant/sessions", runner.base_url))
+        .query(&[("directory", runner.workspace_directory.as_str())])
+        .send()
+        .map_err(|error| format!("Failed to reach local runner: {error}"))?;
+    let payload: ListAssistantSessionsResponse = parse_runner_json(response)?;
+
+    Ok(RunnerSessionsPayload {
+        sessions: payload.sessions,
+        workspace_directory: runner.workspace_directory,
+    })
+}
+
+#[tauri::command]
+fn create_runner_session(
+    app: AppHandle,
+    runner_process: State<'_, RunnerProcess>,
+    title: String,
+) -> Result<CreateRunnerSessionResponse, String> {
+    let trimmed_title = title.trim();
+    if trimmed_title.is_empty() {
+        return Err("title is required".to_string());
+    }
+
+    let runner = ensure_runner(&app, runner_process.inner())?;
+    let client = runner_http_client()?;
+    let response = client
+        .post(format!("{}/assistant/session/ensure", runner.base_url))
+        .json(&EnsureAssistantSessionRequest {
+            directory: runner.workspace_directory.clone(),
+            model: DEFAULT_OPENCODE_MODEL.to_string(),
+            provider: DEFAULT_OPENCODE_PROVIDER.to_string(),
+            task_title: trimmed_title.to_string(),
+        })
+        .send()
+        .map_err(|error| format!("Failed to reach local runner: {error}"))?;
+    let payload: EnsureAssistantSessionResponse = parse_runner_json(response)?;
+
+    Ok(CreateRunnerSessionResponse {
+        session_id: payload.session_id,
+    })
+}
+
+fn ensure_runner(
+    app: &AppHandle,
+    runner_process: &RunnerProcess,
+) -> Result<RunnerConnection, String> {
+    if let Some(connection) = current_runner_connection(runner_process) {
+        if is_runner_healthy(&connection.base_url) {
+            return Ok(connection);
+        }
+
+        stop_runner(runner_process);
+    }
+
+    start_runner(app, runner_process)
+}
+
+fn current_runner_connection(runner_process: &RunnerProcess) -> Option<RunnerConnection> {
+    let process = runner_process.0.lock().expect("runner process lock");
+    process.as_ref().map(|runner| RunnerConnection {
+        base_url: runner.base_url.clone(),
+        workspace_directory: runner.workspace_directory.clone(),
+    })
+}
+
+fn start_runner(
+    app: &AppHandle,
+    runner_process: &RunnerProcess,
+) -> Result<RunnerConnection, String> {
+    let workspace_root = resolve_workspace_root(app)?;
+    let workspace_directory = workspace_root.display().to_string();
+    let runner_entry = workspace_root.join("packages/runner/src/cli.ts");
+
+    if !runner_entry.exists() {
+        return Err(format!(
+            "Runner entry not found at {}",
+            runner_entry.display()
+        ));
+    }
+
+    let port = reserve_local_port().map_err(|error| error.to_string())?;
+    let mut command = Command::new(resolve_bun_binary());
+    command
+        .arg(runner_entry.display().to_string())
+        .arg("--host")
+        .arg("127.0.0.1")
+        .arg("--port")
+        .arg(port.to_string())
+        .current_dir(&workspace_root)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::inherit());
+
+    let child = command
+        .spawn()
+        .map_err(|error| format!("Failed to start local runner: {error}"))?;
+    wait_for_server(port).map_err(|error| error.to_string())?;
+
+    let base_url = format!("http://127.0.0.1:{port}");
+    let connection = RunnerConnection {
+        base_url: base_url.clone(),
+        workspace_directory: workspace_directory.clone(),
+    };
+
+    let mut process = runner_process.0.lock().expect("runner process lock");
+    *process = Some(RunnerInstance {
+        base_url,
+        child,
+        workspace_directory,
+    });
+
+    Ok(connection)
+}
+
+fn stop_runner(runner_process: &RunnerProcess) {
+    let runner = {
+        let mut process = runner_process.0.lock().expect("runner process lock");
+        process.take()
+    };
+
+    if let Some(mut runner) = runner {
+        let _ = runner.child.kill();
+        let _ = runner.child.wait();
+    }
+}
+
+fn is_runner_healthy(base_url: &str) -> bool {
+    let client = match runner_http_client() {
+        Ok(client) => client,
+        Err(_) => return false,
+    };
+
+    client
+        .get(format!("{base_url}/health"))
+        .send()
+        .map(|response| response.status().is_success())
+        .unwrap_or(false)
+}
+
+fn runner_http_client() -> Result<Client, String> {
+    Client::builder()
+        .timeout(Duration::from_secs(30))
+        .build()
+        .map_err(|error| format!("Failed to create runner HTTP client: {error}"))
+}
+
+fn parse_runner_json<T: for<'de> Deserialize<'de>>(response: Response) -> Result<T, String> {
+    let status = response.status();
+
+    if status.is_success() {
+        return response
+            .json::<T>()
+            .map_err(|error| format!("Failed to decode runner response: {error}"));
+    }
+
+    let message = match response.json::<RunnerErrorResponse>() {
+        Ok(body) if !body.error.trim().is_empty() => body.error,
+        Ok(_) => format!("Runner request failed with status {status}"),
+        Err(_) => format!("Runner request failed with status {status}"),
+    };
+
+    Err(message)
+}
+
+#[cfg(debug_assertions)]
+fn resolve_workspace_root(_app: &AppHandle) -> Result<PathBuf, String> {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .canonicalize()
+        .map_err(|error| format!("Failed to resolve workspace root: {error}"))
+}
+
+#[cfg(not(debug_assertions))]
+fn resolve_workspace_root(_app: &AppHandle) -> Result<PathBuf, String> {
+    std::env::current_dir().map_err(|error| format!("Failed to resolve workspace root: {error}"))
+}
+
+fn resolve_bun_binary() -> &'static str {
+    "bun"
 }
 
 #[cfg(debug_assertions)]
@@ -83,7 +351,6 @@ fn resolve_app_url(app: &AppHandle) -> Result<String, Box<dyn Error>> {
     Ok(format!("http://127.0.0.1:{port}"))
 }
 
-#[cfg(not(debug_assertions))]
 fn reserve_local_port() -> Result<u16, Box<dyn Error>> {
     let listener = TcpListener::bind(("127.0.0.1", 0))?;
     let port = listener.local_addr()?.port();
@@ -91,7 +358,6 @@ fn reserve_local_port() -> Result<u16, Box<dyn Error>> {
     Ok(port)
 }
 
-#[cfg(not(debug_assertions))]
 fn wait_for_server(port: u16) -> Result<(), Box<dyn Error>> {
     let timeout = Duration::from_secs(15);
     let started_at = Instant::now();

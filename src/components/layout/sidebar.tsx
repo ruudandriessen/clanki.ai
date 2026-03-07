@@ -1,16 +1,14 @@
 import { OrgSwitcher } from "./org-switcher";
-import { TaskList } from "./task-list";
+import { RunnerSessionList } from "./runner-session-list";
 import { UserMenu } from "./user-menu";
 
 export function Sidebar() {
   return (
     <div className="flex h-full flex-col">
-      <div className="hidden md:block">
-        <OrgSwitcher />
-      </div>
+      <OrgSwitcher />
 
       <div className="flex min-h-0 flex-1">
-        <TaskList />
+        <RunnerSessionList />
       </div>
 
       <div className="hidden border-t border-border bg-muted/20 md:block">
