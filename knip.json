@@ -6,14 +6,14 @@
         "src/router.tsx",
         "src/routes/**/*.{ts,tsx}",
         "src/lib/auth-client.ts",
-        "scripts/**/*.{js,mjs,ts}"
+        "electron/**/*.cjs"
       ],
-      "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{js,mjs,ts}"],
+      "project": ["src/**/*.{ts,tsx}", "electron/**/*.cjs"],
       "ignore": ["src/components/ui/**", "src/routeTree.gen.ts", "src/server/db/schema.ts"]
     },
     "packages/runner": {
       "project": ["src/**/*.ts"]
     }
   },
-  "ignoreDependencies": ["concurrently", "tailwindcss", "shadcn", "tw-animate-css"]
+  "ignoreDependencies": ["tailwindcss", "shadcn", "tw-animate-css"]
 }

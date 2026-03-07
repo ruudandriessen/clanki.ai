@@ -28,7 +28,7 @@ bun install
 mkdir -p dist
 copy_file "$ROOT_PATH/.env" ".env"
 
-if [ ! -d "$ROOT_PATH/src-tauri" ]; then
+if [ ! -d "$ROOT_PATH/electron" ]; then
   exit 0
 fi
 
@@ -37,12 +37,4 @@ if [ "$(git -C "$ROOT_PATH" branch --show-current)" != "main" ]; then
   exit 1
 fi
 
-(
-  cd "$ROOT_PATH"
-  bun install
-  bun run tauri:prepare
-)
-
 copy_dir "$ROOT_PATH/.output" ".output"
-copy_dir "$ROOT_PATH/src-tauri/binaries" "src-tauri/binaries"
-copy_dir "$ROOT_PATH/src-tauri/target" "src-tauri/target"

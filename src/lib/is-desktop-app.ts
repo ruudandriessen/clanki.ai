@@ -3,5 +3,5 @@ export function isDesktopApp(): boolean {
     return false;
   }
 
-  return "__TAURI_INTERNALS__" in (window as Window & { __TAURI_INTERNALS__?: unknown });
+  return "clankiDesktop" in (window as Window & { clankiDesktop?: unknown });
 }

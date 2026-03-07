@@ -1,16 +1,43 @@
-import { invoke } from "@tauri-apps/api/core";
+type CreateDesktopRunnerSessionResponse = {
+  runnerType: string;
+  sessionId: string;
+  workspaceDirectory: string;
+};
+
+type DesktopRunnerBridge = {
+  createRunnerSession: (
+    title: string,
+    repoUrl: string,
+  ) => Promise<CreateDesktopRunnerSessionResponse>;
+  promptRunnerTask: (args: {
+    backendBaseUrl: string;
+    callbackToken: string;
+    directory: string;
+    executionId: string;
+    prompt: string;
+    sessionId: string;
+  }) => Promise<void>;
+};
+
+declare global {
+  interface Window {
+    clankiDesktop?: DesktopRunnerBridge;
+  }
+}
+
+function getDesktopRunnerBridge(): DesktopRunnerBridge {
+  if (typeof window === "undefined" || !window.clankiDesktop) {
+    throw new Error("The desktop runner API is only available in the Electron app.");
+  }
+
+  return window.clankiDesktop;
+}
 
 export async function createDesktopRunnerSession(
   title: string,
   repoUrl: string,
 ): Promise<{ runnerType: string; sessionId: string; workspaceDirectory: string }> {
-  return await invoke<{ runnerType: string; sessionId: string; workspaceDirectory: string }>(
-    "create_runner_session",
-    {
-      repoUrl,
-      title,
-    },
-  );
+  return await getDesktopRunnerBridge().createRunnerSession(title, repoUrl);
 }
 
 export async function promptDesktopRunnerTask(args: {
@@ -21,12 +48,5 @@ export async function promptDesktopRunnerTask(args: {
   prompt: string;
   sessionId: string;
 }): Promise<void> {
-  await invoke("prompt_runner_task", {
-    backendBaseUrl: args.backendBaseUrl,
-    callbackToken: args.callbackToken,
-    directory: args.directory,
-    executionId: args.executionId,
-    prompt: args.prompt,
-    sessionId: args.sessionId,
-  });
+  await getDesktopRunnerBridge().promptRunnerTask(args);
 }

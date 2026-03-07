@@ -9,4 +9,3 @@ dist/
 .output
 .vercel
 .env*.local
-src-tauri/binaries
