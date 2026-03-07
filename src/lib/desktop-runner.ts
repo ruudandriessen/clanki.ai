@@ -4,6 +4,8 @@ type CreateDesktopRunnerSessionResponse = {
   workspaceDirectory: string;
 };
 
+export type DesktopWorkspaceEditor = "cursor" | "vscode" | "zed";
+
 export type DesktopRunnerModelSelection = {
   model: string;
   provider: string;
@@ -28,6 +30,10 @@ type DesktopRunnerBridge = {
   ) => Promise<CreateDesktopRunnerSessionResponse>;
   deleteRunnerWorkspace: (workspaceDirectory: string) => Promise<void>;
   listRunnerModels: (args: { directory: string }) => Promise<ListDesktopRunnerModelsResponse>;
+  openWorkspaceInEditor: (args: {
+    editor: DesktopWorkspaceEditor;
+    workspaceDirectory: string;
+  }) => Promise<void>;
   promptRunnerTask: (args: {
     backendBaseUrl: string;
     callbackToken: string;
@@ -69,6 +75,13 @@ export async function listDesktopRunnerModels(args: {
   directory: string;
 }): Promise<ListDesktopRunnerModelsResponse> {
   return await getDesktopRunnerBridge().listRunnerModels(args);
+}
+
+export async function openDesktopWorkspaceInEditor(args: {
+  editor: DesktopWorkspaceEditor;
+  workspaceDirectory: string;
+}): Promise<void> {
+  await getDesktopRunnerBridge().openWorkspaceInEditor(args);
 }
 
 export async function promptDesktopRunnerTask(args: {

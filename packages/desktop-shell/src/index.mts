@@ -24,6 +24,10 @@ function registerIpcHandlers(): void {
     return await desktopRunnerController.listRunnerModels(args);
   });
 
+  ipcMain.handle("desktop-runner:open-workspace-in-editor", async (_event, args) => {
+    return await desktopRunnerController.openWorkspaceInEditor(args);
+  });
+
   ipcMain.handle("desktop-runner:prompt-task", async (_event, args) => {
     return await desktopRunnerController.promptRunnerTask(args);
   });

@@ -1,6 +1,7 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { execFile, spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { promisify } from "node:util";
 import {
   attachProcessStderr,
   reserveLocalPort,
@@ -11,11 +12,24 @@ import {
 
 const DEFAULT_OPENCODE_MODEL = "gpt-5.3-codex";
 const DEFAULT_OPENCODE_PROVIDER = "openai";
+const execFileAsync = promisify(execFile);
+const DESKTOP_EDITOR_APPS = {
+  cursor: "Cursor",
+  vscode: "Visual Studio Code",
+  zed: "Zed",
+} as const;
+const DESKTOP_EDITOR_COMMANDS = {
+  cursor: "cursor",
+  vscode: "code",
+  zed: "zed",
+} as const;
 
 type CreateRunnerSessionArgs = {
   repoUrl: string;
   title: string;
 };
+
+type WorkspaceEditor = keyof typeof DESKTOP_EDITOR_APPS;
 
 type RunnerModelProvider = {
   id: string;
@@ -44,6 +58,11 @@ type DeleteRunnerWorkspaceArgs = {
   workspaceDirectory: string;
 };
 
+type OpenWorkspaceInEditorArgs = {
+  editor: WorkspaceEditor;
+  workspaceDirectory: string;
+};
+
 type RunnerProcess = {
   baseUrl: string;
   child: ChildProcess;
@@ -57,6 +76,7 @@ type AppRunnerController = {
   }>;
   deleteRunnerWorkspace: (args: DeleteRunnerWorkspaceArgs) => Promise<void>;
   listRunnerModels: (args: { directory: string }) => Promise<ListRunnerModelsResponse>;
+  openWorkspaceInEditor: (args: OpenWorkspaceInEditorArgs) => Promise<void>;
   promptRunnerTask: (args: PromptRunnerTaskArgs) => Promise<void>;
   stop: () => Promise<void>;
 };
@@ -141,6 +161,36 @@ export function createDesktopRunnerController({
     }
   }
 
+  async function openWorkspaceInEditor({
+    editor,
+    workspaceDirectory,
+  }: OpenWorkspaceInEditorArgs): Promise<void> {
+    const normalizedDirectory = workspaceDirectory.trim();
+
+    if (normalizedDirectory.length === 0) {
+      throw new Error("workspaceDirectory is required");
+    }
+
+    if (!fs.existsSync(normalizedDirectory)) {
+      throw new Error(`Workspace directory not found: ${normalizedDirectory}`);
+    }
+
+    const appName = DESKTOP_EDITOR_APPS[editor];
+    const command = DESKTOP_EDITOR_COMMANDS[editor];
+
+    try {
+      if (process.platform === "darwin") {
+        await execFileAsync("open", ["-a", appName, normalizedDirectory]);
+        return;
+      }
+
+      await execFileAsync(command, [normalizedDirectory]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      throw new Error(`Failed to open workspace in ${appName}: ${message}`, { cause: error });
+    }
+  }
+
   async function deleteRunnerWorkspace({
     workspaceDirectory,
   }: DeleteRunnerWorkspaceArgs): Promise<void> {
@@ -218,6 +268,7 @@ export function createDesktopRunnerController({
     createRunnerSession,
     deleteRunnerWorkspace,
     listRunnerModels,
+    openWorkspaceInEditor,
     promptRunnerTask,
     stop,
   };
