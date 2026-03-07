@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLiveQuery } from "@tanstack/react-db";
 import { BookMarked, Loader2, Plus } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AddProjectDialog } from "../components/add-project-dialog";
 import { useOrganization } from "../components/layout/use-organization";
@@ -148,6 +149,20 @@ export function SettingsPage() {
       <h2 className="mb-6 text-2xl tracking-[0.08em] uppercase">Settings</h2>
 
       <div className="neo-stagger space-y-6">
+        <section>
+          <Card>
+            <CardHeader className="gap-3 md:flex md:flex-row md:items-center md:justify-between">
+              <div className="space-y-1">
+                <CardTitle>Appearance</CardTitle>
+                <CardDescription>
+                  Switch the interface between the default light theme and a new dark mode.
+                </CardDescription>
+              </div>
+              <ThemeToggle className="w-full md:w-auto" />
+            </CardHeader>
+          </Card>
+        </section>
+
         <section>
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-sm font-bold tracking-[0.1em] text-foreground uppercase">

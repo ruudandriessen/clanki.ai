@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { ThemeProvider } from "@/components/theme-provider";
+import { themeInitializationScript } from "@/lib/theme";
 import appCss from "@/index.css?url";
 
 export const Route = createRootRoute({
@@ -22,13 +24,16 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: themeInitializationScript }} />
       </head>
       <body>
-        {children}
-        <Scripts />
+        <ThemeProvider>
+          {children}
+          <Scripts />
+        </ThemeProvider>
       </body>
     </html>
   );

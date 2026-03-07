@@ -51,27 +51,35 @@
   --border: #2b4b69;
   --input: #ffffff;
   --ring: #1f6fdb;
+  --body-glow-primary: rgb(31 111 219 / 20%);
+  --body-glow-secondary: rgb(217 74 74 / 11%);
+  --body-glow-tertiary: rgb(121 141 164 / 24%);
+  --body-grid: rgb(17 35 58 / 5%);
 }
 
 .dark {
-  --background: #eaf1f8;
-  --foreground: #0f2238;
-  --card: #f8fbff;
-  --card-foreground: #0f2238;
-  --popover: #f8fbff;
-  --popover-foreground: #0f2238;
-  --primary: #1f6fdb;
-  --primary-foreground: #f8fbff;
-  --secondary: #b8c7d8;
-  --secondary-foreground: #10263d;
-  --muted: #d7e0ea;
-  --muted-foreground: #4b6078;
-  --accent: #7fa4d1;
-  --accent-foreground: #0f2238;
-  --destructive: #d94a4a;
-  --border: #2b4b69;
-  --input: #ffffff;
-  --ring: #1f6fdb;
+  --background: #101924;
+  --foreground: #edf4ff;
+  --card: #172332;
+  --card-foreground: #edf4ff;
+  --popover: #172332;
+  --popover-foreground: #edf4ff;
+  --primary: #7db7ff;
+  --primary-foreground: #0c1621;
+  --secondary: #2a3f56;
+  --secondary-foreground: #edf4ff;
+  --muted: #203043;
+  --muted-foreground: #a0b4ca;
+  --accent: #314d6b;
+  --accent-foreground: #edf4ff;
+  --destructive: #ff7b7b;
+  --border: #5f7f9e;
+  --input: #122030;
+  --ring: #7db7ff;
+  --body-glow-primary: rgb(86 153 255 / 20%);
+  --body-glow-secondary: rgb(79 210 194 / 14%);
+  --body-glow-tertiary: rgb(9 13 20 / 38%);
+  --body-grid: rgb(237 244 255 / 4%);
 }
 
 html,
@@ -85,10 +93,10 @@ body {
   font-family: "Space Grotesk", "Segoe UI", sans-serif;
   letter-spacing: 0.01em;
   background:
-    radial-gradient(circle at 12% 22%, rgb(31 111 219 / 20%) 0%, transparent 24%),
-    radial-gradient(circle at 88% 8%, rgb(217 74 74 / 11%) 0%, transparent 16%),
-    radial-gradient(circle at 80% 68%, rgb(121 141 164 / 24%) 0%, transparent 24%),
-    repeating-linear-gradient(-12deg, rgb(17 35 58 / 5%) 0 2px, transparent 2px 28px),
+    radial-gradient(circle at 12% 22%, var(--body-glow-primary) 0%, transparent 24%),
+    radial-gradient(circle at 88% 8%, var(--body-glow-secondary) 0%, transparent 16%),
+    radial-gradient(circle at 80% 68%, var(--body-glow-tertiary) 0%, transparent 24%),
+    repeating-linear-gradient(-12deg, var(--body-grid) 0 2px, transparent 2px 28px),
     var(--background);
 }
 
