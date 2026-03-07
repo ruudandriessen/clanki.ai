@@ -62,7 +62,7 @@ export function TaskModelPicker({
                 !selectedOption && "text-muted-foreground",
               )}
             >
-              <span className="truncate">{selectedOption?.label ?? placeholder}</span>
+              <span className="truncate">{selectedOption?.modelName ?? placeholder}</span>
               {isLoading ? (
                 <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
               ) : (
