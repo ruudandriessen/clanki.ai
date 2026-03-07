@@ -1,7 +1,19 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "entry": ["src/routes/**/*.{ts,tsx}", "src/lib/auth-client.ts"],
-  "project": ["src/**/*.{ts,tsx}"],
-  "ignore": ["src/components/ui/**", "src/routeTree.gen.ts", "src/server/db/schema.ts"],
+  "workspaces": {
+    ".": {
+      "entry": [
+        "src/router.tsx",
+        "src/routes/**/*.{ts,tsx}",
+        "src/lib/auth-client.ts",
+        "scripts/**/*.{js,mjs,ts}"
+      ],
+      "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{js,mjs,ts}"],
+      "ignore": ["src/components/ui/**", "src/routeTree.gen.ts", "src/server/db/schema.ts"]
+    },
+    "packages/runner": {
+      "project": ["src/**/*.ts"]
+    }
+  },
   "ignoreDependencies": ["concurrently", "tailwindcss", "shadcn", "tw-animate-css"]
 }
