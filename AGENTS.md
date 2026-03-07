@@ -143,13 +143,22 @@ The product direction is to move from Vercel sandboxes to a local runner model b
 
 The local app shell should be built with `Tauri`, not as a pure PWA.
 
+### System components
+
+The system is split into three main components:
+
+1. **Vercel backend** — the API layer deployed on Vercel. Handles syncing with external systems (e.g. GitHub), stores PR data, projects, and other persisted domain state. This is the control plane.
+2. **Runner** — a self-hosted runner that (for now) runs on the client's device. Manages sessions, runs code in git worktrees, and performs the real execution operations. Requires `opencode` to be available as a CLI tool on the host machine (manual prerequisite). This is the execution plane.
+3. **Desktop app** — a Tauri shell wrapping the Vercel-hosted frontend. This is the primary way users interact with the system. Hosts the local runner and provides native OS integration.
+
 ### Architecture direction
 
 - Treat execution as a backend interface, not as a sandbox-specific implementation detail.
 - Prefer the terms `runner`, `execution backend`, `workspace`, and `worktree` in new code and docs. Avoid introducing new sandbox-specific concepts unless touching legacy code that has not been migrated yet.
 - Keep the control plane separate from the execution plane:
-  - control plane: app UI, task lifecycle, persistence, auth, event history
-  - execution plane: repo checkout/worktree lifecycle, process execution, OpenCode session wiring, preview process management
+  - control plane (Vercel backend): syncing, persistence, auth, project/PR data
+  - execution plane (runner): repo checkout/worktree lifecycle, process execution, OpenCode session wiring, preview process management
+  - presentation layer (desktop app): UI, task lifecycle views, event history display
 - Keep the current detached task runner and event streaming model backend-agnostic where possible so it can run locally now and remotely later.
 
 ### Local-first implementation steps
