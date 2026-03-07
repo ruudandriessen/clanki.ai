@@ -10,20 +10,6 @@ export type TaskRunCallbackClaims = {
   issuedAt: number;
 };
 
-export function createTaskRunCallbackToken(
-  claims: Omit<TaskRunCallbackClaims, "issuedAt">,
-  env: AppEnv,
-): string {
-  const payload: TaskRunCallbackClaims = {
-    ...claims,
-    issuedAt: Date.now(),
-  };
-
-  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
-  const signature = signPayload(encodedPayload, getTaskRunnerCallbackSecret(env));
-  return `${encodedPayload}.${signature}`;
-}
-
 export function verifyTaskRunCallbackToken(
   token: string,
   env: AppEnv,
@@ -62,10 +48,6 @@ export function verifyTaskRunCallbackToken(
 
 function signPayload(payload: string, secret: string): string {
   return createHmac("sha256", secret).update(payload).digest("base64url");
-}
-
-function base64UrlEncode(value: string): string {
-  return Buffer.from(value, "utf8").toString("base64url");
 }
 
 function base64UrlDecode(value: string): string {

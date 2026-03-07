@@ -19,24 +19,6 @@ export async function encryptSecret(env: SecretCryptoEnv, plaintext: string): Pr
   return [ENCRYPTED_VALUE_VERSION, toBase64(iv), toBase64(cipher)].join(":");
 }
 
-export async function decryptSecret(env: SecretCryptoEnv, encryptedValue: string): Promise<string> {
-  const parts = encryptedValue.split(":");
-  if (parts.length !== 3 || parts[0] !== ENCRYPTED_VALUE_VERSION) {
-    throw new Error("Unsupported encrypted secret format");
-  }
-
-  const key = await getCryptoKey(env);
-  const iv = fromBase64(parts[1]);
-  const cipher = fromBase64(parts[2]);
-
-  const plainBuffer = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: toArrayBuffer(iv) },
-    key,
-    toArrayBuffer(cipher),
-  );
-  return new TextDecoder().decode(plainBuffer);
-}
-
 async function getCryptoKey(env: SecretCryptoEnv): Promise<CryptoKey> {
   const rawKey = env.CREDENTIALS_ENCRYPTION_KEY?.trim();
   if (!rawKey) {

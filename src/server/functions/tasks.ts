@@ -4,26 +4,9 @@ import { z } from "zod";
 import type { AppDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { withTransaction } from "@/server/db/transaction";
-import type { AppEnv } from "@/server/env";
-import { runInBackground } from "@/server/lib/background";
-import { isLocalhostOrigin } from "@/server/lib/localhost-origin";
-import {
-  DEFAULT_OPENCODE_MODEL,
-  DEFAULT_OPENCODE_PROVIDER,
-  isSupportedOpencodeProvider,
-} from "@/server/lib/opencode";
-import { createTaskRunCallbackToken } from "@/server/lib/task-run-callback-token";
-import { executeTaskPrompt } from "@/server/lib/task-execution";
 import { createStream } from "@/server/lib/durable-streams";
 import { authMiddleware } from "../middleware";
-import {
-  badRequest,
-  getErrorMessage,
-  getOrgId,
-  notFound,
-  parseOptionalId,
-  parseOptionalTimestamp,
-} from "./common";
+import { badRequest, getOrgId, notFound, parseOptionalId, parseOptionalTimestamp } from "./common";
 
 type TaskForOrg = { id: string; title: string; projectId: string | null };
 
@@ -46,176 +29,6 @@ async function getLatestTaskMessageTimestamp(db: AppDb, taskId: string): Promise
   });
 
   return latest?.createdAt ?? null;
-}
-
-async function setTaskRunError(
-  db: AppDb,
-  args: { taskId: string; orgId: string; message: string },
-) {
-  const { taskId, orgId, message } = args;
-
-  try {
-    await db
-      .update(schema.tasks)
-      .set({ status: "open", error: message, updatedAt: Date.now() })
-      .where(and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)));
-  } catch {}
-}
-
-function normalizeOrigin(value: string, fieldName: string): string {
-  try {
-    return new URL(value).origin;
-  } catch {
-    throw new Error(`${fieldName} must be an absolute URL`);
-  }
-}
-
-async function queueTaskRun(args: {
-  db: AppDb;
-  env: AppEnv;
-  requestOrigin: string;
-  orgId: string;
-  task: TaskForOrg;
-  userId: string;
-  userName: string;
-  userEmail: string;
-  inputMessage: { id: string; content: string };
-  provider?: string;
-  model?: string;
-}) {
-  const {
-    db,
-    env: ctxEnv,
-    requestOrigin,
-    orgId,
-    task,
-    userId,
-    userName,
-    userEmail,
-    inputMessage,
-    provider,
-    model: requestedModel,
-  } = args;
-
-  const requestedProvider = provider?.trim().toLowerCase() ?? "";
-  const providerInput =
-    requestedProvider.length > 0 ? requestedProvider : DEFAULT_OPENCODE_PROVIDER;
-  if (!isSupportedOpencodeProvider(providerInput)) {
-    badRequest(`Unsupported provider: ${providerInput}`);
-  }
-
-  const model = requestedModel?.trim() ?? DEFAULT_OPENCODE_MODEL;
-  if (model.length === 0) {
-    badRequest("model is required");
-  }
-
-  const hasCredential = await db.query.userProviderCredentials.findFirst({
-    where: and(
-      eq(schema.userProviderCredentials.userId, userId),
-      eq(schema.userProviderCredentials.provider, providerInput),
-    ),
-    columns: { id: true },
-  });
-  if (!hasCredential) {
-    badRequest(`No ${providerInput} credentials configured in Settings`);
-  }
-
-  const project = task.projectId
-    ? await db.query.projects.findFirst({
-        where: and(
-          eq(schema.projects.id, task.projectId),
-          eq(schema.projects.organizationId, orgId),
-        ),
-        columns: {
-          repoUrl: true,
-          installationId: true,
-          setupCommand: true,
-          runCommand: true,
-          runPort: true,
-        },
-      })
-    : null;
-
-  if (!project?.repoUrl) {
-    badRequest("Task's project has no repository URL configured");
-  }
-
-  const configuredWorkerOrigin = ctxEnv.WORKER_CALLBACK_ORIGIN;
-  const workerOrigin =
-    configuredWorkerOrigin != null
-      ? normalizeOrigin(configuredWorkerOrigin, "WORKER_CALLBACK_ORIGIN")
-      : requestOrigin;
-  if (isLocalhostOrigin(workerOrigin)) {
-    badRequest(
-      "Sandbox task runs do not support localhost callback origins. Use a preview deployment or set WORKER_CALLBACK_ORIGIN to a public URL.",
-    );
-  }
-
-  const now = Date.now();
-  const run = {
-    id: crypto.randomUUID(),
-    taskId: task.id,
-    tool: "opencode",
-    status: "queued",
-    inputMessageId: inputMessage.id,
-    outputMessageId: null,
-    sandboxId: null,
-    sessionId: null,
-    initiatedByUserId: userId,
-    provider: providerInput,
-    model,
-    error: null,
-    startedAt: null,
-    finishedAt: null,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  const callbackToken = createTaskRunCallbackToken(
-    {
-      executionId: run.id,
-      taskId: task.id,
-      organizationId: orgId,
-      userId,
-      provider: providerInput,
-    },
-    ctxEnv,
-  );
-
-  const startTaskPromise = executeTaskPrompt({
-    db,
-    env: ctxEnv,
-    workerOrigin,
-    executionId: run.id,
-    taskId: task.id,
-    organizationId: orgId,
-    taskTitle: task.title,
-    prompt: inputMessage.content,
-    repoUrl: project.repoUrl,
-    installationId: project.installationId ?? null,
-    setupCommand: project.setupCommand ?? null,
-    runCommand: project.runCommand ?? null,
-    runPort: project.runPort ?? null,
-    initiatedByUserId: userId,
-    initiatedByUserName: userName,
-    initiatedByUserEmail: userEmail,
-    provider: providerInput,
-    model,
-    callbackToken,
-  }).catch(async (error) => {
-    const message = getErrorMessage(error, "Failed to auto-start task run");
-    console.error("Task run startup failed", {
-      taskId: task.id,
-      executionId: run.id,
-      userId,
-      message,
-    });
-    await setTaskRunError(db, { taskId: task.id, orgId, message });
-  });
-
-  runInBackground(startTaskPromise);
-
-  return run;
 }
 
 export const createTask = createServerFn({ method: "POST" })
@@ -425,38 +238,13 @@ export const createTaskMessage = createServerFn({ method: "POST" })
         .update(schema.tasks)
         .set(
           input.message.role === "user"
-            ? { status: "running", error: null, updatedAt: createdAt }
+            ? { status: "open", error: null, updatedAt: createdAt }
             : { updatedAt: createdAt },
         )
         .where(eq(schema.tasks.id, input.taskId));
 
       return { data: message, txid };
     });
-
-    if (result.data.role === "user") {
-      try {
-        await queueTaskRun({
-          db,
-          env: context.env,
-          requestOrigin: context.requestOrigin,
-          orgId,
-          task,
-          userId: context.session.user.id,
-          userName: context.session.user.name,
-          userEmail: context.session.user.email,
-          inputMessage: { id: result.data.id, content: result.data.content },
-        });
-      } catch (error) {
-        const message = getErrorMessage(error, "Failed to auto-start task run");
-        console.error("Failed to auto-start task run", {
-          taskId: input.taskId,
-          userId: context.session.user.id,
-          message,
-        });
-        await setTaskRunError(db, { taskId: input.taskId, orgId, message });
-        throw error;
-      }
-    }
 
     return result;
   });

@@ -28,7 +28,7 @@ type OpenCodeEventBody = {
   payload: string;
 };
 
-type TaskLifecyclePhase = "sandbox" | "clone" | "setup" | "assistant";
+type TaskLifecyclePhase = "runner" | "clone" | "setup" | "assistant";
 type TaskLifecycleStatus = "running" | "completed" | "skipped" | "error";
 
 export type TaskLifecycleEventPayload = {
@@ -99,7 +99,7 @@ export function parseTaskLifecycleEventPayload(
     const details = (parsed as Record<string, unknown>).details;
 
     if (
-      (phase !== "sandbox" && phase !== "clone" && phase !== "setup" && phase !== "assistant") ||
+      (phase !== "runner" && phase !== "clone" && phase !== "setup" && phase !== "assistant") ||
       (status !== "running" &&
         status !== "completed" &&
         status !== "skipped" &&

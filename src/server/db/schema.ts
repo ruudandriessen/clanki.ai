@@ -91,30 +91,6 @@ export const userProviderCredentials = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// User provider OAuth attempts
-// ---------------------------------------------------------------------------
-
-export const userProviderOauthAttempts = pgTable(
-  "user_provider_oauth_attempts",
-  {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    provider: text("provider").notNull(),
-    sandboxId: text("sandbox_id").notNull(),
-    method: integer("method").notNull(),
-    createdAt: msTimestamp("created_at").notNull(),
-    expiresAt: msTimestamp("expires_at").notNull(),
-  },
-  (t) => [
-    uniqueIndex("user_provider_oauth_unique").on(t.userId, t.provider),
-    index("user_provider_oauth_user").on(t.userId, t.createdAt),
-    index("user_provider_oauth_exp").on(t.expiresAt),
-  ],
-);
-
-// ---------------------------------------------------------------------------
 // Organizations (BetterAuth)
 // ---------------------------------------------------------------------------
 
@@ -237,9 +213,6 @@ export const tasks = pgTable(
     projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
     title: text("title").notNull(),
     status: text("status").notNull().default("open"),
-    sandboxId: text("sandbox_id"),
-    sessionId: text("session_id"),
-    previewUrl: text("preview_url"),
     branch: text("branch"),
     streamId: text("stream_id").notNull(),
     error: text("error"),

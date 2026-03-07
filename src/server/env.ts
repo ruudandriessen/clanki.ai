@@ -1,7 +1,6 @@
 export type AppEnv = {
   ENVIRONMENT?: string;
   DATABASE_URL?: string;
-  WORKER_CALLBACK_ORIGIN?: string;
 
   BETTER_AUTH_SECRET: string;
   CREDENTIALS_ENCRYPTION_KEY: string;
@@ -19,9 +18,6 @@ export type AppEnv = {
   DURABLE_STREAMS_SECRET?: string;
 
   TASK_RUNNER_CALLBACK_SECRET?: string;
-
-  VERCEL_OIDC_TOKEN?: string;
-  VERCEL_SANDBOX_TIMEOUT_MS?: string;
 };
 
 function requireEnv(name: keyof AppEnv): string {
@@ -37,7 +33,6 @@ export function getEnv(): AppEnv {
   return {
     ENVIRONMENT: process.env.ENVIRONMENT,
     DATABASE_URL: process.env.DATABASE_URL,
-    WORKER_CALLBACK_ORIGIN: process.env.WORKER_CALLBACK_ORIGIN,
 
     BETTER_AUTH_SECRET: requireEnv("BETTER_AUTH_SECRET"),
     CREDENTIALS_ENCRYPTION_KEY: requireEnv("CREDENTIALS_ENCRYPTION_KEY"),
@@ -55,9 +50,6 @@ export function getEnv(): AppEnv {
     DURABLE_STREAMS_SECRET: process.env.DURABLE_STREAMS_SECRET,
 
     TASK_RUNNER_CALLBACK_SECRET: process.env.TASK_RUNNER_CALLBACK_SECRET,
-
-    VERCEL_OIDC_TOKEN: process.env.VERCEL_OIDC_TOKEN,
-    VERCEL_SANDBOX_TIMEOUT_MS: process.env.VERCEL_SANDBOX_TIMEOUT_MS,
   };
 }
 

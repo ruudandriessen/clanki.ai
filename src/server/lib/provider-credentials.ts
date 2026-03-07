@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import type { AppDb } from "../db/client";
 import * as schema from "../db/schema";
 import type { SupportedOpencodeProvider } from "./opencode";
-import { decryptSecret, encryptSecret, type SecretCryptoEnv } from "./secret-crypto";
+import { encryptSecret, type SecretCryptoEnv } from "./secret-crypto";
 
 type ProviderAuthType = Auth["type"];
 type ProviderCredentialStatus = {
@@ -48,42 +48,6 @@ export async function deleteProviderCredential(
         eq(schema.userProviderCredentials.provider, provider),
       ),
     );
-}
-
-export async function getDecryptedProviderAuth(
-  db: AppDb,
-  env: SecretCryptoEnv,
-  userId: string,
-  provider: SupportedOpencodeProvider,
-): Promise<Auth | null> {
-  const row = await db.query.userProviderCredentials.findFirst({
-    where: and(
-      eq(schema.userProviderCredentials.userId, userId),
-      eq(schema.userProviderCredentials.provider, provider),
-    ),
-    columns: {
-      authType: true,
-      encryptedApiKey: true,
-      encryptedAuthJson: true,
-    },
-  });
-
-  if (!row) {
-    return null;
-  }
-
-  const authFromJson = await decryptAuthJson(row.encryptedAuthJson, env);
-  if (authFromJson) {
-    return authFromJson;
-  }
-
-  // Backward compatibility for rows created before encrypted_auth_json existed.
-  const apiKey = await decryptSecret(env, row.encryptedApiKey);
-  if (apiKey.trim().length === 0) {
-    return null;
-  }
-
-  return { type: "api", key: apiKey };
 }
 
 async function upsertProviderCredential(
@@ -135,45 +99,4 @@ async function upsertProviderCredential(
     authType,
     updatedAt: now,
   };
-}
-
-async function decryptAuthJson(
-  encryptedAuthJson: string | null,
-  env: SecretCryptoEnv,
-): Promise<Auth | null> {
-  if (!encryptedAuthJson) {
-    return null;
-  }
-
-  try {
-    const json = await decryptSecret(env, encryptedAuthJson);
-    const parsed = JSON.parse(json) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !("type" in parsed)) {
-      return null;
-    }
-
-    const type = (parsed as { type?: unknown }).type;
-    if (type === "api" && typeof (parsed as { key?: unknown }).key === "string") {
-      return parsed as Auth;
-    }
-
-    if (
-      type === "oauth" &&
-      typeof (parsed as { access?: unknown }).access === "string" &&
-      typeof (parsed as { refresh?: unknown }).refresh === "string" &&
-      typeof (parsed as { expires?: unknown }).expires === "number"
-    ) {
-      return parsed as Auth;
-    }
-
-    if (
-      type === "wellknown" &&
-      typeof (parsed as { key?: unknown }).key === "string" &&
-      typeof (parsed as { token?: unknown }).token === "string"
-    ) {
-      return parsed as Auth;
-    }
-  } catch {}
-
-  return null;
 }
