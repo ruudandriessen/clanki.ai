@@ -529,7 +529,7 @@ export function TaskPage({
       </div>
 
       <div className="shrink-0 bg-background p-4 pt-0">
-        <div className="rounded-[var(--radius-md)] border border-border bg-card shadow-[3px_3px_0_0_var(--color-border)]">
+        <div className="rounded-[var(--radius-md)] border border-border bg-muted/55 shadow-[3px_3px_0_0_var(--color-border)]">
           <Textarea
             ref={inputRef}
             value={input}
@@ -544,7 +544,7 @@ export function TaskPage({
             }
             rows={4}
             disabled={isRunning || isReadOnlyRemoteTask || sending}
-            className="min-h-[120px] max-h-[240px] resize-none rounded-none border-0 bg-muted/45 px-4 py-4 text-base leading-relaxed shadow-none focus-visible:ring-0 md:text-sm"
+            className="min-h-[120px] max-h-[240px] resize-none rounded-none border-0 bg-transparent px-4 py-4 text-base leading-relaxed shadow-none focus-visible:ring-0 md:text-sm"
             style={{ height: "auto" }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
