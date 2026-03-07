@@ -189,6 +189,8 @@ export const pullRequests = pgTable(
     state: text("state").notNull().default("open"),
     reviewState: text("review_state"),
     reviewUpdatedAt: msTimestamp("review_updated_at"),
+    checksCount: integer("checks_count"),
+    checksCompletedCount: integer("checks_completed_count"),
     checksState: text("checks_state"),
     checksConclusion: text("checks_conclusion"),
     checksUpdatedAt: msTimestamp("checks_updated_at"),
@@ -196,6 +198,23 @@ export const pullRequests = pgTable(
   (t) => [
     uniqueIndex("pr_repo_number").on(t.repository, t.prNumber),
     index("pr_installation").on(t.installationId),
+  ],
+);
+
+export const pullRequestCheckRuns = pgTable(
+  "pull_request_check_runs",
+  {
+    id: text("id").primaryKey(),
+    repository: text("repository").notNull(),
+    prNumber: integer("pr_number").notNull(),
+    checkRunId: text("check_run_id").notNull(),
+    status: text("status").notNull(),
+    conclusion: text("conclusion"),
+    updatedAt: msTimestamp("updated_at").notNull(),
+  },
+  (t) => [
+    uniqueIndex("pr_check_run_unique").on(t.repository, t.prNumber, t.checkRunId),
+    index("pr_check_run_lookup").on(t.repository, t.prNumber),
   ],
 );
 

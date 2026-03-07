@@ -47,6 +47,8 @@ const pullRequestSchema = z.object({
   state: z.string().optional(),
   review_state: z.string().nullable().optional(),
   review_updated_at: z.bigint().nullable().optional(),
+  checks_count: z.number().nullable().optional(),
+  checks_completed_count: z.number().nullable().optional(),
   checks_state: z.string().nullable().optional(),
   checks_conclusion: z.string().nullable().optional(),
   checks_updated_at: z.bigint().nullable().optional(),

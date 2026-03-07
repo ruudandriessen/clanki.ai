@@ -1,7 +1,7 @@
 import type { EmitterWebhookEvent } from "@octokit/webhooks";
-import { and, eq, inArray } from "drizzle-orm";
 import type { AppDb } from "../../db/client";
 import { pullRequests } from "../../db/schema";
+import { upsertPullRequestCheckRunCounts } from "./pull-request-check-runs";
 
 export async function handleCheckRun(
   event: EmitterWebhookEvent<"check_run">,
@@ -46,19 +46,12 @@ export async function handleCheckRun(
       target: [pullRequests.repository, pullRequests.prNumber],
     });
 
-  if (checkRun.status !== "completed") {
-    await db
-      .update(pullRequests)
-      .set({
-        checksState: checkRun.status,
-        checksConclusion: checkRun.conclusion,
-        checksUpdatedAt: now,
-      })
-      .where(
-        and(
-          eq(pullRequests.repository, repository.full_name),
-          inArray(pullRequests.prNumber, prNumbers),
-        ),
-      );
-  }
+  await upsertPullRequestCheckRunCounts({
+    db,
+    repository: repository.full_name,
+    prNumbers,
+    checkRunId: checkRun.id,
+    conclusion: checkRun.conclusion,
+    status: checkRun.status,
+  });
 }

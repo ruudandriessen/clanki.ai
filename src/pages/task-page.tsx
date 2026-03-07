@@ -79,6 +79,8 @@ interface TaskPageProps {
     url: string;
     status: "open" | "merged" | "closed" | "draft";
     reviewState: string | null;
+    checksCount: number | null;
+    checksCompletedCount: number | null;
     checksState: string | null;
     checksConclusion: string | null;
   } | null;
@@ -158,6 +160,26 @@ function formatChecksStatus(checksState: string | null, checksConclusion: string
   }
 
   return humanizePullRequestStatus(checksState ?? checksConclusion);
+}
+
+function formatChecksProgress(
+  checksCompletedCount: number | null,
+  checksCount: number | null,
+  checksState: string | null,
+  checksConclusion: string | null,
+): string {
+  if (checksCount != null && checksCount > 0) {
+    const completedChecks = Math.min(checksCompletedCount ?? 0, checksCount);
+    const pendingChecks = Math.max(0, checksCount - completedChecks);
+
+    if (pendingChecks > 0) {
+      return `${completedChecks}/${checksCount} checks done, ${pendingChecks} pending`;
+    }
+
+    return `${completedChecks}/${checksCount} checks done`;
+  }
+
+  return formatChecksStatus(checksState, checksConclusion);
 }
 
 export function TaskPage({
@@ -431,7 +453,9 @@ export function TaskPage({
                       Review: {humanizePullRequestStatus(pullRequest.reviewState)}
                     </span>
                   ) : null}
-                  {pullRequest.checksState != null || pullRequest.checksConclusion != null ? (
+                  {pullRequest.checksState != null ||
+                  pullRequest.checksConclusion != null ||
+                  pullRequest.checksCount != null ? (
                     <span
                       className={cn(
                         "rounded border px-2 py-0.5 text-[11px] font-medium",
@@ -442,7 +466,12 @@ export function TaskPage({
                       )}
                     >
                       Checks:{" "}
-                      {formatChecksStatus(pullRequest.checksState, pullRequest.checksConclusion)}
+                      {formatChecksProgress(
+                        pullRequest.checksCompletedCount,
+                        pullRequest.checksCount,
+                        pullRequest.checksState,
+                        pullRequest.checksConclusion,
+                      )}
                     </span>
                   ) : null}
                 </div>

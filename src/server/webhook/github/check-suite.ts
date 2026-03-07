@@ -2,6 +2,7 @@ import type { EmitterWebhookEvent } from "@octokit/webhooks";
 import { and, eq, inArray } from "drizzle-orm";
 import type { AppDb } from "../../db/client";
 import { pullRequests } from "../../db/schema";
+import { resetPullRequestCheckRuns } from "./pull-request-check-runs";
 
 export async function handleCheckSuite(
   event: EmitterWebhookEvent<"check_suite">,
@@ -31,6 +32,14 @@ export async function handleCheckSuite(
   console.log(`PR checks updated via check_suite (${action}) for ${repository.full_name}`);
 
   const now = Date.now();
+  if (action === "requested" || action === "rerequested") {
+    await resetPullRequestCheckRuns({
+      db,
+      repository: repository.full_name,
+      prNumbers,
+    });
+  }
+
   await db
     .insert(pullRequests)
     .values(
@@ -51,6 +60,13 @@ export async function handleCheckSuite(
     .update(pullRequests)
     .set({
       branch: checkSuite.head_branch ?? undefined,
+      checksCount: checkSuite.latest_check_runs_count,
+      checksCompletedCount:
+        action === "completed" && checkSuite.latest_check_runs_count != null
+          ? checkSuite.latest_check_runs_count
+          : action === "requested" || action === "rerequested"
+            ? null
+            : undefined,
       checksState: checkSuite.status,
       checksConclusion: checkSuite.conclusion,
       checksUpdatedAt: now,

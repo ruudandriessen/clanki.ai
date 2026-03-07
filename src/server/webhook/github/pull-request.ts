@@ -2,6 +2,7 @@ import type { EmitterWebhookEvent } from "@octokit/webhooks";
 import { and, eq, isNull, lte, or } from "drizzle-orm";
 import type { AppDb } from "../../db/client";
 import { pullRequests } from "../../db/schema";
+import { resetPullRequestCheckRuns } from "./pull-request-check-runs";
 
 export async function handlePullRequest(
   event: EmitterWebhookEvent<"pull_request">,
@@ -73,11 +74,18 @@ export async function handlePullRequest(
             mergedBy: null,
             reviewState: null,
             reviewUpdatedAt: null,
+            checksCount: null,
+            checksCompletedCount: null,
             checksState: null,
             checksConclusion: null,
             checksUpdatedAt: null,
           },
         });
+      await resetPullRequestCheckRuns({
+        db,
+        repository: repository.full_name,
+        prNumbers: [pr.number],
+      });
       break;
     }
 
@@ -119,6 +127,8 @@ export async function handlePullRequest(
       await db
         .update(pullRequests)
         .set({
+          checksCount: null,
+          checksCompletedCount: null,
           checksState: null,
           checksConclusion: null,
           checksUpdatedAt: pullRequestEventAt,
@@ -132,6 +142,11 @@ export async function handlePullRequest(
             ),
           ),
         );
+      await resetPullRequestCheckRuns({
+        db,
+        repository: repository.full_name,
+        prNumbers: [pr.number],
+      });
       break;
     }
 
@@ -147,11 +162,18 @@ export async function handlePullRequest(
           mergedBy: null,
           reviewState: null,
           reviewUpdatedAt: Date.now(),
+          checksCount: null,
+          checksCompletedCount: null,
           checksState: null,
           checksConclusion: null,
           checksUpdatedAt: Date.now(),
         })
         .where(pullRequestWhere);
+      await resetPullRequestCheckRuns({
+        db,
+        repository: repository.full_name,
+        prNumbers: [pr.number],
+      });
       break;
     }
 
@@ -167,11 +189,18 @@ export async function handlePullRequest(
           state: pr.draft ? "draft" : "open",
           reviewState: null,
           reviewUpdatedAt: Date.now(),
+          checksCount: null,
+          checksCompletedCount: null,
           checksState: null,
           checksConclusion: null,
           checksUpdatedAt: Date.now(),
         })
         .where(pullRequestWhere);
+      await resetPullRequestCheckRuns({
+        db,
+        repository: repository.full_name,
+        prNumbers: [pr.number],
+      });
       break;
     }
 

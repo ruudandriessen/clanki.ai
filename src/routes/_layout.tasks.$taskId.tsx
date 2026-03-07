@@ -77,6 +77,8 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
                 url: `https://github.com/${pullRequest.repository}/pull/${pullRequest.pr_number}`,
                 status: getPullRequestStatus(pullRequest),
                 reviewState: pullRequest.review_state ?? null,
+                checksCount: pullRequest.checks_count ?? null,
+                checksCompletedCount: pullRequest.checks_completed_count ?? null,
                 checksState: pullRequest.checks_state ?? null,
                 checksConclusion: pullRequest.checks_conclusion ?? null,
               }
