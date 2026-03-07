@@ -5,6 +5,8 @@ import { ensureAssistantSession, promptAssistantSession } from "./assistant-sess
 import { listAssistantSessions } from "./list-assistant-sessions";
 import {
   LOCAL_RUNNER_PROTOCOL_VERSION,
+  type CreateAssistantSessionRequest,
+  type DeleteWorkspaceRequest,
   type EnsureAssistantSessionRequest,
   type ListAssistantSessionsRequest,
   type ListOpencodeModelsRequest,
@@ -13,6 +15,7 @@ import {
 } from "./local-runner-protocol";
 import { listOpencodeModels } from "./opencode-models";
 import { promptTaskAssistantSession } from "./task-assistant-session";
+import { createWorkspace, deleteWorkspace } from "./workspace";
 
 export type LocalRunnerServerOptions = {
   host?: string;
@@ -73,6 +76,32 @@ export function createLocalRunnerApp(): Hono {
     });
   });
 
+  app.post("/assistant/session/create", async (c) => {
+    const body = await readJson<CreateAssistantSessionRequest>(c);
+    const workspaceDirectory = createWorkspace({
+      repoUrl: body.repoUrl,
+      title: body.taskTitle,
+    });
+
+    try {
+      const session = await ensureAssistantSession({
+        directory: workspaceDirectory,
+        existingSessionId: null,
+        model: body.model,
+        provider: body.provider,
+        taskTitle: body.taskTitle,
+      });
+
+      return c.json({
+        sessionId: session.sessionId,
+        workspaceDirectory,
+      });
+    } catch (error) {
+      deleteWorkspace(workspaceDirectory);
+      throw error;
+    }
+  });
+
   app.post("/assistant/session/ensure", async (c) => {
     const body = await readJson<EnsureAssistantSessionRequest>(c);
 
@@ -85,6 +114,14 @@ export function createLocalRunnerApp(): Hono {
         taskTitle: body.taskTitle,
       }),
     );
+  });
+
+  app.post("/workspace/delete", async (c) => {
+    const body = await readJson<DeleteWorkspaceRequest>(c);
+
+    deleteWorkspace(body.workspaceDirectory);
+
+    return c.json({ ok: true });
   });
 
   app.post("/assistant/session/prompt", async (c) => {

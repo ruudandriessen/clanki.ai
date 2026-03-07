@@ -26,6 +26,18 @@ export type ListOpencodeModelsResponse = {
   providers: Array<LocalRunnerOpencodeProvider>;
 };
 
+export type CreateAssistantSessionRequest = {
+  model: string;
+  provider: string;
+  repoUrl: string;
+  taskTitle: string;
+};
+
+export type CreateAssistantSessionResponse = {
+  sessionId: string;
+  workspaceDirectory: string;
+};
+
 export type EnsureAssistantSessionRequest = {
   directory: string;
   model: string;
@@ -77,5 +89,13 @@ export type PromptTaskAssistantSessionRequest = {
 };
 
 export type PromptTaskAssistantSessionResponse = {
+  ok: true;
+};
+
+export type DeleteWorkspaceRequest = {
+  workspaceDirectory: string;
+};
+
+export type DeleteWorkspaceResponse = {
   ok: true;
 };

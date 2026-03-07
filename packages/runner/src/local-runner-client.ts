@@ -1,4 +1,8 @@
 import type {
+  CreateAssistantSessionRequest,
+  CreateAssistantSessionResponse,
+  DeleteWorkspaceRequest,
+  DeleteWorkspaceResponse,
   EnsureAssistantSessionRequest,
   EnsureAssistantSessionResponse,
   ListAssistantSessionsRequest,
@@ -15,6 +19,14 @@ export function createLocalRunnerClient(baseUrl: string) {
   const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 
   return {
+    async createAssistantSession(
+      body: CreateAssistantSessionRequest,
+    ): Promise<CreateAssistantSessionResponse> {
+      return await postJson(`${normalizedBaseUrl}/assistant/session/create`, body);
+    },
+    async deleteWorkspace(body: DeleteWorkspaceRequest): Promise<DeleteWorkspaceResponse> {
+      return await postJson(`${normalizedBaseUrl}/workspace/delete`, body);
+    },
     async ensureAssistantSession(
       body: EnsureAssistantSessionRequest,
     ): Promise<EnsureAssistantSessionResponse> {

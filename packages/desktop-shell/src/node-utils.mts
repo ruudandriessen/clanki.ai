@@ -1,4 +1,4 @@
-import { spawnSync, type ChildProcess } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 import net from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
 
@@ -80,34 +80,6 @@ export async function waitForPort(port: number, options: WaitOptions = {}): Prom
 export function resolveBunBinary(): string {
   const configuredPath = process.env.BUN_BINARY?.trim();
   return configuredPath || "bun";
-}
-
-export function runCommand(program: string, args: string[], errorContext?: string): string {
-  const output = spawnSync(program, args, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-
-  if (output.error) {
-    const message = errorContext
-      ? `${errorContext}: ${output.error.message}`
-      : `Failed to run ${program}: ${output.error.message}`;
-    throw new Error(message);
-  }
-
-  if (output.status === 0) {
-    return output.stdout;
-  }
-
-  const stderr = output.stderr.trim();
-  const stdout = output.stdout.trim();
-  const details = stderr || stdout || `exit status ${output.status}`;
-
-  if (errorContext) {
-    throw new Error(`${errorContext}: ${details}`);
-  }
-
-  throw new Error(`Command ${program} failed: ${details}`);
 }
 
 export async function stopChildProcess(child: ChildProcess | null | undefined): Promise<void> {

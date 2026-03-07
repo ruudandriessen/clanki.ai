@@ -9,6 +9,7 @@ type DesktopRunnerBridge = {
     title: string,
     repoUrl: string,
   ) => Promise<CreateDesktopRunnerSessionResponse>;
+  deleteRunnerWorkspace: (workspaceDirectory: string) => Promise<void>;
   promptRunnerTask: (args: {
     backendBaseUrl: string;
     callbackToken: string;
@@ -38,6 +39,10 @@ export async function createDesktopRunnerSession(
   repoUrl: string,
 ): Promise<{ runnerType: string; sessionId: string; workspaceDirectory: string }> {
   return await getDesktopRunnerBridge().createRunnerSession(title, repoUrl);
+}
+
+export async function deleteDesktopRunnerWorkspace(workspaceDirectory: string): Promise<void> {
+  await getDesktopRunnerBridge().deleteRunnerWorkspace(workspaceDirectory);
 }
 
 export async function promptDesktopRunnerTask(args: {

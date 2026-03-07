@@ -7,3 +7,4 @@ export * from "./task-assistant-session";
 export * from "./opencode";
 export * from "./opencode-models";
 export * from "./opencode";
+export * from "./workspace";

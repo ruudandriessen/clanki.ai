@@ -26,7 +26,7 @@ import {
   getPullRequestStatus,
   type PullRequestStatus,
 } from "../../lib/pull-request";
-import { createDesktopRunnerSession } from "@/lib/desktop-runner";
+import { createDesktopRunnerSession, deleteDesktopRunnerWorkspace } from "@/lib/desktop-runner";
 
 type TaskSidebarGroup = "merged" | "needsAction" | "openNoPr" | "awaitingReview" | "running";
 
@@ -217,11 +217,17 @@ export function TaskList() {
     }
 
     const deletingTaskId = targetTask.id;
+    const taskRecord = tasks.find((candidateTask) => candidateTask.id === deletingTaskId);
+    const workspacePath = taskRecord?.workspace_path?.trim();
 
     setDeletingTask(true);
     setDeleteError(null);
 
     try {
+      if (taskRecord?.runner_type === "local-worktree" && workspacePath) {
+        await deleteDesktopRunnerWorkspace(workspacePath);
+      }
+
       tasksCollection.delete(deletingTaskId);
       setTaskToDelete((currentTask) => (currentTask?.id === deletingTaskId ? null : currentTask));
     } catch (error) {

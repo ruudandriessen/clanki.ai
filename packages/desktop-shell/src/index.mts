@@ -16,6 +16,10 @@ function registerIpcHandlers(): void {
     return await desktopRunnerController.createRunnerSession(args);
   });
 
+  ipcMain.handle("desktop-runner:delete-workspace", async (_event, args) => {
+    return await desktopRunnerController.deleteRunnerWorkspace(args);
+  });
+
   ipcMain.handle("desktop-runner:prompt-task", async (_event, args) => {
     return await desktopRunnerController.promptRunnerTask(args);
   });
