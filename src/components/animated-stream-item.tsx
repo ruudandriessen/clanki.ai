@@ -1,4 +1,5 @@
-import { type ReactNode, useEffect, useLayoutEffect, useRef } from "react";
+import { type ReactNode } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 interface AnimatedStreamItemProps {
@@ -7,111 +8,28 @@ interface AnimatedStreamItemProps {
   delayMs?: number;
 }
 
-const ENTER_DURATION_MS = 240;
-const RESIZE_DURATION_MS = 220;
-const useSafeLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+const ENTER_DURATION_SECONDS = 0.24;
 
 export function AnimatedStreamItem({ children, className, delayMs = 0 }: AnimatedStreamItemProps) {
-  const outerRef = useRef<HTMLDivElement>(null);
-  const innerRef = useRef<HTMLDivElement>(null);
-  const enteredRef = useRef(false);
-  const resizeTimeoutRef = useRef<number | null>(null);
-
-  useSafeLayoutEffect(() => {
-    const outer = outerRef.current;
-    const inner = innerRef.current;
-
-    if (!outer || !inner) {
-      return;
-    }
-
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      enteredRef.current = true;
-      outer.style.height = "auto";
-      outer.style.opacity = "1";
-      outer.style.transform = "none";
-      return;
-    }
-
-    let enterTimeout: number | null = null;
-    let firstFrame: number | null = null;
-    let secondFrame: number | null = null;
-
-    const finishEnter = () => {
-      enteredRef.current = true;
-      outer.style.height = "auto";
-      outer.style.transitionDelay = "0ms";
-    };
-
-    outer.style.height = "0px";
-    outer.style.opacity = "0";
-    outer.style.transform = "translateY(12px) scale(0.985)";
-    outer.style.transitionDelay = `${delayMs}ms`;
-
-    firstFrame = window.requestAnimationFrame(() => {
-      secondFrame = window.requestAnimationFrame(() => {
-        outer.style.height = `${inner.getBoundingClientRect().height}px`;
-        outer.style.opacity = "1";
-        outer.style.transform = "translateY(0) scale(1)";
-      });
-    });
-
-    enterTimeout = window.setTimeout(finishEnter, ENTER_DURATION_MS + delayMs + 32);
-
-    const resizeObserver = new ResizeObserver(() => {
-      if (!enteredRef.current) {
-        return;
-      }
-
-      const currentHeight = outer.getBoundingClientRect().height;
-      const nextHeight = inner.getBoundingClientRect().height;
-
-      if (Math.abs(currentHeight - nextHeight) < 1) {
-        return;
-      }
-
-      if (resizeTimeoutRef.current !== null) {
-        window.clearTimeout(resizeTimeoutRef.current);
-      }
-
-      outer.style.height = `${currentHeight}px`;
-
-      window.requestAnimationFrame(() => {
-        outer.style.height = `${nextHeight}px`;
-      });
-
-      resizeTimeoutRef.current = window.setTimeout(() => {
-        outer.style.height = "auto";
-        resizeTimeoutRef.current = null;
-      }, RESIZE_DURATION_MS + 24);
-    });
-
-    resizeObserver.observe(inner);
-
-    return () => {
-      resizeObserver.disconnect();
-
-      if (firstFrame !== null) {
-        window.cancelAnimationFrame(firstFrame);
-      }
-
-      if (secondFrame !== null) {
-        window.cancelAnimationFrame(secondFrame);
-      }
-
-      if (enterTimeout !== null) {
-        window.clearTimeout(enterTimeout);
-      }
-
-      if (resizeTimeoutRef.current !== null) {
-        window.clearTimeout(resizeTimeoutRef.current);
-      }
-    };
-  }, [delayMs]);
+  const shouldReduceMotion = useReducedMotion();
 
   return (
-    <div ref={outerRef} className={cn("stream-item-animate overflow-hidden", className)}>
-      <div ref={innerRef}>{children}</div>
-    </div>
+    <motion.div
+      layout
+      className={cn("overflow-hidden", className)}
+      initial={shouldReduceMotion ? false : { opacity: 0, y: 12, scale: 0.985 }}
+      animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
+      transition={{
+        layout: {
+          duration: 0.22,
+          ease: [0.2, 0.8, 0.2, 1],
+        },
+        duration: ENTER_DURATION_SECONDS,
+        ease: [0.16, 1, 0.3, 1],
+        delay: delayMs / 1000,
+      }}
+    >
+      {children}
+    </motion.div>
   );
 }

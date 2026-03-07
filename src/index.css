@@ -113,23 +113,6 @@ h6 {
 }
 
 @layer utilities {
-  .stream-item-animate {
-    transition:
-      height 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
-      opacity 240ms cubic-bezier(0.16, 1, 0.3, 1),
-      transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
-    transform-origin: top left;
-    will-change: height, opacity, transform;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .stream-item-animate {
-      transition: none;
-      transform: none !important;
-      opacity: 1 !important;
-      height: auto !important;
-    }
-  }
 }
 
 @layer components {
