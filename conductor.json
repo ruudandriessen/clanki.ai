@@ -1,7 +1,7 @@
 {
   "scripts": {
     "setup": "./scripts/setup-conductor-worktree.sh",
-    "run": "bun run tauri:dev",
+    "run": "node_modules/.bin/concurrently \"bun run runner:dev\" \"bun run tauri:dev\"",
     "archive": "rm -rf "
   }
 }

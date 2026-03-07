@@ -1,0 +1,14 @@
+{
+  "name": "@clanki/runner",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "bun run ./src/cli.ts"
+  },
+  "dependencies": {
+    "@opencode-ai/sdk": "^1.2.1"
+  }
+}
