@@ -1,11 +1,15 @@
 {
   "name": "clanki",
   "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
+    "runner:dev": "bun --cwd packages/runner run dev",
     "tauri": "tauri",
     "tauri:build": "tauri build",
     "tauri:dev": "tauri dev",
@@ -59,6 +63,7 @@
     "@vitejs/plugin-react": "^4.3.0",
     "babel-plugin-react-compiler": "^1.0.0",
     "bun-types": "^1.3.8",
+    "concurrently": "^9.2.1",
     "drizzle-kit": "^0.31.8",
     "knip": "^5.82.1",
     "oxfmt": "^0.27.0",

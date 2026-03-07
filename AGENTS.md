@@ -163,6 +163,12 @@ The local app shell should be built with `Tauri`, not as a pure PWA.
 7. Replace sandbox-only preview, callback, and background-execution assumptions with local equivalents.
 8. Add recovery and cleanup for crashed processes, stale worktrees, and port conflicts.
 
+### Migration stance
+
+- Do not spend time preserving Vercel sandbox compatibility for new runner work unless the user explicitly asks for it.
+- Prefer direct local-runner implementations and clear runner-specific contracts over temporary compatibility layers around sandbox primitives.
+- When migrating legacy sandbox code, optimize for removal and replacement rather than carrying sandbox concepts forward into new packages or APIs.
+
 ### Remote-ready constraints
 
 - Do not hardcode local-only assumptions into the domain model if they would block a remote runner later.
@@ -174,4 +180,4 @@ The local app shell should be built with `Tauri`, not as a pure PWA.
 
 - Do not introduce broad new configuration surfaces unless a concrete product need requires it.
 - Prefer direct defaults for local execution over adding feature flags for every behavior.
-- When migrating legacy sandbox code, prioritize extracting interfaces first, then swapping implementations, then renaming persisted fields where needed.
+- When migrating legacy sandbox code, prioritize runner-first replacements and only keep compatibility shims when they unblock an immediate user-facing requirement.
