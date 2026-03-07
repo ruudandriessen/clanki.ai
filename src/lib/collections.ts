@@ -33,6 +33,7 @@ const taskSchema = z.object({
   created_at: z.bigint(),
   updated_at: z.bigint(),
 });
+export type Task = z.infer<typeof taskSchema>;
 
 const pullRequestSchema = z.object({
   id: z.string(),
@@ -51,6 +52,7 @@ const pullRequestSchema = z.object({
   checks_conclusion: z.string().nullable().optional(),
   checks_updated_at: z.bigint().nullable().optional(),
 });
+export type PullRequest = z.infer<typeof pullRequestSchema>;
 
 const taskMessageSchema = z.object({
   id: z.string(),

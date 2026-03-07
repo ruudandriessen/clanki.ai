@@ -1,23 +1,37 @@
 import { useEffect } from "react";
+import { useLiveQuery } from "@tanstack/react-db";
 import { useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { useRunnerSessions } from "@/lib/runner-sessions";
+import { NewTaskButton } from "@/components/new-task-button";
+import { projectsCollection, pullRequestsCollection, tasksCollection } from "@/lib/collections";
+import { getFirstSidebarTaskId } from "@/lib/task-sidebar";
 
 export function RunnerHomePage() {
   const navigate = useNavigate();
-  const { error, isDesktopApp, isLoading, sessions } = useRunnerSessions();
+  const { data: tasks, isLoading: isTasksLoading } = useLiveQuery((query) =>
+    query.from({ t: tasksCollection }).orderBy(({ t }) => t.updated_at, "desc"),
+  );
+  const { data: projects } = useLiveQuery((query) =>
+    query.from({ p: projectsCollection }).orderBy(({ p }) => p.created_at, "asc"),
+  );
+  const { data: pullRequests, isLoading: isPullRequestsLoading } = useLiveQuery((query) =>
+    query.from({ pr: pullRequestsCollection }).orderBy(({ pr }) => pr.opened_at, "desc"),
+  );
+
+  const isLoading = isTasksLoading || isPullRequestsLoading;
+  const firstTaskId = getFirstSidebarTaskId({ tasks, projects, pullRequests });
 
   useEffect(() => {
-    if (isLoading || sessions.length === 0) {
+    if (isLoading || !firstTaskId) {
       return;
     }
 
     navigate({
-      to: "/runner/$sessionId",
-      params: { sessionId: sessions[0].id },
+      to: "/tasks/$taskId",
+      params: { taskId: firstTaskId },
       replace: true,
     });
-  }, [isLoading, navigate, sessions]);
+  }, [firstTaskId, isLoading, navigate]);
 
   if (isLoading) {
     return (
@@ -27,16 +41,18 @@ export function RunnerHomePage() {
     );
   }
 
+  if (firstTaskId) {
+    return (
+      <div className="flex h-full items-center justify-center text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full items-center justify-center px-4">
-      <div className="neo-surface max-w-lg rounded-[var(--radius-md)] p-6 text-center">
-        <p className="text-base font-semibold text-foreground">
-          {isDesktopApp ? "Start a session from the sidebar" : "Runner sessions are desktop-only"}
-        </p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {error ??
-            "The current runner flow is intentionally minimal: pick or create a session in the sidebar to continue."}
-        </p>
+      <div className="neo-surface rounded-[var(--radius-md)] p-6 text-center">
+        <NewTaskButton size="default" />
       </div>
     </div>
   );

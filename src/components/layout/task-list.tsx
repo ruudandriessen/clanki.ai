@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useLiveQuery } from "@tanstack/react-db";
 import {
   CheckCheck,
@@ -7,10 +7,10 @@ import {
   GitPullRequest,
   Loader2,
   MessageSquare,
-  Plus,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NewTaskButton } from "@/components/new-task-button";
 import {
   Dialog,
   DialogContent,
@@ -21,73 +21,12 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "../../lib/utils";
 import { projectsCollection, pullRequestsCollection, tasksCollection } from "../../lib/collections";
+import { deleteDesktopRunnerWorkspace } from "@/lib/desktop-runner";
 import {
-  extractOrgRepoFromUrl,
-  getPullRequestStatus,
-  type PullRequestStatus,
-} from "../../lib/pull-request";
-import { createDesktopRunnerSession, deleteDesktopRunnerWorkspace } from "@/lib/desktop-runner";
-
-type TaskSidebarGroup = "merged" | "needsAction" | "openNoPr" | "awaitingReview" | "running";
-
-const SIDEBAR_GROUPS: Array<{ key: TaskSidebarGroup; label: string }> = [
-  { key: "merged", label: "Merged" },
-  { key: "needsAction", label: "Needs action" },
-  { key: "openNoPr", label: "Open (no PR)" },
-  { key: "awaitingReview", label: "Awaiting review" },
-  { key: "running", label: "Running" },
-];
-
-const FAILING_CHECK_CONCLUSIONS = new Set([
-  "failure",
-  "cancelled",
-  "timed_out",
-  "action_required",
-  "startup_failure",
-  "stale",
-]);
-
-function hasFailingChecks(checksConclusion: string | null | undefined): boolean {
-  if (!checksConclusion) {
-    return false;
-  }
-
-  return FAILING_CHECK_CONCLUSIONS.has(checksConclusion);
-}
-
-function getSidebarGroupKey(params: {
-  taskStatus: string;
-  pullRequestStatus: PullRequestStatus | null;
-  reviewState: string | null | undefined;
-  checksConclusion: string | null | undefined;
-  hasError: boolean;
-}): TaskSidebarGroup {
-  const { taskStatus, pullRequestStatus, reviewState, checksConclusion, hasError } = params;
-
-  if (taskStatus === "running") {
-    return "running";
-  }
-
-  if (pullRequestStatus === "merged") {
-    return "merged";
-  }
-
-  if (
-    hasError ||
-    reviewState === "changes_requested" ||
-    hasFailingChecks(checksConclusion) ||
-    pullRequestStatus === "closed" ||
-    pullRequestStatus === "draft"
-  ) {
-    return "needsAction";
-  }
-
-  if (!pullRequestStatus) {
-    return "openNoPr";
-  }
-
-  return "awaitingReview";
-}
+  buildTaskSidebarGroups,
+  TASK_SIDEBAR_GROUPS,
+  type TaskSidebarGroup,
+} from "@/lib/task-sidebar";
 
 function renderGroupIcon(group: TaskSidebarGroup) {
   switch (group) {
@@ -115,88 +54,14 @@ export function TaskList() {
     query.from({ pr: pullRequestsCollection }).orderBy(({ pr }) => pr.opened_at, "desc"),
   );
 
-  const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const [creating, setCreating] = useState(false);
   const [deletingTask, setDeletingTask] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const isSidebarLoading = isTasksLoading || isPullRequestsLoading;
 
-  const [defaultProject] = projects;
   const projectsById = new Map(projects.map((project) => [project.id, project]));
-  const latestPullRequestByKey = new Map<string, (typeof pullRequests)[number]>();
-
-  for (const pullRequest of pullRequests) {
-    if (!pullRequest.branch) {
-      continue;
-    }
-
-    const pullRequestKey = `${pullRequest.repository}::${pullRequest.branch}`;
-    if (!latestPullRequestByKey.has(pullRequestKey)) {
-      latestPullRequestByKey.set(pullRequestKey, pullRequest);
-    }
-  }
-
-  const groupedTasks: Record<TaskSidebarGroup, Array<(typeof tasks)[number]>> = {
-    merged: [],
-    needsAction: [],
-    openNoPr: [],
-    awaitingReview: [],
-    running: [],
-  };
-
-  for (const task of tasks) {
-    const projectRepository = extractOrgRepoFromUrl(
-      task.project_id ? projectsById.get(task.project_id)?.repo_url : null,
-    );
-    const pullRequest =
-      projectRepository && task.branch
-        ? (latestPullRequestByKey.get(`${projectRepository}::${task.branch}`) ?? null)
-        : null;
-    const pullRequestStatus = pullRequest ? getPullRequestStatus(pullRequest) : null;
-    const groupKey = getSidebarGroupKey({
-      taskStatus: task.status,
-      pullRequestStatus,
-      reviewState: pullRequest?.review_state,
-      checksConclusion: pullRequest?.checks_conclusion,
-      hasError: (task.error?.trim().length ?? 0) > 0,
-    });
-    groupedTasks[groupKey].push(task);
-  }
-
-  async function handleNewTask() {
-    const repoUrl = defaultProject?.repo_url;
-    if (creating || !defaultProject || !repoUrl) return;
-    setCreating(true);
-    try {
-      const title = "New task";
-      const response = await createDesktopRunnerSession(title, repoUrl);
-
-      const now = Date.now();
-      const task = {
-        id: crypto.randomUUID(),
-        organization_id: defaultProject.organization_id,
-        project_id: defaultProject.id,
-        title,
-        status: "open",
-        stream_id: null,
-        branch: null,
-        runner_type: response.runnerType,
-        runner_session_id: response.sessionId,
-        workspace_path: response.workspaceDirectory,
-        error: null,
-        created_at: BigInt(now),
-        updated_at: BigInt(now),
-      };
-
-      const tx = tasksCollection.insert(task);
-      navigate({ to: "/tasks/$taskId", params: { taskId: task.id } });
-      await tx.isPersisted.promise;
-    } finally {
-      setCreating(false);
-    }
-  }
+  const groupedTasks = buildTaskSidebarGroups({ tasks, projects, pullRequests });
 
   function handleDeleteDialogOpenChange(open: boolean) {
     if (deletingTask) {
@@ -243,25 +108,16 @@ export function TaskList() {
         <p className="text-[11px] font-bold text-foreground/90 uppercase tracking-[0.08em]">
           Tasks
         </p>
-        <Button
-          type="button"
+        <NewTaskButton
           variant="ghost"
           size="icon-xs"
-          onClick={handleNewTask}
-          disabled={creating || !defaultProject}
+          iconOnly
           className="text-muted-foreground shadow-none hover:border-transparent hover:shadow-none"
-          title="New task"
-        >
-          {creating ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <Plus className="w-3.5 h-3.5" />
-          )}
-        </Button>
+        />
       </div>
 
       <nav className="neo-scroll flex-1 space-y-3 overflow-x-hidden overflow-y-auto px-2 pb-24 md:pb-2">
-        {SIDEBAR_GROUPS.map((group) => {
+        {TASK_SIDEBAR_GROUPS.map((group) => {
           const tasksInGroup = groupedTasks[group.key];
 
           return (

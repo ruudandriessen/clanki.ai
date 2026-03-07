@@ -33,8 +33,7 @@ export function RunnerSessionPage({ sessionId }: { sessionId: string }) {
             {session.title}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            This route is intentionally basic. It proves the desktop app can list and create local
-            runner sessions without going through the existing task backend flow.
+            This session is ready in the local runner workspace shown below.
           </p>
         </section>
 
