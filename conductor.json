@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "setup": "bun i && mkdir dist && cp $CONDUCTOR_ROOT_PATH/.env .env",
+    "setup": "./scripts/setup-conductor-worktree.sh",
     "run": "bun run tauri:dev",
     "archive": "rm -rf "
   }
