@@ -25,17 +25,6 @@ export function parseOptionalTimestamp(value: unknown): number | undefined {
   return Math.trunc(value);
 }
 
-export function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error) {
-    const trimmed = error.message.trim();
-    if (trimmed.length > 0) {
-      return trimmed;
-    }
-  }
-
-  return fallback;
-}
-
 export function badRequest(message: string): never {
   throw new Error(message);
 }
@@ -53,9 +42,5 @@ export function conflict(message: string): never {
 }
 
 export function badGateway(message: string): never {
-  throw new Error(message);
-}
-
-export function internalError(message: string): never {
   throw new Error(message);
 }

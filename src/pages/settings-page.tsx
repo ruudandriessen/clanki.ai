@@ -7,21 +7,8 @@ import { Input } from "@/components/ui/input";
 import { AddProjectDialog } from "../components/add-project-dialog";
 import { useOrganization } from "../components/layout/use-organization";
 import { projectsCollection, providerCredentialsCollection } from "../lib/collections";
-import {
-  completeProviderOauth,
-  deleteProviderCredential,
-  startProviderOauth,
-  upsertProviderCredential,
-} from "@/server/functions/settings";
+import { deleteProviderCredential, upsertProviderCredential } from "@/server/functions/settings";
 import { updateProjectRunCommand, updateProjectSetupCommand } from "@/server/functions/projects";
-
-type ProviderOauthStart = {
-  attemptId: string;
-  url: string;
-  instructions: string;
-  method: "auto" | "code";
-  expiresAt: number;
-};
 
 const OPENAI_PROVIDER = "openai";
 
@@ -44,9 +31,6 @@ export function SettingsPage() {
   const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [savingKey, setSavingKey] = useState(false);
   const [removingKey, setRemovingKey] = useState(false);
-  const [startingOauth, setStartingOauth] = useState(false);
-  const [completingOauth, setCompletingOauth] = useState(false);
-  const [oauthAttempt, setOauthAttempt] = useState<ProviderOauthStart | null>(null);
   const [providerError, setProviderError] = useState<string | null>(null);
   const [projectSetupDrafts, setProjectSetupDrafts] = useState<Record<string, string>>({});
   const [projectRunDrafts, setProjectRunDrafts] = useState<Record<string, string>>({});
@@ -118,48 +102,10 @@ export function SettingsPage() {
     setProviderError(null);
     try {
       await deleteProviderCredential({ data: { provider: OPENAI_PROVIDER } });
-      setOauthAttempt(null);
     } catch (error) {
       setProviderError(error instanceof Error ? error.message : "Failed to remove OpenAI key");
     } finally {
       setRemovingKey(false);
-    }
-  }
-
-  async function handleStartOauth() {
-    if (startingOauth) {
-      return;
-    }
-
-    setStartingOauth(true);
-    setProviderError(null);
-    try {
-      const attempt = await startProviderOauth({ data: { provider: OPENAI_PROVIDER } });
-      setOauthAttempt(attempt);
-      window.open(attempt.url, "_blank", "noopener,noreferrer");
-    } catch (error) {
-      setProviderError(error instanceof Error ? error.message : "Failed to start OAuth flow");
-    } finally {
-      setStartingOauth(false);
-    }
-  }
-
-  async function handleCompleteOauth() {
-    if (!oauthAttempt || completingOauth) {
-      return;
-    }
-
-    setCompletingOauth(true);
-    setProviderError(null);
-    try {
-      await completeProviderOauth({
-        data: { provider: OPENAI_PROVIDER, attemptId: oauthAttempt.attemptId },
-      });
-      setOauthAttempt(null);
-    } catch (error) {
-      setProviderError(error instanceof Error ? error.message : "OAuth flow is not complete yet");
-    } finally {
-      setCompletingOauth(false);
     }
   }
 
@@ -309,39 +255,9 @@ export function SettingsPage() {
 
             <div className="space-y-2 rounded-[var(--radius-sm)] border border-border bg-muted/60 p-3 shadow-[2px_2px_0_0_var(--color-border)]">
               <p className="text-xs text-muted-foreground">
-                Prefer ChatGPT Plus/Pro instead of an API key? Use the OAuth flow below.
+                Provider OAuth now belongs to the local runner flow. Configure an API key here for
+                backend-managed credentials.
               </p>
-              <div className="flex flex-col gap-2 md:flex-row">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void handleStartOauth()}
-                  disabled={startingOauth}
-                >
-                  {startingOauth ? "Starting..." : "Connect ChatGPT Plus/Pro"}
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => void handleCompleteOauth()}
-                  disabled={!oauthAttempt || completingOauth}
-                >
-                  {completingOauth ? "Checking..." : "I completed sign-in"}
-                </Button>
-              </div>
-
-              {oauthAttempt ? (
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <p>{oauthAttempt.instructions}</p>
-                  <a
-                    href={oauthAttempt.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline underline-offset-2"
-                  >
-                    Open sign-in page
-                  </a>
-                </div>
-              ) : null}
             </div>
 
             {providerError ? <p className="text-xs text-destructive">{providerError}</p> : null}
@@ -391,7 +307,7 @@ export function SettingsPage() {
 
                       <div className="space-y-2">
                         <p className="text-xs text-muted-foreground">
-                          Setup command (runs after clone on a new sandbox)
+                          Setup command (kept for the future runner flow)
                         </p>
                         <div className="flex flex-col gap-2 md:flex-row">
                           <Input
@@ -431,7 +347,7 @@ export function SettingsPage() {
 
                       <div className="space-y-2">
                         <p className="text-xs text-muted-foreground">
-                          Run command + port (starts after setup and stores preview URL)
+                          Run command + port (kept as future runner metadata)
                         </p>
                         <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_8rem_auto]">
                           <Input

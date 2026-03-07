@@ -1,15 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLiveQuery, eq } from "@tanstack/react-db";
-import {
-  AlertCircle,
-  ChevronRight,
-  ExternalLink,
-  Loader2,
-  MessageSquare,
-  Monitor,
-  Send,
-  Wrench,
-} from "lucide-react";
+import { AlertCircle, ChevronRight, ExternalLink, Loader2, Send, Wrench } from "lucide-react";
 import {
   TaskStreamActivity,
   type TaskStreamActivityIcon,
@@ -77,7 +68,6 @@ interface TaskPageProps {
   title: string;
   error: string | null;
   isRunning: boolean;
-  previewUrl: string | null;
 }
 
 function getPullRequestButtonClasses(status: "open" | "merged" | "closed" | "draft"): string {
@@ -159,12 +149,10 @@ export function TaskPage({
   pullRequest,
   error,
   isRunning,
-  previewUrl,
 }: TaskPageProps) {
   const displayTitle = branchName ?? title;
   const [input, setInput] = useSessionState(sessionStateKeys.taskInput(taskId), "");
   const [sending, setSending] = useState(false);
-  const [viewMode, setViewMode] = useState<"chat" | "preview">("chat");
   const runEvents = useTaskEventStream({ taskId, streamId });
   const [now, setNow] = useState(() => Date.now());
   const messageListRef = useRef<HTMLDivElement>(null);
@@ -305,33 +293,6 @@ export function TaskPage({
             </div>
           </div>
           <div className="shrink-0 flex items-center gap-2">
-            {previewUrl ? (
-              <div className="flex rounded-md border border-border bg-background p-0.5">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => setViewMode("chat")}
-                  className={cn("h-7 gap-1.5 rounded-sm px-2", viewMode === "chat" && "bg-muted")}
-                >
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  <span>Chat</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => setViewMode("preview")}
-                  className={cn(
-                    "h-7 gap-1.5 rounded-sm px-2",
-                    viewMode === "preview" && "bg-muted",
-                  )}
-                >
-                  <Monitor className="h-3.5 w-3.5" />
-                  <span>Preview</span>
-                </Button>
-              </div>
-            ) : null}
             {pullRequest ? (
               <div className="space-y-1 text-left md:flex md:items-center md:gap-2 md:space-y-0 md:text-right">
                 <Button
@@ -403,126 +364,108 @@ export function TaskPage({
         </div>
       ) : null}
 
-      {viewMode === "preview" && previewUrl ? (
-        <iframe
-          src={previewUrl}
-          className="flex-1 w-full border-0"
-          title="Preview"
-          // oxlint-disable-next-line react/iframe-missing-sandbox TODO think through security model
-          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
-        />
-      ) : (
-        <>
-          <div
-            ref={messageListRef}
-            onScroll={handleMessageListScroll}
-            className="neo-scroll flex-1 overflow-y-auto"
-          >
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin" />
-              </div>
-            ) : showEmptyState ? (
-              <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-muted-foreground">
-                <p className="text-sm">No messages yet</p>
-                <p className="text-xs">Send a message to start an OpenCode run.</p>
-              </div>
-            ) : (
-              <div className="space-y-4 px-4 py-4 md:px-6">
-                {timelineEntries.map((entry) => {
-                  if (entry.type === "activity") {
-                    return <TaskStreamActivity key={entry.id} items={[entry.item]} />;
-                  }
+      <div
+        ref={messageListRef}
+        onScroll={handleMessageListScroll}
+        className="neo-scroll flex-1 overflow-y-auto"
+      >
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+          </div>
+        ) : showEmptyState ? (
+          <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-muted-foreground">
+            <p className="text-sm">No messages yet</p>
+            <p className="text-xs">Send a message to start a task discussion.</p>
+          </div>
+        ) : (
+          <div className="space-y-4 px-4 py-4 md:px-6">
+            {timelineEntries.map((entry) => {
+              if (entry.type === "activity") {
+                return <TaskStreamActivity key={entry.id} items={[entry.item]} />;
+              }
 
-                  if (entry.type === "activity-group") {
-                    return <CollapsedActivityGroup key={entry.id} items={entry.items} />;
-                  }
+              if (entry.type === "activity-group") {
+                return <CollapsedActivityGroup key={entry.id} items={entry.items} />;
+              }
 
-                  if (entry.type === "assistant-preview") {
-                    return (
-                      <div
-                        key={entry.id}
-                        className="max-w-3xl rounded-[var(--radius-md)] border border-border/70 bg-card/80 p-4"
-                      >
-                        <MarkdownContent content={entry.content} className="text-foreground" />
-                      </div>
-                    );
-                  }
-
-                  const isUserMessage = entry.role === "user";
-                  return (
-                    <div key={entry.id} className={isUserMessage ? "flex justify-end" : ""}>
-                      <div
-                        className={`${
-                          isUserMessage
-                            ? "w-fit rounded-[var(--radius-md)] border border-border/60 bg-primary/95 px-4 py-2.5 text-primary-foreground"
-                            : "max-w-3xl rounded-[var(--radius-md)] border border-border/70 bg-card/80 px-4 py-2.5 text-foreground"
-                        }`}
-                      >
-                        {isUserMessage ? (
-                          <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                            {entry.content}
-                          </div>
-                        ) : (
-                          <MarkdownContent content={entry.content} />
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {isRunning && (
-                  <div className="flex items-center gap-2 py-1">
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.3s]" />
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.15s]" />
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50" />
-                    <span className="text-xs tabular-nums text-muted-foreground">
-                      {formatDuration(runningDurationMs ?? 0)}
-                    </span>
+              if (entry.type === "assistant-draft") {
+                return (
+                  <div
+                    key={entry.id}
+                    className="max-w-3xl rounded-[var(--radius-md)] border border-border/70 bg-card/80 p-4"
+                  >
+                    <MarkdownContent content={entry.content} className="text-foreground" />
                   </div>
-                )}
+                );
+              }
 
-                <div ref={messagesEndRef} />
+              const isUserMessage = entry.role === "user";
+              return (
+                <div key={entry.id} className={isUserMessage ? "flex justify-end" : ""}>
+                  <div
+                    className={`${
+                      isUserMessage
+                        ? "w-fit rounded-[var(--radius-md)] border border-border/60 bg-primary/95 px-4 py-2.5 text-primary-foreground"
+                        : "max-w-3xl rounded-[var(--radius-md)] border border-border/70 bg-card/80 px-4 py-2.5 text-foreground"
+                    }`}
+                  >
+                    {isUserMessage ? (
+                      <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                        {entry.content}
+                      </div>
+                    ) : (
+                      <MarkdownContent content={entry.content} />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {isRunning && (
+              <div className="flex items-center gap-2 py-1">
+                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.3s]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.15s]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50" />
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {formatDuration(runningDurationMs ?? 0)}
+                </span>
               </div>
             )}
-          </div>
 
-          <div className="shrink-0 border-t border-border bg-card p-4">
-            <div className="flex items-end gap-2">
-              <Textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={
-                  isRunning ? "Wait for the current run to finish..." : "Send a message..."
-                }
-                rows={1}
-                disabled={isRunning || sending}
-                className="min-h-[42px] max-h-[200px] flex-1 resize-none rounded-[var(--radius-md)] px-4 py-2.5 text-base md:text-sm"
-                style={{ height: "auto" }}
-                onInput={(e) => {
-                  const target = e.target as HTMLTextAreaElement;
-                  target.style.height = "auto";
-                  target.style.height = Math.min(target.scrollHeight, 200) + "px";
-                }}
-              />
-              <Button
-                type="button"
-                onClick={() => void handleSend()}
-                disabled={!input.trim() || sending || isRunning}
-                className="h-[42px] w-[42px] shrink-0 rounded-[var(--radius-md)] p-0"
-              >
-                {sending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+            <div ref={messagesEndRef} />
           </div>
-        </>
-      )}
+        )}
+      </div>
+
+      <div className="shrink-0 border-t border-border bg-card p-4">
+        <div className="flex items-end gap-2">
+          <Textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={isRunning ? "Wait for the current run to finish..." : "Send a message..."}
+            rows={1}
+            disabled={isRunning || sending}
+            className="min-h-[42px] max-h-[200px] flex-1 resize-none rounded-[var(--radius-md)] px-4 py-2.5 text-base md:text-sm"
+            style={{ height: "auto" }}
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = "auto";
+              target.style.height = Math.min(target.scrollHeight, 200) + "px";
+            }}
+          />
+          <Button
+            type="button"
+            onClick={() => void handleSend()}
+            disabled={!input.trim() || sending || isRunning}
+            className="h-[42px] w-[42px] shrink-0 rounded-[var(--radius-md)] p-0"
+          >
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -558,7 +501,7 @@ type TimelineEntry =
       items: TaskStreamActivityItem[];
     }
   | {
-      type: "assistant-preview";
+      type: "assistant-draft";
       id: string;
       createdAt: number;
       content: string;
@@ -718,7 +661,7 @@ function buildChronologicalTimeline(args: {
     sortable.push({
       order,
       item: {
-        type: "assistant-preview",
+        type: "assistant-draft",
         id: `stream-assistant-${args.streamAssistantPreview.createdAt}`,
         createdAt: args.streamAssistantPreview.createdAt,
         content: args.streamAssistantPreview.content,
@@ -814,8 +757,8 @@ function taskLifecycleToActivityItem(
 
 function getLifecyclePhaseLabel(phase: TaskLifecycleEventPayload["phase"]): string {
   switch (phase) {
-    case "sandbox":
-      return "Sandbox";
+    case "runner":
+      return "Runner";
     case "clone":
       return "Git clone";
     case "setup":
@@ -833,7 +776,7 @@ function getLifecycleActivityIcon(lifecycle: TaskLifecycleEventPayload): TaskStr
       return "terminal";
     case "assistant":
       return lifecycle.status === "completed" ? "success" : "status";
-    case "sandbox":
+    case "runner":
     default:
       return "status";
   }
@@ -1126,7 +1069,7 @@ function formatObjectDetailValue(value: Record<string, unknown>, maxLength: numb
     return null;
   }
 
-  const preview = entries
+  const summary = entries
     .slice(0, 5)
     .map(([key, entryValue]) => {
       const formattedValue = formatDetailValue(entryValue, 90);
@@ -1138,12 +1081,12 @@ function formatObjectDetailValue(value: Record<string, unknown>, maxLength: numb
     })
     .filter((entry): entry is string => entry !== null);
 
-  if (preview.length === 0) {
+  if (summary.length === 0) {
     return null;
   }
 
   const suffix = entries.length > 5 ? ", ..." : "";
-  return truncateText(`${preview.join(", ")}${suffix}`, maxLength);
+  return truncateText(`${summary.join(", ")}${suffix}`, maxLength);
 }
 
 function isHiddenDetailKey(key: string): boolean {

@@ -2,28 +2,6 @@ import { desc, eq } from "drizzle-orm";
 import type { AppDb } from "../../db/client";
 import * as schema from "../../db/schema";
 
-export async function markTaskRunning(args: {
-  db: AppDb;
-  taskId: string;
-  sandboxId: string;
-}): Promise<void> {
-  await args.db
-    .update(schema.tasks)
-    .set({ sandboxId: args.sandboxId, status: "running", previewUrl: null, updatedAt: Date.now() })
-    .where(eq(schema.tasks.id, args.taskId));
-}
-
-export async function setTaskPreviewUrl(args: {
-  db: AppDb;
-  taskId: string;
-  previewUrl: string;
-}): Promise<void> {
-  await args.db
-    .update(schema.tasks)
-    .set({ previewUrl: args.previewUrl, updatedAt: Date.now() })
-    .where(eq(schema.tasks.id, args.taskId));
-}
-
 export async function completeTask(args: { db: AppDb; taskId: string }): Promise<void> {
   await args.db
     .update(schema.tasks)
@@ -80,20 +58,4 @@ async function getNextTaskMessageTimestamp(db: AppDb, taskId: string): Promise<n
   }
 
   return latest.createdAt >= now ? latest.createdAt + 1 : now;
-}
-
-export function truncateCommandOutput(value: string, maxLength = 2000): string {
-  if (value.length <= maxLength) {
-    return value;
-  }
-
-  return `${value.slice(0, maxLength)}\n...truncated...`;
-}
-
-export function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.trim().length > 0) {
-    return error.message;
-  }
-
-  return "Unknown task execution failure";
 }

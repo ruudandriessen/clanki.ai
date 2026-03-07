@@ -23,7 +23,7 @@ export const Route = createFileRoute("/api/internal/task-runs/$executionId/fail"
         const errorMessage =
           typeof body.error === "string" && body.error.trim().length > 0
             ? body.error.trim()
-            : "Task failed (reported by sandbox)";
+            : "Task failed (reported by runner)";
 
         const db = getDb(getEnv());
         await markTaskFailed({ db, taskId: callback.taskId, message: errorMessage });

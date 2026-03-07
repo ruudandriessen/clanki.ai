@@ -33,7 +33,6 @@ const taskSchema = z.object({
   status: z.string(),
   stream_id: z.string().nullable(),
   branch: z.string().nullable(),
-  preview_url: z.string().nullable().optional(),
   error: z.string().nullable(),
   created_at: z.bigint(),
   updated_at: z.bigint(),
