@@ -1,7 +1,7 @@
 {
   "scripts": {
     "setup": "bun i && mkdir dist && cp $CONDUCTOR_ROOT_PATH/.env .env",
-    "run": "bun run dev",
+    "run": "bun run tauri:dev",
     "archive": "rm -rf "
   }
 }
