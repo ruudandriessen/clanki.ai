@@ -17,7 +17,6 @@ import { Route as LayoutSettingsRouteImport } from './routes/_layout.settings'
 import { Route as LayoutRunnerIndexRouteImport } from './routes/_layout.runner.index'
 import { Route as ApiTasksShapeRouteImport } from './routes/api/tasks/shape'
 import { Route as ApiPullRequestsShapeRouteImport } from './routes/api/pull-requests/shape'
-import { Route as ApiProviderCredentialsShapeRouteImport } from './routes/api/provider-credentials/shape'
 import { Route as ApiProjectsShapeRouteImport } from './routes/api/projects/shape'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as LayoutTasksTaskIdRouteImport } from './routes/_layout.tasks.$taskId'
@@ -70,12 +69,6 @@ const ApiPullRequestsShapeRoute = ApiPullRequestsShapeRouteImport.update({
   path: '/api/pull-requests/shape',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiProviderCredentialsShapeRoute =
-  ApiProviderCredentialsShapeRouteImport.update({
-    id: '/api/provider-credentials/shape',
-    path: '/api/provider-credentials/shape',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiProjectsShapeRoute = ApiProjectsShapeRouteImport.update({
   id: '/api/projects/shape',
   path: '/api/projects/shape',
@@ -152,7 +145,6 @@ export interface FileRoutesByFullPath {
   '/tasks/$taskId': typeof LayoutTasksTaskIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/projects/shape': typeof ApiProjectsShapeRoute
-  '/api/provider-credentials/shape': typeof ApiProviderCredentialsShapeRoute
   '/api/pull-requests/shape': typeof ApiPullRequestsShapeRoute
   '/api/tasks/shape': typeof ApiTasksShapeRoute
   '/runner/': typeof LayoutRunnerIndexRoute
@@ -174,7 +166,6 @@ export interface FileRoutesByTo {
   '/tasks/$taskId': typeof LayoutTasksTaskIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/projects/shape': typeof ApiProjectsShapeRoute
-  '/api/provider-credentials/shape': typeof ApiProviderCredentialsShapeRoute
   '/api/pull-requests/shape': typeof ApiPullRequestsShapeRoute
   '/api/tasks/shape': typeof ApiTasksShapeRoute
   '/runner': typeof LayoutRunnerIndexRoute
@@ -198,7 +189,6 @@ export interface FileRoutesById {
   '/_layout/tasks/$taskId': typeof LayoutTasksTaskIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/projects/shape': typeof ApiProjectsShapeRoute
-  '/api/provider-credentials/shape': typeof ApiProviderCredentialsShapeRoute
   '/api/pull-requests/shape': typeof ApiPullRequestsShapeRoute
   '/api/tasks/shape': typeof ApiTasksShapeRoute
   '/_layout/runner/': typeof LayoutRunnerIndexRoute
@@ -222,7 +212,6 @@ export interface FileRouteTypes {
     | '/tasks/$taskId'
     | '/api/auth/$'
     | '/api/projects/shape'
-    | '/api/provider-credentials/shape'
     | '/api/pull-requests/shape'
     | '/api/tasks/shape'
     | '/runner/'
@@ -244,7 +233,6 @@ export interface FileRouteTypes {
     | '/tasks/$taskId'
     | '/api/auth/$'
     | '/api/projects/shape'
-    | '/api/provider-credentials/shape'
     | '/api/pull-requests/shape'
     | '/api/tasks/shape'
     | '/runner'
@@ -267,7 +255,6 @@ export interface FileRouteTypes {
     | '/_layout/tasks/$taskId'
     | '/api/auth/$'
     | '/api/projects/shape'
-    | '/api/provider-credentials/shape'
     | '/api/pull-requests/shape'
     | '/api/tasks/shape'
     | '/_layout/runner/'
@@ -287,7 +274,6 @@ export interface RootRouteChildren {
   WebhookRoute: typeof WebhookRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiProjectsShapeRoute: typeof ApiProjectsShapeRoute
-  ApiProviderCredentialsShapeRoute: typeof ApiProviderCredentialsShapeRoute
   ApiPullRequestsShapeRoute: typeof ApiPullRequestsShapeRoute
   ApiTasksShapeRoute: typeof ApiTasksShapeRoute
   ApiTasksTaskIdStreamRoute: typeof ApiTasksTaskIdStreamRoute
@@ -356,13 +342,6 @@ declare module '@tanstack/react-router' {
       path: '/api/pull-requests/shape'
       fullPath: '/api/pull-requests/shape'
       preLoaderRoute: typeof ApiPullRequestsShapeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/provider-credentials/shape': {
-      id: '/api/provider-credentials/shape'
-      path: '/api/provider-credentials/shape'
-      fullPath: '/api/provider-credentials/shape'
-      preLoaderRoute: typeof ApiProviderCredentialsShapeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/projects/shape': {
@@ -477,7 +456,6 @@ const rootRouteChildren: RootRouteChildren = {
   WebhookRoute: WebhookRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiProjectsShapeRoute: ApiProjectsShapeRoute,
-  ApiProviderCredentialsShapeRoute: ApiProviderCredentialsShapeRoute,
   ApiPullRequestsShapeRoute: ApiPullRequestsShapeRoute,
   ApiTasksShapeRoute: ApiTasksShapeRoute,
   ApiTasksTaskIdStreamRoute: ApiTasksTaskIdStreamRoute,
