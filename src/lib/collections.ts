@@ -4,13 +4,6 @@ import { z } from "zod";
 import { createProjects } from "@/server/functions/projects";
 import { createTask, createTaskMessage, deleteTask, updateTask } from "@/server/functions/tasks";
 
-const providerCredentialSchema = z.object({
-  id: z.string(),
-  provider: z.string(),
-  auth_type: z.enum(["api", "oauth", "wellknown"]),
-  updated_at: z.bigint(),
-});
-
 const projectSchema = z.object({
   id: z.string(),
   organization_id: z.string(),
@@ -115,25 +108,6 @@ function createCollections(baseUrl: string) {
       },
       onDelete: async () => {
         throw new Error("Project deletion is not supported");
-      },
-    }),
-  );
-
-  const providerCredentialsCollection = createCollection(
-    electricCollectionOptions({
-      schema: providerCredentialSchema,
-      shapeOptions: {
-        url: `${baseUrl}/api/provider-credentials/shape`,
-      },
-      getKey: (credential) => credential.id,
-      onInsert: async () => {
-        throw new Error("Provider credential insertion is not supported");
-      },
-      onUpdate: async () => {
-        throw new Error("Provider credential updates are not supported");
-      },
-      onDelete: async () => {
-        throw new Error("Provider credential deletion is not supported");
       },
     }),
   );
@@ -268,7 +242,6 @@ function createCollections(baseUrl: string) {
 
   return {
     projectsCollection,
-    providerCredentialsCollection,
     tasksCollection,
     pullRequestsCollection,
     taskMessagesCollection,
@@ -321,9 +294,6 @@ function createLazyCollection<TCollection extends object>(
 }
 
 export const projectsCollection = createLazyCollection((value) => value.projectsCollection);
-export const providerCredentialsCollection = createLazyCollection(
-  (value) => value.providerCredentialsCollection,
-);
 export const tasksCollection = createLazyCollection((value) => value.tasksCollection);
 export const pullRequestsCollection = createLazyCollection((value) => value.pullRequestsCollection);
 export const taskMessagesCollection = createLazyCollection((value) => value.taskMessagesCollection);

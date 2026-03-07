@@ -13,17 +13,6 @@ type ProviderCredentialStatus = {
   updatedAt: number | null;
 };
 
-export async function upsertProviderApiKeyCredential(
-  db: AppDb,
-  env: SecretCryptoEnv,
-  userId: string,
-  provider: SupportedOpencodeProvider,
-  apiKey: string,
-): Promise<ProviderCredentialStatus> {
-  const auth: Auth = { type: "api", key: apiKey };
-  return upsertProviderCredential(db, env, userId, provider, auth, apiKey);
-}
-
 export async function upsertProviderAuthCredential(
   db: AppDb,
   env: SecretCryptoEnv,
@@ -33,21 +22,6 @@ export async function upsertProviderAuthCredential(
 ): Promise<ProviderCredentialStatus> {
   const apiKeyValue = auth.type === "api" ? auth.key : "";
   return upsertProviderCredential(db, env, userId, provider, auth, apiKeyValue);
-}
-
-export async function deleteProviderCredential(
-  db: AppDb,
-  userId: string,
-  provider: SupportedOpencodeProvider,
-): Promise<void> {
-  await db
-    .delete(schema.userProviderCredentials)
-    .where(
-      and(
-        eq(schema.userProviderCredentials.userId, userId),
-        eq(schema.userProviderCredentials.provider, provider),
-      ),
-    );
 }
 
 async function upsertProviderCredential(

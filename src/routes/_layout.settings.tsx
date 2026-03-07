@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { projectsCollection, providerCredentialsCollection } from "@/lib/collections";
+import { projectsCollection } from "@/lib/collections";
 import { SettingsPage } from "@/pages/settings-page";
 
 export const Route = createFileRoute("/_layout/settings")({
@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_layout/settings")({
       return;
     }
 
-    return Promise.all([projectsCollection.preload(), providerCredentialsCollection.preload()]);
+    return projectsCollection.preload();
   },
   component: SettingsPage,
 });

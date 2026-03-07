@@ -1,16 +1,13 @@
 import { useEffect, useState } from "react";
-import { eq, useLiveQuery } from "@tanstack/react-db";
+import { useLiveQuery } from "@tanstack/react-db";
 import { BookMarked, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AddProjectDialog } from "../components/add-project-dialog";
 import { useOrganization } from "../components/layout/use-organization";
-import { projectsCollection, providerCredentialsCollection } from "../lib/collections";
-import { deleteProviderCredential, upsertProviderCredential } from "@/server/functions/settings";
+import { projectsCollection } from "../lib/collections";
 import { updateProjectRunCommand, updateProjectSetupCommand } from "@/server/functions/projects";
-
-const OPENAI_PROVIDER = "openai";
 
 function formatMsTimestamp(msTimestamp: bigint): string {
   return new Date(Number(msTimestamp)).toLocaleDateString();
@@ -20,18 +17,9 @@ export function SettingsPage() {
   const { data: projects, isLoading } = useLiveQuery((q) =>
     q.from({ p: projectsCollection }).orderBy(({ p }) => p.created_at, "asc"),
   );
-  const { data: openAiCredentialRows, isLoading: isOpenAiCredentialLoading } = useLiveQuery((q) =>
-    q
-      .from({ credential: providerCredentialsCollection })
-      .where(({ credential }) => eq(credential.provider, OPENAI_PROVIDER)),
-  );
   const activeOrganization = useOrganization();
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [openaiApiKey, setOpenaiApiKey] = useState("");
-  const [savingKey, setSavingKey] = useState(false);
-  const [removingKey, setRemovingKey] = useState(false);
-  const [providerError, setProviderError] = useState<string | null>(null);
   const [projectSetupDrafts, setProjectSetupDrafts] = useState<Record<string, string>>({});
   const [projectRunDrafts, setProjectRunDrafts] = useState<Record<string, string>>({});
   const [projectRunPortDrafts, setProjectRunPortDrafts] = useState<Record<string, string>>({});
@@ -39,10 +27,6 @@ export function SettingsPage() {
   const [savingProjectRunId, setSavingProjectRunId] = useState<string | null>(null);
   const [projectSetupErrors, setProjectSetupErrors] = useState<Record<string, string>>({});
   const [projectRunErrors, setProjectRunErrors] = useState<Record<string, string>>({});
-  const openAiCredential = openAiCredentialRows[0] ?? null;
-  const openAiAuthType = openAiCredential?.auth_type ?? null;
-  const openAiUpdatedAt = openAiCredential ? Number(openAiCredential.updated_at) : null;
-
   useEffect(() => {
     setProjectSetupDrafts((previous) => {
       const next: Record<string, string> = {};
@@ -72,42 +56,6 @@ export function SettingsPage() {
       return next;
     });
   }, [projects]);
-
-  async function handleSaveOpenAiKey() {
-    const apiKey = openaiApiKey.trim();
-    if (apiKey.length === 0 || savingKey) {
-      return;
-    }
-
-    setSavingKey(true);
-    setProviderError(null);
-    try {
-      await upsertProviderCredential({
-        data: { provider: OPENAI_PROVIDER, apiKey },
-      });
-      setOpenaiApiKey("");
-    } catch (error) {
-      setProviderError(error instanceof Error ? error.message : "Failed to save OpenAI key");
-    } finally {
-      setSavingKey(false);
-    }
-  }
-
-  async function handleDeleteOpenAiKey() {
-    if (!openAiCredential || removingKey) {
-      return;
-    }
-
-    setRemovingKey(true);
-    setProviderError(null);
-    try {
-      await deleteProviderCredential({ data: { provider: OPENAI_PROVIDER } });
-    } catch (error) {
-      setProviderError(error instanceof Error ? error.message : "Failed to remove OpenAI key");
-    } finally {
-      setRemovingKey(false);
-    }
-  }
 
   async function handleSaveProjectSetupCommand(projectId: string) {
     if (savingProjectId) {
@@ -200,70 +148,6 @@ export function SettingsPage() {
       <h2 className="mb-6 text-2xl tracking-[0.08em] uppercase">Settings</h2>
 
       <div className="neo-stagger space-y-6">
-        <section>
-          <h3 className="mb-4 text-sm font-bold tracking-[0.1em] text-foreground uppercase">
-            AI Providers
-          </h3>
-
-          <div className="neo-surface space-y-3 rounded-[var(--radius-md)] p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium">OpenAI (Codex)</p>
-                {isOpenAiCredentialLoading ? (
-                  <p className="text-xs text-muted-foreground">Loading configuration...</p>
-                ) : openAiCredential ? (
-                  <p className="text-xs text-muted-foreground">
-                    Configured
-                    {openAiAuthType === "oauth" ? " via ChatGPT Plus/Pro" : " via API key"}
-                    {openAiUpdatedAt !== null
-                      ? ` · Updated ${new Date(openAiUpdatedAt).toLocaleString()}`
-                      : ""}
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">No credentials configured</p>
-                )}
-              </div>
-              {isOpenAiCredentialLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              ) : null}
-            </div>
-
-            <div className="flex flex-col gap-2 md:flex-row">
-              <Input
-                type="password"
-                value={openaiApiKey}
-                onChange={(e) => setOpenaiApiKey(e.target.value)}
-                placeholder="sk-..."
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                onClick={() => void handleSaveOpenAiKey()}
-                disabled={savingKey || openaiApiKey.trim().length === 0}
-              >
-                {savingKey ? "Saving..." : "Save key"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void handleDeleteOpenAiKey()}
-                disabled={removingKey || !openAiCredential}
-              >
-                {removingKey ? "Removing..." : "Remove key"}
-              </Button>
-            </div>
-
-            <div className="space-y-2 rounded-[var(--radius-sm)] border border-border bg-muted/60 p-3 shadow-[2px_2px_0_0_var(--color-border)]">
-              <p className="text-xs text-muted-foreground">
-                Provider OAuth now belongs to the local runner flow. Configure an API key here for
-                backend-managed credentials.
-              </p>
-            </div>
-
-            {providerError ? <p className="text-xs text-destructive">{providerError}</p> : null}
-          </div>
-        </section>
-
         <section>
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-sm font-bold tracking-[0.1em] text-foreground uppercase">
