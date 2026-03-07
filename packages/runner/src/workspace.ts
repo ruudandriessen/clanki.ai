@@ -9,7 +9,6 @@ type CreateWorkspaceArgs = {
 };
 
 type PreparedWorkspace = {
-  branchName: string;
   defaultDirectory: string;
   directory: string;
 };
@@ -33,7 +32,6 @@ export function deleteWorkspace(workspaceDirectory: string): void {
   const defaultDirectory = resolveRepoDefaultDirectory(managedWorkspaceDirectory);
 
   if (!fs.existsSync(managedWorkspaceDirectory)) {
-    removeManagedWorktreeBranch(managedWorkspaceDirectory);
     return;
   }
 
@@ -47,8 +45,6 @@ export function deleteWorkspace(workspaceDirectory: string): void {
     ["-C", defaultDirectory, "worktree", "remove", "--force", managedWorkspaceDirectory],
     `Failed to remove the worktree at ${managedWorkspaceDirectory}`,
   );
-
-  removeManagedWorktreeBranch(managedWorkspaceDirectory);
 }
 
 function prepareSessionWorktree(repoUrl: string, title: string): PreparedWorkspace {
@@ -56,7 +52,6 @@ function prepareSessionWorktree(repoUrl: string, title: string): PreparedWorkspa
   const defaultBranch = ensureDefaultCheckout(repoUrl, workspace);
   const identifier = nextWorktreeIdentifier(workspace.repoRoot, title);
   const directory = path.join(workspace.repoRoot, identifier);
-  const branchName = `runner/${identifier}`;
 
   runCommand(
     "git",
@@ -65,35 +60,17 @@ function prepareSessionWorktree(repoUrl: string, title: string): PreparedWorkspa
       workspace.defaultDirectory,
       "worktree",
       "add",
-      "-b",
-      branchName,
+      "--detach",
       directory,
-      defaultBranch,
+      `origin/${defaultBranch}`,
     ],
     `Failed to create a worktree at ${directory}`,
   );
 
   return {
-    branchName,
     defaultDirectory: workspace.defaultDirectory,
     directory,
   };
-}
-
-function removeManagedWorktreeBranch(workspaceDirectory: string): void {
-  const defaultDirectory = resolveRepoDefaultDirectory(workspaceDirectory);
-
-  if (!fs.existsSync(defaultDirectory)) {
-    return;
-  }
-
-  try {
-    runCommand(
-      "git",
-      ["-C", defaultDirectory, "branch", "-D", resolveManagedBranchName(workspaceDirectory)],
-      undefined,
-    );
-  } catch {}
 }
 
 function ensureDefaultCheckout(repoUrl: string, workspace: RepoWorkspacePaths): string {
@@ -225,10 +202,6 @@ function resolveManagedWorkspaceDirectory(workspaceDirectory: string): string {
 
 function resolveRepoDefaultDirectory(workspaceDirectory: string): string {
   return path.join(path.dirname(workspaceDirectory), "default");
-}
-
-function resolveManagedBranchName(workspaceDirectory: string): string {
-  return `runner/${path.basename(workspaceDirectory)}`;
 }
 
 function parseRepoSlug(repoUrl: string): string {

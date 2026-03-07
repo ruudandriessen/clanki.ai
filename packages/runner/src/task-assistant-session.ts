@@ -2,6 +2,9 @@ import type { Event as OpenCodeEvent, OpencodeClient, TextPart } from "@opencode
 import { createLocalRunnerOpencodeClient } from "./opencode-client";
 import { promptAssistantSession } from "./assistant-session";
 
+const DEFAULT_FIRST_TASK_INSTRUCTION =
+  "Before doing any work, create and switch to a dedicated git branch for this task if you are not already on one. If the workspace is already on a dedicated task branch, keep using it. Do all work for this task on that branch.";
+
 type TaskRunCallbackInfo = {
   backendBaseUrl: string;
   callbackToken: string;
@@ -34,11 +37,17 @@ export async function promptTaskAssistantSession(args: {
       stream: eventStream.stream,
       taskRun: args.taskRun,
     });
+    const prompt = await buildTaskPrompt({
+      client,
+      directory: args.directory,
+      prompt: args.prompt,
+      sessionId: args.sessionId,
+    });
 
     await promptAssistantSession({
       directory: args.directory,
       model: args.model,
-      prompt: args.prompt,
+      prompt,
       provider: args.provider,
       sessionId: args.sessionId,
     });
@@ -81,6 +90,44 @@ export async function promptTaskAssistantSession(args: {
   } finally {
     abortController.abort();
   }
+}
+
+async function buildTaskPrompt(args: {
+  client: OpencodeClient;
+  directory: string;
+  prompt: string;
+  sessionId: string;
+}): Promise<string> {
+  const hasConversation = await sessionHasConversation(args);
+
+  if (hasConversation) {
+    return args.prompt;
+  }
+
+  return `${DEFAULT_FIRST_TASK_INSTRUCTION}\n\nTask:\n${args.prompt}`;
+}
+
+async function sessionHasConversation(args: {
+  client: OpencodeClient;
+  directory: string;
+  sessionId: string;
+}): Promise<boolean> {
+  const response = await args.client.session.messages({
+    path: { id: args.sessionId },
+    query: {
+      directory: args.directory,
+      limit: 20,
+    },
+  });
+
+  if (!response.response.ok || !response.data) {
+    return false;
+  }
+
+  return response.data.some((message) => {
+    const role = message.info.role;
+    return role === "user" || role === "assistant";
+  });
 }
 
 async function relayTaskRunEvents(args: {
