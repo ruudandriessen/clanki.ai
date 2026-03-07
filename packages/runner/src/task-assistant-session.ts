@@ -10,6 +10,8 @@ type TaskRunCallbackInfo = {
 
 export async function promptTaskAssistantSession(args: {
   directory: string;
+  model?: string;
+  provider?: string;
   prompt: string;
   sessionId: string;
   taskRun: TaskRunCallbackInfo;
@@ -35,7 +37,9 @@ export async function promptTaskAssistantSession(args: {
 
     await promptAssistantSession({
       directory: args.directory,
+      model: args.model,
       prompt: args.prompt,
+      provider: args.provider,
       sessionId: args.sessionId,
     });
 

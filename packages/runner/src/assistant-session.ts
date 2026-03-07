@@ -4,16 +4,20 @@ import { toProviderModelRef } from "./opencode";
 export async function ensureAssistantSession(args: {
   directory: string;
   existingSessionId?: string | null;
-  model: string;
-  provider: string;
+  model?: string;
+  provider?: string;
   taskTitle: string;
 }): Promise<{ isNewSession: boolean; sessionId: string }> {
+  const clientConfig =
+    args.provider && args.model
+      ? {
+          enabled_providers: [args.provider],
+          model: toProviderModelRef(args.provider, args.model),
+        }
+      : undefined;
   const { client } = await createLocalRunnerOpencodeClient({
     directory: args.directory,
-    config: {
-      enabled_providers: [args.provider],
-      model: toProviderModelRef(args.provider, args.model),
-    },
+    config: clientConfig,
   });
 
   let sessionId = args.existingSessionId?.trim() ?? "";
@@ -52,6 +56,8 @@ export async function ensureAssistantSession(args: {
 
 export async function promptAssistantSession(args: {
   directory: string;
+  model?: string;
+  provider?: string;
   prompt: string;
   sessionId: string;
 }): Promise<void> {
@@ -62,6 +68,13 @@ export async function promptAssistantSession(args: {
     path: { id: args.sessionId },
     query: { directory: args.directory },
     body: {
+      model:
+        args.provider && args.model
+          ? {
+              modelID: args.model,
+              providerID: args.provider,
+            }
+          : undefined,
       parts: [{ type: "text", text: args.prompt }],
     },
   });

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useLiveQuery, eq } from "@tanstack/react-db";
 import { AlertCircle, ChevronRight, ExternalLink, Loader2, Send, Wrench } from "lucide-react";
 import {
@@ -7,9 +7,17 @@ import {
   type TaskStreamActivityItem,
 } from "@/components/task-stream-activity";
 import { MarkdownContent } from "@/components/markdown-content";
+import { TaskModelPicker } from "@/components/task-model-picker";
 import { Button } from "@/components/ui/button";
 import { promptDesktopRunnerTask } from "@/lib/desktop-runner";
 import { isDesktopApp } from "@/lib/is-desktop-app";
+import {
+  getDefaultRunnerModelSelection,
+  getRunnerModelOptions,
+  isRunnerModelSelectionAvailable,
+  selectionsMatch,
+  useRunnerModels,
+} from "@/lib/runner-models";
 import { Textarea } from "@/components/ui/textarea";
 import { sessionStateKeys, useSessionState } from "@/lib/session-state";
 import { cn } from "@/lib/utils";
@@ -161,6 +169,10 @@ export function TaskPage({
 }: TaskPageProps) {
   const displayTitle = branchName ?? title;
   const [input, setInput] = useSessionState(sessionStateKeys.taskInput(taskId), "");
+  const [selectedModel, setSelectedModel] = useSessionState(
+    sessionStateKeys.taskModel(taskId),
+    null,
+  );
   const [localError, setLocalError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const runEvents = useTaskEventStream({ taskId, streamId });
@@ -196,6 +208,18 @@ export function TaskPage({
   const isRunnerBackedTask =
     runnerType === "local-worktree" && !!runnerSessionId && !!workspacePath;
   const isReadOnlyRemoteTask = isRunnerBackedTask && !desktopApp;
+  const {
+    data: runnerModels,
+    error: runnerModelsError,
+    isLoading: isRunnerModelsLoading,
+  } = useRunnerModels(isRunnerBackedTask ? workspacePath : null);
+  const availableModelOptions = getRunnerModelOptions(runnerModels);
+  const defaultModelSelection = getDefaultRunnerModelSelection(runnerModels);
+  const activeModelSelection = isRunnerModelSelectionAvailable(selectedModel, availableModelOptions)
+    ? selectedModel
+    : defaultModelSelection;
+  const runnerModelErrorMessage =
+    runnerModelsError instanceof Error ? runnerModelsError.message : null;
   const displayError = localError ?? error;
 
   useEffect(() => {
@@ -231,6 +255,14 @@ export function TaskPage({
       globalThis.clearInterval(timerId);
     };
   }, [isRunning]);
+
+  useEffect(() => {
+    if (selectionsMatch(selectedModel, activeModelSelection)) {
+      return;
+    }
+
+    setSelectedModel(activeModelSelection);
+  }, [activeModelSelection, selectedModel, setSelectedModel]);
 
   async function handleSend(contentOverride?: string) {
     const content = (contentOverride ?? input).trim();
@@ -284,7 +316,9 @@ export function TaskPage({
           callbackToken: taskRun.callbackToken,
           directory: workspacePath,
           executionId: taskRun.executionId,
+          model: activeModelSelection?.model,
           prompt: content,
+          provider: activeModelSelection?.provider,
           sessionId: runnerSessionId,
         });
       }
@@ -306,7 +340,7 @@ export function TaskPage({
     }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
+  function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       void handleSend();
@@ -495,7 +529,7 @@ export function TaskPage({
       </div>
 
       <div className="shrink-0 border-t border-border bg-card p-4">
-        <div className="flex items-end gap-2">
+        <div className="rounded-[var(--radius-md)] border border-border bg-background shadow-[3px_3px_0_0_var(--color-border)]">
           <Textarea
             ref={inputRef}
             value={input}
@@ -508,24 +542,48 @@ export function TaskPage({
                   ? "Wait for the current run to finish..."
                   : "Send a message..."
             }
-            rows={1}
+            rows={4}
             disabled={isRunning || isReadOnlyRemoteTask || sending}
-            className="min-h-[42px] max-h-[200px] flex-1 resize-none rounded-[var(--radius-md)] px-4 py-2.5 text-base md:text-sm"
+            className="min-h-[120px] max-h-[240px] resize-none rounded-none border-0 bg-transparent px-4 py-4 text-base leading-relaxed shadow-none focus-visible:ring-0 md:text-sm"
             style={{ height: "auto" }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
               target.style.height = "auto";
-              target.style.height = Math.min(target.scrollHeight, 200) + "px";
+              target.style.height = Math.min(target.scrollHeight, 240) + "px";
             }}
           />
-          <Button
-            type="button"
-            onClick={() => void handleSend()}
-            disabled={!input.trim() || isReadOnlyRemoteTask || sending || isRunning}
-            className="h-[42px] w-[42px] shrink-0 rounded-[var(--radius-md)] p-0"
-          >
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </Button>
+          <div className="flex flex-wrap items-end justify-between gap-3 px-4 pt-0 pb-4">
+            {isRunnerBackedTask && desktopApp ? (
+              <TaskModelPicker
+                value={activeModelSelection}
+                onChange={setSelectedModel}
+                options={availableModelOptions}
+                isLoading={isRunnerModelsLoading}
+                error={
+                  runnerModelErrorMessage ??
+                  (!isRunnerModelsLoading && availableModelOptions.length === 0
+                    ? "No connected OpenCode providers were found in the runner."
+                    : null)
+                }
+                disabled={isReadOnlyRemoteTask || sending || isRunning}
+              />
+            ) : null}
+            <Button
+              type="button"
+              onClick={() => void handleSend()}
+              disabled={!input.trim() || isReadOnlyRemoteTask || sending || isRunning}
+              className={cn(
+                "h-[42px] w-[42px] shrink-0 rounded-[var(--radius-md)] p-0",
+                !(isRunnerBackedTask && desktopApp) && "ml-auto",
+              )}
+            >
+              {sending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

@@ -17,12 +17,26 @@ type CreateRunnerSessionArgs = {
   title: string;
 };
 
+type RunnerModelProvider = {
+  id: string;
+  models: Record<string, { id: string; name: string }>;
+  name: string;
+};
+
+type ListRunnerModelsResponse = {
+  connected: string[];
+  default: Record<string, string>;
+  providers: RunnerModelProvider[];
+};
+
 type PromptRunnerTaskArgs = {
   backendBaseUrl: string;
   callbackToken: string;
   directory: string;
   executionId: string;
+  model?: string;
   prompt: string;
+  provider?: string;
   sessionId: string;
 };
 
@@ -42,6 +56,7 @@ type AppRunnerController = {
     workspaceDirectory: string;
   }>;
   deleteRunnerWorkspace: (args: DeleteRunnerWorkspaceArgs) => Promise<void>;
+  listRunnerModels: (args: { directory: string }) => Promise<ListRunnerModelsResponse>;
   promptRunnerTask: (args: PromptRunnerTaskArgs) => Promise<void>;
   stop: () => Promise<void>;
 };
@@ -94,13 +109,24 @@ export function createDesktopRunnerController({
     };
   }
 
+  async function listRunnerModels(args: { directory: string }): Promise<ListRunnerModelsResponse> {
+    const runner = await ensureRunner();
+    return await getRunnerJson<ListRunnerModelsResponse>(
+      `${runner.baseUrl}/opencode/models?${new URLSearchParams({
+        directory: args.directory,
+      }).toString()}`,
+    );
+  }
+
   async function promptRunnerTask(args: PromptRunnerTaskArgs): Promise<void> {
     const runner = await ensureRunner();
     const payload = await postRunnerJson<PromptTaskAssistantSessionResponse>(
       `${runner.baseUrl}/assistant/session/task-prompt`,
       {
         directory: args.directory,
+        model: args.model,
         prompt: args.prompt,
+        provider: args.provider,
         sessionId: args.sessionId,
         taskRun: {
           backendBaseUrl: args.backendBaseUrl,
@@ -191,6 +217,7 @@ export function createDesktopRunnerController({
   return {
     createRunnerSession,
     deleteRunnerWorkspace,
+    listRunnerModels,
     promptRunnerTask,
     stop,
   };
@@ -203,6 +230,11 @@ async function isRunnerHealthy(baseUrl: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function getRunnerJson<T>(url: string): Promise<T> {
+  const response = await fetch(url);
+  return await parseRunnerJson<T>(response);
 }
 
 async function postRunnerJson<T>(url: string, body: unknown): Promise<T> {

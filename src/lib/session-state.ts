@@ -98,4 +98,6 @@ function canUseSessionStorage(): boolean {
 
 export const sessionStateKeys = {
   taskInput: (taskId: string) => createSessionStateKey<string>(`task-input:${taskId}`),
+  taskModel: (taskId: string) =>
+    createSessionStateKey<{ model: string; provider: string } | null>(`task-model:${taskId}`),
 };

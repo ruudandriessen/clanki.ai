@@ -20,6 +20,10 @@ function registerIpcHandlers(): void {
     return await desktopRunnerController.deleteRunnerWorkspace(args);
   });
 
+  ipcMain.handle("desktop-runner:list-models", async (_event, args) => {
+    return await desktopRunnerController.listRunnerModels(args);
+  });
+
   ipcMain.handle("desktop-runner:prompt-task", async (_event, args) => {
     return await desktopRunnerController.promptRunnerTask(args);
   });

@@ -40,8 +40,8 @@ export type CreateAssistantSessionResponse = {
 
 export type EnsureAssistantSessionRequest = {
   directory: string;
-  model: string;
-  provider: string;
+  model?: string;
+  provider?: string;
   sessionId?: string | null;
   taskTitle: string;
 };
@@ -69,6 +69,8 @@ export type ListAssistantSessionsResponse = {
 
 export type PromptAssistantSessionRequest = {
   directory: string;
+  model?: string;
+  provider?: string;
   prompt: string;
   sessionId: string;
 };
@@ -79,6 +81,8 @@ export type PromptAssistantSessionResponse = {
 
 export type PromptTaskAssistantSessionRequest = {
   directory: string;
+  model?: string;
+  provider?: string;
   prompt: string;
   sessionId: string;
   taskRun: {

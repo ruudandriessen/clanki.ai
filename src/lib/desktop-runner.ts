@@ -4,18 +4,38 @@ type CreateDesktopRunnerSessionResponse = {
   workspaceDirectory: string;
 };
 
+export type DesktopRunnerModelSelection = {
+  model: string;
+  provider: string;
+};
+
+export type DesktopRunnerModelProvider = {
+  id: string;
+  models: Record<string, { id: string; name: string }>;
+  name: string;
+};
+
+export type ListDesktopRunnerModelsResponse = {
+  connected: string[];
+  default: Record<string, string>;
+  providers: DesktopRunnerModelProvider[];
+};
+
 type DesktopRunnerBridge = {
   createRunnerSession: (
     title: string,
     repoUrl: string,
   ) => Promise<CreateDesktopRunnerSessionResponse>;
   deleteRunnerWorkspace: (workspaceDirectory: string) => Promise<void>;
+  listRunnerModels: (args: { directory: string }) => Promise<ListDesktopRunnerModelsResponse>;
   promptRunnerTask: (args: {
     backendBaseUrl: string;
     callbackToken: string;
     directory: string;
     executionId: string;
+    model?: string;
     prompt: string;
+    provider?: string;
     sessionId: string;
   }) => Promise<void>;
 };
@@ -45,12 +65,20 @@ export async function deleteDesktopRunnerWorkspace(workspaceDirectory: string): 
   await getDesktopRunnerBridge().deleteRunnerWorkspace(workspaceDirectory);
 }
 
+export async function listDesktopRunnerModels(args: {
+  directory: string;
+}): Promise<ListDesktopRunnerModelsResponse> {
+  return await getDesktopRunnerBridge().listRunnerModels(args);
+}
+
 export async function promptDesktopRunnerTask(args: {
   backendBaseUrl: string;
   callbackToken: string;
   directory: string;
   executionId: string;
+  model?: string;
   prompt: string;
+  provider?: string;
   sessionId: string;
 }): Promise<void> {
   await getDesktopRunnerBridge().promptRunnerTask(args);
