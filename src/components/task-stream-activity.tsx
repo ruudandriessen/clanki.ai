@@ -10,6 +10,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NeoLoaderInline } from "@/components/neo-loader";
 
 export type TaskStreamActivityIcon =
   | "thinking"
@@ -44,13 +45,21 @@ export function TaskStreamActivity({ items }: { items: TaskStreamActivityItem[] 
           const { action, details } = splitActivityLabel(item.label);
           return (
             <div key={item.id} className="flex items-start gap-2 py-0.5 text-xs">
-              <Icon
-                className={cn(
-                  "mt-0.5 h-3.5 w-3.5 shrink-0",
-                  item.spinning ? "animate-spin" : "",
-                  item.tone === "error" ? "text-destructive" : "text-muted-foreground",
-                )}
-              />
+              {item.spinning ? (
+                <NeoLoaderInline
+                  className={cn(
+                    "mt-0.5 h-3.5 w-3.5 shrink-0",
+                    item.tone === "error" ? "text-destructive" : "text-muted-foreground",
+                  )}
+                />
+              ) : (
+                <Icon
+                  className={cn(
+                    "mt-0.5 h-3.5 w-3.5 shrink-0",
+                    item.tone === "error" ? "text-destructive" : "text-muted-foreground",
+                  )}
+                />
+              )}
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-start gap-1">
                   <span

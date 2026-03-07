@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLiveQuery, eq } from "@tanstack/react-db";
-import { AlertCircle, ChevronRight, ExternalLink, Loader2, Send, Wrench } from "lucide-react";
+import { AlertCircle, ChevronRight, ExternalLink, Send, Wrench } from "lucide-react";
+import { NeoLoader, NeoLoaderInline } from "@/components/neo-loader";
 import {
   TaskStreamActivity,
   type TaskStreamActivityIcon,
@@ -327,7 +328,7 @@ export function TaskPage({
   if (!taskId) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" aria-label="Loading task" />
+        <NeoLoader size="md" />
       </div>
     );
   }
@@ -427,7 +428,7 @@ export function TaskPage({
       >
         {isLoading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
+            <NeoLoader size="md" />
           </div>
         ) : showEmptyState ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-muted-foreground">
@@ -524,7 +525,7 @@ export function TaskPage({
             disabled={!input.trim() || isReadOnlyRemoteTask || sending || isRunning}
             className="h-[42px] w-[42px] shrink-0 rounded-[var(--radius-md)] p-0"
           >
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {sending ? <NeoLoaderInline className="h-4 w-4" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
       </div>

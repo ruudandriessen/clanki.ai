@@ -113,6 +113,43 @@ h6 {
 }
 
 @layer utilities {
+  .neo-loader-block {
+    border: 1.5px solid currentColor;
+    position: relative;
+    animation: neo-loader-pulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .neo-loader-block::after {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border: 1.5px solid currentColor;
+    animation: neo-loader-shift 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+@keyframes neo-loader-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.88);
+  }
+}
+
+@keyframes neo-loader-shift {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: translate(0, 0);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(2px, 2px);
+  }
 }
 
 @layer components {
