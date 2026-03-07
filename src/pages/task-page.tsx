@@ -7,6 +7,7 @@ import {
   type TaskStreamActivityItem,
 } from "@/components/task-stream-activity";
 import { MarkdownContent } from "@/components/markdown-content";
+import { OpenEditorDropdown } from "@/components/open-editor-dropdown";
 import { TaskModelPicker } from "@/components/task-model-picker";
 import { Button } from "@/components/ui/button";
 import { promptDesktopRunnerTask } from "@/lib/desktop-runner";
@@ -398,6 +399,9 @@ export function TaskPage({
             </div>
           </div>
           <div className="shrink-0 flex items-center gap-2">
+            {desktopApp && isRunnerBackedTask && workspacePath ? (
+              <OpenEditorDropdown onError={setLocalError} workspacePath={workspacePath} />
+            ) : null}
             {pullRequest ? (
               <div className="space-y-1 text-left md:flex md:items-center md:gap-2 md:space-y-0 md:text-right">
                 <Button
