@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { AppQueryProvider } from "@/components/app-query-provider";
+import { NewTaskHotkey } from "@/components/new-task-hotkey";
 import { RunnerSessionsProvider } from "@/lib/runner-sessions";
 import { cn } from "../lib/utils";
 import { useSession } from "../lib/auth-client";
@@ -38,6 +39,7 @@ export function Layout() {
   return (
     <AppQueryProvider>
       <RunnerSessionsProvider>
+        <NewTaskHotkey />
         <div className="neo-enter flex h-dvh bg-background text-foreground">
           <div
             className={cn(
