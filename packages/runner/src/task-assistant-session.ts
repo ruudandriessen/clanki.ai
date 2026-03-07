@@ -137,8 +137,13 @@ async function relayTaskRunEvents(args: {
   stream: AsyncGenerator<OpenCodeEvent, unknown, unknown>;
   taskRun: TaskRunCallbackInfo;
 }): Promise<void> {
+  let reportedBranch = await readCurrentBranch({
+    client: args.client,
+    directory: args.directory,
+  });
+
   for await (const event of args.stream) {
-    if (!shouldRelayTaskEvent(event, args.sessionId)) {
+    if (!shouldRelayTaskEvent(event, args.sessionId, args.directory)) {
       continue;
     }
 
@@ -147,6 +152,23 @@ async function relayTaskRunEvents(args: {
       taskRun: args.taskRun,
       type: "event",
     });
+
+    if (event.type === "vcs.branch.updated") {
+      const branch = await readCurrentBranch({
+        client: args.client,
+        directory: args.directory,
+      });
+
+      if (branch !== reportedBranch) {
+        reportedBranch = branch;
+
+        await postTaskRunCallback({
+          body: { branch },
+          taskRun: args.taskRun,
+          type: "branch",
+        });
+      }
+    }
 
     if (event.type === "session.error" && event.properties.sessionID === args.sessionId) {
       throw new Error(getSessionErrorMessage(event));
@@ -208,7 +230,7 @@ async function readCurrentBranch(args: {
   return branch.length > 0 ? branch : null;
 }
 
-function shouldRelayTaskEvent(event: OpenCodeEvent, sessionId: string): boolean {
+function shouldRelayTaskEvent(event: OpenCodeEvent, sessionId: string, directory: string): boolean {
   switch (event.type) {
     case "command.executed":
     case "permission.replied":
@@ -231,10 +253,23 @@ function shouldRelayTaskEvent(event: OpenCodeEvent, sessionId: string): boolean 
     case "session.updated":
       return event.properties.info.id === sessionId;
     case "vcs.branch.updated":
-      return true;
+      return isVcsBranchEventForCurrentDirectory(event, directory);
     default:
       return false;
   }
+}
+
+function isVcsBranchEventForCurrentDirectory(
+  event: Extract<OpenCodeEvent, { type: "vcs.branch.updated" }>,
+  directory: string,
+): boolean {
+  const properties = event.properties as Record<string, unknown>;
+  const root = properties.root;
+  const cwd = properties.cwd;
+
+  return (
+    root === directory || cwd === directory || (typeof root !== "string" && typeof cwd !== "string")
+  );
 }
 
 function getSessionErrorMessage(event: Extract<OpenCodeEvent, { type: "session.error" }>): string {
