@@ -1,10 +1,13 @@
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { organization } from "better-auth/plugins";
 import { oAuthProxy } from "better-auth/plugins/oauth-proxy";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import * as schema from "./db/schema";
 import { getDb } from "./db/client";
+import { ensureDefaultOrganizationForUser } from "./lib/ensure-default-organization";
+import { USER_ACCESS_STATUS, isApprovedAccessStatus } from "./lib/user-access";
 
 const PRODUCTION_URL = "https://www.clanki.ai";
 const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
@@ -40,6 +43,10 @@ function isLocalOrigin(origin: string): boolean {
   return LOCAL_HOSTNAMES.has(new URL(origin).hostname);
 }
 
+function isCallbackPath(path: string): boolean {
+  return path.startsWith("/callback") || path.startsWith("/oauth2/callback");
+}
+
 type AuthEnv = {
   DATABASE_URL?: string;
   ENVIRONMENT?: string;
@@ -70,6 +77,18 @@ export function createAuth(env: AuthEnv, request: Request) {
     }),
     secret: env.BETTER_AUTH_SECRET,
     baseURL: origin,
+    user: {
+      additionalFields: {
+        accessStatus: {
+          type: "string",
+          required: false,
+          input: false,
+          returned: false,
+          fieldName: "access_status",
+          defaultValue: USER_ACCESS_STATUS.pending,
+        },
+      },
+    },
     socialProviders: {
       github: {
         clientId: env.GITHUB_CLIENT_ID,
@@ -89,7 +108,35 @@ export function createAuth(env: AuthEnv, request: Request) {
     databaseHooks: {
       session: {
         create: {
-          before: async (session) => {
+          before: async (session, ctx) => {
+            const user = await db.query.user.findFirst({
+              where: eq(schema.user.id, session.userId),
+              columns: {
+                id: true,
+                name: true,
+                email: true,
+                accessStatus: true,
+              },
+            });
+
+            if (!user) {
+              return;
+            }
+
+            if (!isApprovedAccessStatus(user.accessStatus)) {
+              if (ctx && isCallbackPath(ctx.path)) {
+                const pendingAccessUrl = new URL("/pending-access", origin).toString();
+                throw ctx.redirect(pendingAccessUrl);
+              }
+
+              throw new APIError("FORBIDDEN", {
+                message: "Your account is pending approval.",
+                code: "USER_PENDING_APPROVAL",
+              });
+            }
+
+            await ensureDefaultOrganizationForUser({ auth, db, user });
+
             if (session.activeOrganizationId) return;
             const members = await db
               .select({ organizationId: schema.member.organizationId })
@@ -107,37 +154,21 @@ export function createAuth(env: AuthEnv, request: Request) {
       user: {
         create: {
           after: async (user) => {
-            // Check if this user has any pending invitations.
-            // If they do, they signed up via an invite link and should
-            // join the existing org instead of getting a new one.
-            const pending = await db
-              .select({ id: schema.invitation.id })
-              .from(schema.invitation)
-              .where(
-                and(
-                  eq(schema.invitation.email, user.email),
-                  eq(schema.invitation.status, "pending"),
-                ),
-              )
-              .limit(1);
+            const createdUser = await db.query.user.findFirst({
+              where: eq(schema.user.id, user.id),
+              columns: {
+                id: true,
+                name: true,
+                email: true,
+                accessStatus: true,
+              },
+            });
 
-            if (pending.length > 0) {
+            if (!createdUser || !isApprovedAccessStatus(createdUser.accessStatus)) {
               return;
             }
 
-            const slug = user.name
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, "-")
-              .replace(/^-|-$/g, "");
-            const uniqueSlug = `${slug}-${user.id.slice(0, 8)}`;
-
-            await auth.api.createOrganization({
-              body: {
-                name: `${user.name}'s Organization`,
-                slug: uniqueSlug,
-                userId: user.id,
-              },
-            });
+            await ensureDefaultOrganizationForUser({ auth, db, user: createdUser });
           },
         },
       },
