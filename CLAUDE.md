@@ -1,3 +1,1 @@
-# CLAUDE.md
-
-See `AGENTS.md` for project instructions and conventions.
+@AGENTS.md

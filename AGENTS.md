@@ -54,6 +54,14 @@ This project uses the React Compiler. Do not add `useMemo`/`useCallback` for rou
 - Prefer direct expressions and plain functions in components.
 - Only add memoization when required for correctness or integration constraints (for example, stable identity required by an external API).
 
+### Avoid `useEffect` unless it is actually required
+
+Do not introduce `useEffect` for routine derivations, event handling, or state synchronization that can be expressed directly during render or through existing data flow.
+
+- Prefer deriving values from props/state inline.
+- Prefer handling user actions in event handlers.
+- Only use `useEffect` when you are synchronizing with an external system or browser API and there is no simpler render-driven approach.
+
 ### Use shadcn components where applicable
 
 For new UI work, prefer existing shadcn primitives from `frontend/src/components/ui` (for example `Button`, `Input`, `Textarea`, `Dialog`, `DropdownMenu`, `Card`, `Avatar`) instead of custom base controls.
@@ -87,6 +95,14 @@ const count = counts[key] || 0;
 ```
 
 Keep `||` for boolean logic (e.g., `a > 0 || b > 0`) and sort tiebreakers (e.g., `a.localeCompare(b) || a.x.localeCompare(b.x)`).
+
+### Avoid unnecessary defensive code
+
+Do not add speculative fallbacks, extra guards, or `throw` statements for cases the application does not expect to happen.
+
+- Prefer the direct code path that matches the actual product assumptions.
+- Add defensive handling only when there is a concrete, known failure mode to support.
+- Do not introduce "safety" defaults that can hide real bugs or make behavior harder to reason about.
 
 ### Type-safe route and search params (TanStack Router)
 
