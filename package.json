@@ -16,7 +16,7 @@
   "scripts": {
     "dev": "vite dev",
     "build:web": "vite build",
-    "build": "bun run build:web && bun run --cwd packages/desktop-shell build && tsc --noEmit",
+    "build": "bun run build:web && bun run --cwd packages/runner build && bun run --cwd packages/desktop-shell build && tsc --noEmit",
     "preview": "vite preview",
     "runner:dev": "bun run --cwd packages/runner dev",
     "electron:start": "bun run build && electron packages/desktop-shell/dist/index.mjs",
@@ -100,16 +100,8 @@
         "to": ".output"
       },
       {
-        "from": "packages/runner/src",
-        "to": "packages/runner/src"
-      },
-      {
-        "from": "node_modules",
-        "to": "node_modules"
-      },
-      {
-        "from": "bun.lock",
-        "to": "bun.lock"
+        "from": "packages/runner/dist",
+        "to": "packages/runner/dist"
       }
     ],
     "mac": {

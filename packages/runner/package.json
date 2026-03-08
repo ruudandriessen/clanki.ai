@@ -6,6 +6,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "build": "bun build ./src/cli.ts --target=bun --format=esm --packages=bundle --outfile=./dist/cli.mjs",
     "dev": "bun run ./src/cli.ts"
   },
   "dependencies": {

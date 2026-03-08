@@ -221,7 +221,7 @@ export function createDesktopRunnerController({
   }
 
   async function startRunner(): Promise<RunnerProcess> {
-    const runnerEntry = path.join(workspaceRoot, "packages/runner/src/cli.ts");
+    const runnerEntry = path.join(workspaceRoot, "packages/runner/dist/cli.mjs");
     if (!fs.existsSync(runnerEntry)) {
       throw new Error(`Runner entry not found at ${runnerEntry}`);
     }
