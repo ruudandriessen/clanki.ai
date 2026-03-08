@@ -1,18 +1,9 @@
 import type { APIRoute } from "astro";
-import { createClient } from "@vercel/kv";
+import Redis from "ioredis";
 
 export const prerender = false;
 
 const WAITLIST_KEY = "waitlist:emails";
-
-function getKvClient() {
-  const url = import.meta.env.KV_REST_API_URL;
-  const token = import.meta.env.KV_REST_API_TOKEN;
-  if (!url || !token) {
-    throw new Error("Missing KV_REST_API_URL or KV_REST_API_TOKEN");
-  }
-  return createClient({ url, token });
-}
 
 export const POST: APIRoute = async ({ request }) => {
   const body = await request.json().catch(() => null);
@@ -25,10 +16,21 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  const normalized = email.trim().toLowerCase();
+  const redisUrl = import.meta.env.REDIS_URL;
+  if (!redisUrl) {
+    return new Response(JSON.stringify({ error: "Server misconfigured" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
-  const kv = getKvClient();
-  await kv.sadd(WAITLIST_KEY, normalized);
+  const normalized = email.trim().toLowerCase();
+  const redis = new Redis(redisUrl);
+  try {
+    await redis.sadd(WAITLIST_KEY, normalized);
+  } finally {
+    redis.disconnect();
+  }
 
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,
