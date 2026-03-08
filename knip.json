@@ -12,6 +12,10 @@
     },
     "packages/runner": {
       "project": ["src/**/*.ts"]
+    },
+    "packages/marketing": {
+      "entry": ["src/pages/**/*.{astro,ts}"],
+      "project": ["src/**/*.{astro,ts}"]
     }
   },
   "ignoreDependencies": ["tailwindcss", "shadcn", "tw-animate-css"]

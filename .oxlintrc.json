@@ -15,5 +15,5 @@
     "react/react-in-jsx-scope": "off",
     "import/no-unassigned-import": "off"
   },
-  "ignorePatterns": ["dist/", "node_modules/", ".vercel/"]
+  "ignorePatterns": ["dist/", "node_modules/", ".vercel/", ".astro/"]
 }

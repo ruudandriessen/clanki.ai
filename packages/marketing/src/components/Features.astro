@@ -1,0 +1,94 @@
+---
+const features = [
+  {
+    title: "Describe, don't code",
+    description:
+      "Tell Clanki what you need in plain language. AI agents break down your request, write the code, and open a pull request.",
+  },
+  {
+    title: "Runs on your repo",
+    description:
+      "Clanki connects to your GitHub projects and works inside your actual codebase — no sandboxes, no copy-paste.",
+  },
+  {
+    title: "Parallel execution",
+    description:
+      "Spin up multiple tasks at once. Each runs in its own git worktree so nothing conflicts.",
+  },
+  {
+    title: "Real-time streaming",
+    description:
+      "Watch your task execute live. See every file change, command, and decision as it happens.",
+  },
+  {
+    title: "PR-native workflow",
+    description:
+      "Every task ends with a clean pull request. Review, iterate, and merge — just like your existing flow.",
+  },
+  {
+    title: "Desktop-first",
+    description:
+      "A native app that runs locally. Your code stays on your machine with a fast, responsive interface.",
+  },
+];
+---
+
+<section class="features">
+  <div class="features-inner">
+    <h2>How it works</h2>
+    <div class="grid">
+      {
+        features.map((f) => (
+          <div class="card">
+            <h3>{f.title}</h3>
+            <p>{f.description}</p>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .features {
+    padding: 5rem 2rem;
+  }
+
+  .features-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h2 {
+    font-size: 2rem;
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    padding: 2rem;
+    transition: transform 0.15s;
+  }
+
+  .card:hover {
+    transform: translateY(-2px);
+  }
+
+  h3 {
+    font-size: 1.15rem;
+    margin-bottom: 0.75rem;
+  }
+
+  p {
+    color: var(--color-muted);
+    font-size: 0.95rem;
+  }
+</style>

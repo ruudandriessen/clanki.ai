@@ -1,0 +1,63 @@
+---
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Clanki — AI-powered task execution for your codebase. Describe what you want, and Clanki builds it."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+    <style is:global>
+      @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap");
+
+      :root {
+        --color-bg: #fffdf7;
+        --color-text: #1a1a1a;
+        --color-primary: #ff6b35;
+        --color-primary-dark: #e55a28;
+        --color-accent: #ffd166;
+        --color-surface: #ffffff;
+        --color-border: #1a1a1a;
+        --color-muted: #6b6b6b;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        background: var(--color-bg);
+        color: var(--color-text);
+        line-height: 1.6;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4 {
+        font-family: "Space Grotesk", sans-serif;
+        line-height: 1.1;
+      }
+    </style>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
