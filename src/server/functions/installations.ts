@@ -4,6 +4,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import * as schema from "@/server/db/schema";
 import { badGateway, badRequest, forbidden } from "./common";
 import { authMiddleware } from "../middleware";
+import { fetchGitHubAppInstallUrl } from "../lib/github-app";
 
 export const fetchInstallations = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -108,4 +109,12 @@ export const fetchInstallationRepos = createServerFn({ method: "GET" })
     }
 
     return repos;
+  });
+
+export const fetchInstallAppUrl = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    return {
+      url: await fetchGitHubAppInstallUrl(context.env),
+    };
   });

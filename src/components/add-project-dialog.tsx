@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, Search, Lock, X, Check } from "lucide-react";
+import { ArrowUpRight, Check, Loader2, Lock, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Project, projectsCollection } from "@/lib/collections";
 import { cn } from "../lib/utils";
-import { fetchInstallationRepos, fetchInstallations } from "@/server/functions/installations";
+import {
+  fetchInstallAppUrl,
+  fetchInstallationRepos,
+  fetchInstallations,
+} from "@/server/functions/installations";
 
 type Installation = {
   installationId: number;
@@ -33,18 +37,22 @@ export function AddProjectDialog({
   onClose,
   organizationId,
   existingProjects,
+  autoInstall = false,
 }: {
   open: boolean;
   onClose: () => void;
   organizationId: string | null;
   existingProjects: Project[];
+  autoInstall?: boolean;
 }) {
   const [installations, setInstallations] = useState<Installation[]>([]);
   const [repos, setRepos] = useState<RepoWithInstallation[]>([]);
+  const [installAppUrl, setInstallAppUrl] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [hasAutoRedirected, setHasAutoRedirected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const existingRepoUrls = new Set(existingProjects.map((p) => p.repo_url).filter(Boolean));
@@ -55,8 +63,12 @@ export function AddProjectDialog({
     setSelected(new Set());
     setFilter("");
     try {
-      const installs = await fetchInstallations();
+      const [installs, installAppResponse] = await Promise.all([
+        fetchInstallations(),
+        fetchInstallAppUrl(),
+      ]);
       setInstallations(installs);
+      setInstallAppUrl(installAppResponse.url);
 
       const allRepos: RepoWithInstallation[] = [];
       await Promise.all(
@@ -80,8 +92,27 @@ export function AddProjectDialog({
   useEffect(() => {
     if (open) {
       void loadData();
+      return;
     }
+
+    setHasAutoRedirected(false);
   }, [open, loadData]);
+
+  useEffect(() => {
+    if (
+      !open ||
+      !autoInstall ||
+      loading ||
+      installations.length > 0 ||
+      !installAppUrl ||
+      hasAutoRedirected
+    ) {
+      return;
+    }
+
+    setHasAutoRedirected(true);
+    window.location.assign(installAppUrl);
+  }, [autoInstall, hasAutoRedirected, installAppUrl, installations.length, loading, open]);
 
   function toggleRepo(htmlUrl: string) {
     setSelected((prev) => {
@@ -171,6 +202,16 @@ export function AddProjectDialog({
               <p className="text-xs">
                 Install the Clanki GitHub App on your repositories to get started.
               </p>
+              {installAppUrl ? (
+                <Button
+                  type="button"
+                  className="mt-3"
+                  onClick={() => window.location.assign(installAppUrl)}
+                >
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                  Install GitHub App
+                </Button>
+              ) : null}
             </div>
           ) : (
             <>

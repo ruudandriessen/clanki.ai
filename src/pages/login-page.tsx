@@ -13,9 +13,12 @@ export function LoginPage() {
     setIsSigningIn(true);
 
     try {
+      const callbackUrl = new URL("/", window.location.origin);
+      callbackUrl.searchParams.set("installApp", "1");
+
       const result = await signIn.social({
         provider: "github",
-        callbackURL: new URL("/", window.location.origin).toString(),
+        callbackURL: callbackUrl.toString(),
       });
       const error = result?.error;
 
