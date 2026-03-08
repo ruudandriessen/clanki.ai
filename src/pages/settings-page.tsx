@@ -325,7 +325,11 @@ export function SettingsPage() {
         open={dialogOpen}
         onClose={() => {
           setManualDialogOpen(false);
+<<<<<<< HEAD
           if (!addProject) {
+=======
+          if (!addProject && !installApp) {
+>>>>>>> 5c14a8b (fix(auth): simplify install onboarding)
             return;
           }
 

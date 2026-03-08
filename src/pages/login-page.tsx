@@ -13,7 +13,8 @@ export function LoginPage() {
     setIsSigningIn(true);
 
     try {
-      const callbackUrl = new URL("/", window.location.origin);
+      const callbackUrl = new URL("/settings", window.location.origin);
+      callbackUrl.searchParams.set("addProject", "1");
       callbackUrl.searchParams.set("installApp", "1");
 
       const result = await signIn.social({
