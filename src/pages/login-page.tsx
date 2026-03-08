@@ -1,13 +1,10 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { Github, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { signIn, useSession } from "../lib/auth-client";
+import { signIn } from "../lib/auth-client";
 
 export function LoginPage() {
-  const { data: session, isPending } = useSession();
-  const navigate = useNavigate();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [signInError, setSignInError] = useState<string | null>(null);
 
@@ -31,12 +28,6 @@ export function LoginPage() {
       setIsSigningIn(false);
     }
   };
-
-  useEffect(() => {
-    if (!isPending && session) {
-      navigate({ to: "/" });
-    }
-  }, [isPending, session, navigate]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">

@@ -1,38 +1,18 @@
 import { useEffect, useState } from "react";
-import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Outlet, useRouterState } from "@tanstack/react-router";
 import { AppQueryProvider } from "@/components/app-query-provider";
 import { cn } from "../lib/utils";
-import { useSession } from "../lib/auth-client";
 import { MobileHeader } from "./layout/mobile-header";
 import { Sidebar } from "./layout/sidebar";
 
 export function Layout() {
-  const { data: session, isPending } = useSession();
-  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-
-  useEffect(() => {
-    if (!isPending && !session) {
-      navigate({ to: "/login" });
-    }
-  }, [isPending, session, navigate]);
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
-
-  if (isPending) {
-    return (
-      <div className="flex h-dvh items-center justify-center bg-background">
-        <Loader2 className="h-7 w-7 animate-spin text-foreground" />
-      </div>
-    );
-  }
-
-  if (!session) return null;
 
   return (
     <AppQueryProvider>
