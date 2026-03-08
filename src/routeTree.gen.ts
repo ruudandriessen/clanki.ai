@@ -14,13 +14,11 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout.index'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout.settings'
-import { Route as LayoutRunnerIndexRouteImport } from './routes/_layout.runner.index'
 import { Route as ApiTasksShapeRouteImport } from './routes/api/tasks/shape'
 import { Route as ApiPullRequestsShapeRouteImport } from './routes/api/pull-requests/shape'
 import { Route as ApiProjectsShapeRouteImport } from './routes/api/projects/shape'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as LayoutTasksTaskIdRouteImport } from './routes/_layout.tasks.$taskId'
-import { Route as LayoutRunnerSessionIdRouteImport } from './routes/_layout.runner.$sessionId'
 import { Route as ApiTasksMessagesShapeRouteImport } from './routes/api/tasks/messages/shape'
 import { Route as ApiTasksTaskIdStreamRouteImport } from './routes/api/tasks/$taskId/stream'
 import { Route as ApiInternalTaskRunsExecutionIdMessageRouteImport } from './routes/api/internal/task-runs/$executionId/message'
@@ -54,11 +52,6 @@ const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => LayoutRoute,
 } as any)
-const LayoutRunnerIndexRoute = LayoutRunnerIndexRouteImport.update({
-  id: '/runner/',
-  path: '/runner/',
-  getParentRoute: () => LayoutRoute,
-} as any)
 const ApiTasksShapeRoute = ApiTasksShapeRouteImport.update({
   id: '/api/tasks/shape',
   path: '/api/tasks/shape',
@@ -82,11 +75,6 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 const LayoutTasksTaskIdRoute = LayoutTasksTaskIdRouteImport.update({
   id: '/tasks/$taskId',
   path: '/tasks/$taskId',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutRunnerSessionIdRoute = LayoutRunnerSessionIdRouteImport.update({
-  id: '/runner/$sessionId',
-  path: '/runner/$sessionId',
   getParentRoute: () => LayoutRoute,
 } as any)
 const ApiTasksMessagesShapeRoute = ApiTasksMessagesShapeRouteImport.update({
@@ -141,13 +129,11 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/webhook': typeof WebhookRoute
   '/settings': typeof LayoutSettingsRoute
-  '/runner/$sessionId': typeof LayoutRunnerSessionIdRoute
   '/tasks/$taskId': typeof LayoutTasksTaskIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/projects/shape': typeof ApiProjectsShapeRoute
   '/api/pull-requests/shape': typeof ApiPullRequestsShapeRoute
   '/api/tasks/shape': typeof ApiTasksShapeRoute
-  '/runner/': typeof LayoutRunnerIndexRoute
   '/api/tasks/$taskId/stream': typeof ApiTasksTaskIdStreamRoute
   '/api/tasks/messages/shape': typeof ApiTasksMessagesShapeRoute
   '/api/internal/task-runs/$executionId/branch': typeof ApiInternalTaskRunsExecutionIdBranchRoute
@@ -162,13 +148,11 @@ export interface FileRoutesByTo {
   '/webhook': typeof WebhookRoute
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
-  '/runner/$sessionId': typeof LayoutRunnerSessionIdRoute
   '/tasks/$taskId': typeof LayoutTasksTaskIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/projects/shape': typeof ApiProjectsShapeRoute
   '/api/pull-requests/shape': typeof ApiPullRequestsShapeRoute
   '/api/tasks/shape': typeof ApiTasksShapeRoute
-  '/runner': typeof LayoutRunnerIndexRoute
   '/api/tasks/$taskId/stream': typeof ApiTasksTaskIdStreamRoute
   '/api/tasks/messages/shape': typeof ApiTasksMessagesShapeRoute
   '/api/internal/task-runs/$executionId/branch': typeof ApiInternalTaskRunsExecutionIdBranchRoute
@@ -185,13 +169,11 @@ export interface FileRoutesById {
   '/webhook': typeof WebhookRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
-  '/_layout/runner/$sessionId': typeof LayoutRunnerSessionIdRoute
   '/_layout/tasks/$taskId': typeof LayoutTasksTaskIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/projects/shape': typeof ApiProjectsShapeRoute
   '/api/pull-requests/shape': typeof ApiPullRequestsShapeRoute
   '/api/tasks/shape': typeof ApiTasksShapeRoute
-  '/_layout/runner/': typeof LayoutRunnerIndexRoute
   '/api/tasks/$taskId/stream': typeof ApiTasksTaskIdStreamRoute
   '/api/tasks/messages/shape': typeof ApiTasksMessagesShapeRoute
   '/api/internal/task-runs/$executionId/branch': typeof ApiInternalTaskRunsExecutionIdBranchRoute
@@ -208,13 +190,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/webhook'
     | '/settings'
-    | '/runner/$sessionId'
     | '/tasks/$taskId'
     | '/api/auth/$'
     | '/api/projects/shape'
     | '/api/pull-requests/shape'
     | '/api/tasks/shape'
-    | '/runner/'
     | '/api/tasks/$taskId/stream'
     | '/api/tasks/messages/shape'
     | '/api/internal/task-runs/$executionId/branch'
@@ -229,13 +209,11 @@ export interface FileRouteTypes {
     | '/webhook'
     | '/settings'
     | '/'
-    | '/runner/$sessionId'
     | '/tasks/$taskId'
     | '/api/auth/$'
     | '/api/projects/shape'
     | '/api/pull-requests/shape'
     | '/api/tasks/shape'
-    | '/runner'
     | '/api/tasks/$taskId/stream'
     | '/api/tasks/messages/shape'
     | '/api/internal/task-runs/$executionId/branch'
@@ -251,13 +229,11 @@ export interface FileRouteTypes {
     | '/webhook'
     | '/_layout/settings'
     | '/_layout/'
-    | '/_layout/runner/$sessionId'
     | '/_layout/tasks/$taskId'
     | '/api/auth/$'
     | '/api/projects/shape'
     | '/api/pull-requests/shape'
     | '/api/tasks/shape'
-    | '/_layout/runner/'
     | '/api/tasks/$taskId/stream'
     | '/api/tasks/messages/shape'
     | '/api/internal/task-runs/$executionId/branch'
@@ -323,13 +299,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/_layout/runner/': {
-      id: '/_layout/runner/'
-      path: '/runner'
-      fullPath: '/runner/'
-      preLoaderRoute: typeof LayoutRunnerIndexRouteImport
-      parentRoute: typeof LayoutRoute
-    }
     '/api/tasks/shape': {
       id: '/api/tasks/shape'
       path: '/api/tasks/shape'
@@ -363,13 +332,6 @@ declare module '@tanstack/react-router' {
       path: '/tasks/$taskId'
       fullPath: '/tasks/$taskId'
       preLoaderRoute: typeof LayoutTasksTaskIdRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/runner/$sessionId': {
-      id: '/_layout/runner/$sessionId'
-      path: '/runner/$sessionId'
-      fullPath: '/runner/$sessionId'
-      preLoaderRoute: typeof LayoutRunnerSessionIdRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/api/tasks/messages/shape': {
@@ -434,17 +396,13 @@ declare module '@tanstack/react-router' {
 interface LayoutRouteChildren {
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
-  LayoutRunnerSessionIdRoute: typeof LayoutRunnerSessionIdRoute
   LayoutTasksTaskIdRoute: typeof LayoutTasksTaskIdRoute
-  LayoutRunnerIndexRoute: typeof LayoutRunnerIndexRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
-  LayoutRunnerSessionIdRoute: LayoutRunnerSessionIdRoute,
   LayoutTasksTaskIdRoute: LayoutTasksTaskIdRoute,
-  LayoutRunnerIndexRoute: LayoutRunnerIndexRoute,
 }
 
 const LayoutRouteWithChildren =
