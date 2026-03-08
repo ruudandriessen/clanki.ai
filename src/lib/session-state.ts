@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 
 type SetStateAction<T> = T | ((previousState: T) => T);
 
@@ -32,13 +32,15 @@ function useStorageState<T>(
   initialState: T | (() => T),
 ): [T, (nextState: SetStateAction<T>) => void] {
   const { parse, serialize, storage, storageKey } = key;
+  const prevKeyRef = useRef(storageKey);
   const [state, setState] = useState<T>(() =>
     getInitialStorageState(storage, storageKey, parse, initialState),
   );
 
-  useEffect(() => {
+  if (prevKeyRef.current !== storageKey) {
+    prevKeyRef.current = storageKey;
     setState(getInitialStorageState(storage, storageKey, parse, initialState));
-  }, [initialState, parse, storage, storageKey]);
+  }
 
   const setStorageState = (nextState: SetStateAction<T>) => {
     setState((previousState) => {

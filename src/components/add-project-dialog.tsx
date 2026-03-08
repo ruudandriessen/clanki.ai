@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowUpRight, Check, Loader2, Lock, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,15 +11,6 @@ import {
   fetchInstallationRepos,
   fetchInstallations,
 } from "@/server/functions/installations";
-
-type Installation = {
-  installationId: number;
-  accountLogin: string;
-  accountType: string;
-  createdAt: number;
-  deletedAt: number | null;
-  updatedAt: number | null;
-};
 
 type GitHubRepo = {
   id: number;
@@ -45,33 +37,24 @@ export function AddProjectDialog({
   existingProjects: Project[];
   autoInstall?: boolean;
 }) {
-  const [installations, setInstallations] = useState<Installation[]>([]);
-  const [repos, setRepos] = useState<RepoWithInstallation[]>([]);
-  const [installAppUrl, setInstallAppUrl] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const existingRepoUrls = new Set(existingProjects.map((p) => p.repo_url).filter(Boolean));
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setSelected(new Set());
-    setFilter("");
-    try {
+  const {
+    data,
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["add-project-repos"],
+    queryFn: async () => {
       const [installs, installAppResponse] = await Promise.all([
         fetchInstallations(),
         fetchInstallAppUrl(),
       ]);
-      setInstallations(installs);
-      setInstallAppUrl(installAppResponse.url);
 
       if (autoInstall && installs.length === 0 && installAppResponse.url) {
         window.location.assign(installAppResponse.url);
-        return;
+        return { installations: installs, repos: [], installAppUrl: installAppResponse.url };
       }
 
       const allRepos: RepoWithInstallation[] = [];
@@ -85,19 +68,18 @@ export function AddProjectDialog({
           }
         }),
       );
-      setRepos(allRepos);
-    } catch {
-      setError("Failed to load repositories from GitHub.");
-    } finally {
-      setLoading(false);
-    }
-  }, [autoInstall]);
 
-  useEffect(() => {
-    if (open) {
-      void loadData();
-    }
-  }, [open, loadData]);
+      return { installations: installs, repos: allRepos, installAppUrl: installAppResponse.url };
+    },
+    enabled: open,
+    refetchOnWindowFocus: false,
+  });
+
+  const installations = data?.installations ?? [];
+  const repos = data?.repos ?? [];
+  const installAppUrl = data?.installAppUrl ?? null;
+
+  const existingRepoUrls = new Set(existingProjects.map((p) => p.repo_url).filter(Boolean));
 
   function toggleRepo(htmlUrl: string) {
     setSelected((prev) => {
@@ -108,48 +90,34 @@ export function AddProjectDialog({
     });
   }
 
-  async function handleAdd() {
-    if (!organizationId) {
-      setError("No active organization selected.");
-      return;
-    }
-
-    setCreating(true);
-    setError(null);
-    try {
-      const now = Date.now();
-      const selectedRepos = repos
-        .filter((r) => selected.has(r.htmlUrl))
-        .map((r, index) => {
-          const createdAt = now + index;
-          return {
-            id: crypto.randomUUID(),
-            organization_id: organizationId,
-            created_at: BigInt(createdAt),
-            updated_at: BigInt(createdAt),
-            name: r.fullName,
-            repo_url: r.htmlUrl,
-            installation_id: r.installationId,
-            setup_command: null,
-            run_command: null,
-            run_port: null,
-          };
-        });
-
-      if (selectedRepos.length === 0) {
-        setError("Select at least one repository.");
-        return;
+  const addMutation = useMutation({
+    mutationFn: async (reposToAdd: RepoWithInstallation[]) => {
+      if (!organizationId) {
+        throw new Error("No active organization selected.");
       }
 
-      const tx = projectsCollection.insert(selectedRepos);
+      const now = Date.now();
+      const projects = reposToAdd.map((r, index) => {
+        const createdAt = now + index;
+        return {
+          id: crypto.randomUUID(),
+          organization_id: organizationId,
+          created_at: BigInt(createdAt),
+          updated_at: BigInt(createdAt),
+          name: r.fullName,
+          repo_url: r.htmlUrl,
+          installation_id: r.installationId,
+          setup_command: null,
+          run_command: null,
+          run_port: null,
+        };
+      });
+
+      const tx = projectsCollection.insert(projects);
       onClose();
       await tx.isPersisted.promise;
-    } catch {
-      setError("Failed to create projects.");
-    } finally {
-      setCreating(false);
-    }
-  }
+    },
+  });
 
   const lowerFilter = filter.toLowerCase();
   const filteredRepos = repos.filter((r) => r.fullName.toLowerCase().includes(lowerFilter));
@@ -160,7 +128,11 @@ export function AddProjectDialog({
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!nextOpen) {
+        if (nextOpen) {
+          setSelected(new Set());
+          setFilter("");
+          addMutation.reset();
+        } else {
           onClose();
         }
       }}
@@ -281,13 +253,21 @@ export function AddProjectDialog({
           )}
         </div>
 
-        {error ? <div className="px-5 py-2 text-xs text-destructive">{error}</div> : null}
+        {(addMutation.error ?? queryError) ? (
+          <div className="px-5 py-2 text-xs text-destructive">
+            {addMutation.error?.message ?? "Failed to load repositories from GitHub."}
+          </div>
+        ) : null}
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted px-5 py-4">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="button" onClick={handleAdd} disabled={selected.size === 0 || creating}>
-            {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+          <Button
+            type="button"
+            onClick={() => addMutation.mutate(repos.filter((r) => selected.has(r.htmlUrl)))}
+            disabled={selected.size === 0 || addMutation.isPending}
+          >
+            {addMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
             {selected.size === 0
               ? "Add projects"
               : `Add ${selected.size} project${selected.size === 1 ? "" : "s"}`}
