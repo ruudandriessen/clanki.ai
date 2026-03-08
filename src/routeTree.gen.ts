@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WebhookRouteImport } from './routes/webhook'
+import { Route as PendingAccessRouteImport } from './routes/pending-access'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout.index'
@@ -33,6 +34,11 @@ import { Route as ApiInternalTaskRunsExecutionIdBranchRouteImport } from './rout
 const WebhookRoute = WebhookRouteImport.update({
   id: '/webhook',
   path: '/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PendingAccessRoute = PendingAccessRouteImport.update({
+  id: '/pending-access',
+  path: '/pending-access',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -139,6 +145,7 @@ const ApiInternalTaskRunsExecutionIdBranchRoute =
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
   '/login': typeof LoginRoute
+  '/pending-access': typeof PendingAccessRoute
   '/webhook': typeof WebhookRoute
   '/settings': typeof LayoutSettingsRoute
   '/runner/$sessionId': typeof LayoutRunnerSessionIdRoute
@@ -159,6 +166,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/pending-access': typeof PendingAccessRoute
   '/webhook': typeof WebhookRoute
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
@@ -182,6 +190,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_layout': typeof LayoutRouteWithChildren
   '/login': typeof LoginRoute
+  '/pending-access': typeof PendingAccessRoute
   '/webhook': typeof WebhookRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
@@ -206,6 +215,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/pending-access'
     | '/webhook'
     | '/settings'
     | '/runner/$sessionId'
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
+    | '/pending-access'
     | '/webhook'
     | '/settings'
     | '/'
@@ -248,6 +259,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_layout'
     | '/login'
+    | '/pending-access'
     | '/webhook'
     | '/_layout/settings'
     | '/_layout/'
@@ -271,6 +283,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
   LoginRoute: typeof LoginRoute
+  PendingAccessRoute: typeof PendingAccessRoute
   WebhookRoute: typeof WebhookRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiProjectsShapeRoute: typeof ApiProjectsShapeRoute
@@ -293,6 +306,13 @@ declare module '@tanstack/react-router' {
       path: '/webhook'
       fullPath: '/webhook'
       preLoaderRoute: typeof WebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pending-access': {
+      id: '/pending-access'
+      path: '/pending-access'
+      fullPath: '/pending-access'
+      preLoaderRoute: typeof PendingAccessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -453,6 +473,7 @@ const LayoutRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   LoginRoute: LoginRoute,
+  PendingAccessRoute: PendingAccessRoute,
   WebhookRoute: WebhookRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiProjectsShapeRoute: ApiProjectsShapeRoute,
