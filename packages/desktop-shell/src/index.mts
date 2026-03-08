@@ -48,6 +48,24 @@ function isExternalUrl(targetUrl: string, appUrl: string): boolean {
   }
 }
 
+function isGitHubOrigin(targetUrl: string): boolean {
+  try {
+    const target = new URL(targetUrl);
+    return target.hostname === "github.com" || target.hostname.endsWith(".github.com");
+  } catch {
+    return false;
+  }
+}
+
+function isGitHubOAuthStartUrl(targetUrl: string): boolean {
+  try {
+    const target = new URL(targetUrl);
+    return isGitHubOrigin(targetUrl) && target.pathname === "/login/oauth/authorize";
+  } catch {
+    return false;
+  }
+}
+
 async function createMainWindow(): Promise<BrowserWindow> {
   const appUrl = await appServerController.resolveAppUrl();
   const window = new BrowserWindow({
@@ -64,7 +82,14 @@ async function createMainWindow(): Promise<BrowserWindow> {
     },
   });
 
+  let isGitHubOAuthFlowActive = false;
+
   window.webContents.setWindowOpenHandler(({ url }) => {
+    if (isGitHubOAuthStartUrl(url) || (isGitHubOAuthFlowActive && isGitHubOrigin(url))) {
+      isGitHubOAuthFlowActive = true;
+      return { action: "allow" };
+    }
+
     if (isExternalUrl(url, appUrl)) {
       void shell.openExternal(url);
     }
@@ -73,12 +98,23 @@ async function createMainWindow(): Promise<BrowserWindow> {
   });
 
   window.webContents.on("will-navigate", (event, url) => {
+    if (isGitHubOAuthStartUrl(url) || (isGitHubOAuthFlowActive && isGitHubOrigin(url))) {
+      isGitHubOAuthFlowActive = true;
+      return;
+    }
+
     if (!isExternalUrl(url, appUrl)) {
       return;
     }
 
     event.preventDefault();
     void shell.openExternal(url);
+  });
+
+  window.webContents.on("did-navigate", (_event, url) => {
+    if (!isExternalUrl(url, appUrl)) {
+      isGitHubOAuthFlowActive = false;
+    }
   });
 
   await window.loadURL(appUrl);
