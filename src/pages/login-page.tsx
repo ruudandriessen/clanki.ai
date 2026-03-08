@@ -13,13 +13,14 @@ export function LoginPage() {
     setIsSigningIn(true);
 
     try {
-      const callbackUrl = new URL("/settings", window.location.origin);
-      callbackUrl.searchParams.set("addProject", "1");
-      callbackUrl.searchParams.set("installApp", "1");
+      const callbackUrl = new URL("/", window.location.origin);
+      const newUserCallbackUrl = new URL("/settings", window.location.origin);
+      newUserCallbackUrl.searchParams.set("addProject", "1");
 
       const result = await signIn.social({
         provider: "github",
         callbackURL: callbackUrl.toString(),
+        newUserCallbackURL: newUserCallbackUrl.toString(),
       });
       const error = result?.error;
 
