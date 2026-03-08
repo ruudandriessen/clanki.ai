@@ -52,7 +52,6 @@ export function AddProjectDialog({
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [hasAutoRedirected, setHasAutoRedirected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const existingRepoUrls = new Set(existingProjects.map((p) => p.repo_url).filter(Boolean));
@@ -69,6 +68,11 @@ export function AddProjectDialog({
       ]);
       setInstallations(installs);
       setInstallAppUrl(installAppResponse.url);
+
+      if (autoInstall && installs.length === 0 && installAppResponse.url) {
+        window.location.assign(installAppResponse.url);
+        return;
+      }
 
       const allRepos: RepoWithInstallation[] = [];
       await Promise.all(
@@ -87,32 +91,13 @@ export function AddProjectDialog({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [autoInstall]);
 
   useEffect(() => {
     if (open) {
       void loadData();
-      return;
     }
-
-    setHasAutoRedirected(false);
   }, [open, loadData]);
-
-  useEffect(() => {
-    if (
-      !open ||
-      !autoInstall ||
-      loading ||
-      installations.length > 0 ||
-      !installAppUrl ||
-      hasAutoRedirected
-    ) {
-      return;
-    }
-
-    setHasAutoRedirected(true);
-    window.location.assign(installAppUrl);
-  }, [autoInstall, hasAutoRedirected, installAppUrl, installations.length, loading, open]);
 
   function toggleRepo(htmlUrl: string) {
     setSelected((prev) => {
