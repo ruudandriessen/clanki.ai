@@ -183,6 +183,18 @@ export function AddProjectDialog({
                     className="pl-9"
                   />
                 </div>
+                {installAppUrl ? (
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="mt-2 h-auto p-0 text-xs text-muted-foreground"
+                    onClick={() => window.open(installAppUrl, "_blank")}
+                  >
+                    <ArrowUpRight className="mr-1 inline w-3 h-3" />
+                    Configure repositories
+                  </Button>
+                ) : null}
               </div>
 
               <div className="px-3 pb-3">
