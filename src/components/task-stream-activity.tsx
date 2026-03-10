@@ -10,7 +10,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { AnimatedStreamItem } from "@/components/animated-stream-item";
-import { cn } from "@/lib/utils";
+import { TaskStreamActivityRow } from "@/components/task-stream-activity-row";
 
 export type TaskStreamActivityIcon =
   | "thinking"
@@ -27,7 +27,14 @@ export interface TaskStreamActivityItem {
   id: string;
   icon: TaskStreamActivityIcon;
   label: string;
+  summary?: string;
+  badges?: string[];
   details?: string[];
+  detailSections?: Array<{
+    label: string;
+    value: string;
+    code?: boolean;
+  }>;
   tone?: "default" | "muted" | "error" | "success";
   spinning?: boolean;
 }
@@ -41,93 +48,15 @@ export function TaskStreamActivity({ items }: { items: TaskStreamActivityItem[] 
     <div>
       <div className="space-y-1.5">
         {items.map((item) => {
-          const Icon = getActivityIcon(item.icon);
-          const { action, details } = splitActivityLabel(item.label);
           return (
             <AnimatedStreamItem key={item.id}>
-              <div className="flex items-start gap-2 py-0.5 text-xs">
-                <Icon
-                  className={cn(
-                    "mt-0.5 h-3.5 w-3.5 shrink-0",
-                    item.spinning ? "animate-spin" : "",
-                    item.tone === "error" ? "text-destructive" : "text-muted-foreground",
-                  )}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 items-start gap-1">
-                    <span
-                      className={cn(
-                        "whitespace-pre-wrap",
-                        item.tone === "error" ? "text-destructive" : "text-foreground",
-                      )}
-                    >
-                      {action}
-                    </span>
-                    {details ? (
-                      <span
-                        className={cn(
-                          "whitespace-pre-wrap text-muted-foreground",
-                          item.tone === "error" && "text-destructive/80",
-                        )}
-                      >
-                        {details}
-                      </span>
-                    ) : null}
-                  </div>
-                  {item.details && item.details.length > 0 ? (
-                    <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
-                      {item.details.map((detail) => (
-                        <div
-                          key={`${item.id}-${detail}`}
-                          className={cn(
-                            "whitespace-pre-wrap break-words",
-                            item.tone === "error" && "text-destructive/80",
-                          )}
-                        >
-                          {detail}
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
+              <TaskStreamActivityRow item={item} icon={getActivityIcon(item.icon)} />
             </AnimatedStreamItem>
           );
         })}
       </div>
     </div>
   );
-}
-
-function splitActivityLabel(label: string): { action: string; details: string } {
-  const normalized = label.trim();
-  if (normalized.length === 0) {
-    return { action: "", details: "" };
-  }
-
-  const colonIndex = normalized.indexOf(":");
-  if (colonIndex > 0) {
-    const action = normalized.slice(0, colonIndex).trim();
-    const details = normalized.slice(colonIndex + 1).trim();
-    return {
-      action: toSentenceCase(action),
-      details: details.length > 0 ? ` ${details}` : "",
-    };
-  }
-
-  const [firstWord, ...rest] = normalized.split(" ");
-  return {
-    action: toSentenceCase(firstWord),
-    details: rest.length > 0 ? ` ${rest.join(" ")}` : "",
-  };
-}
-
-function toSentenceCase(value: string): string {
-  if (value.length === 0) {
-    return value;
-  }
-
-  return `${value[0].toUpperCase()}${value.slice(1)}`;
 }
 
 function getActivityIcon(kind: TaskStreamActivityIcon) {
