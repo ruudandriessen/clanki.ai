@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import { Loader2 } from "lucide-react";
 import { TaskStreamActivity } from "@/components/task-stream-activity";
 import { MarkdownContent } from "@/components/markdown-content";
 import { AnimatedStreamItem } from "@/components/animated-stream-item";
@@ -11,6 +12,7 @@ interface TaskPageMessageListProps {
   messagesEndRef: RefObject<HTMLDivElement | null>;
   onScroll: () => void;
   showEmptyState: boolean;
+  preparingWorkspace: boolean;
   timelineEntries: TimelineEntry[];
   isRunning: boolean;
   runningDurationMs: number | null;
@@ -21,6 +23,7 @@ export function TaskPageMessageList({
   messagesEndRef,
   onScroll,
   showEmptyState,
+  preparingWorkspace,
   timelineEntries,
   isRunning,
   runningDurationMs,
@@ -32,9 +35,25 @@ export function TaskPageMessageList({
       className="neo-scroll flex-1 overflow-y-auto bg-background"
     >
       {showEmptyState ? (
-        <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-muted-foreground">
-          <p className="text-sm">No messages yet</p>
-          <p className="text-xs">Send a message to start a task discussion.</p>
+        <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center text-muted-foreground">
+          {preparingWorkspace ? (
+            <>
+              <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-muted/60">
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">Setting up worktree</p>
+                <p className="text-xs">
+                  You can draft your message while the runner prepares the workspace.
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm">No messages yet</p>
+              <p className="text-xs">Send a message to start a task discussion.</p>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-4 px-4 py-4 md:px-6">

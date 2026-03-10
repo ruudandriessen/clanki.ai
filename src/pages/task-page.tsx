@@ -113,6 +113,7 @@ export function TaskPage({
   const isRunnerBackedTask =
     runnerType === "local-worktree" && !!runnerSessionId && !!workspacePath;
   const willBeRunnerBacked = desktopApp && (!runnerType || isRunnerBackedTask);
+  const preparingWorkspace = willBeRunnerBacked && !isRunnerBackedTask;
   const isReadOnlyRemoteTask = isRunnerBackedTask && !desktopApp;
   const {
     data: runnerModels,
@@ -288,6 +289,7 @@ export function TaskPage({
         messagesEndRef={messagesEndRef}
         onScroll={handleMessageListScroll}
         showEmptyState={showEmptyState}
+        preparingWorkspace={preparingWorkspace}
         timelineEntries={timelineEntries}
         isRunning={isRunning}
         runningDurationMs={runningDurationMs}
@@ -301,7 +303,7 @@ export function TaskPage({
         isRunning={isRunning}
         isReadOnlyRemoteTask={isReadOnlyRemoteTask}
         sending={sending}
-        preparingWorkspace={willBeRunnerBacked && !isRunnerBackedTask}
+        preparingWorkspace={preparingWorkspace}
         isRunnerBackedTask={isRunnerBackedTask}
         willBeRunnerBacked={willBeRunnerBacked}
         activeModelSelection={activeModelSelection}
