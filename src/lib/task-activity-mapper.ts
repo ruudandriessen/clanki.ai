@@ -1,4 +1,5 @@
 import type { TaskStreamActivityIcon } from "@/components/task-stream-activity";
+import { buildToolActivityPresentation } from "@/lib/tool-activity-summary";
 import type { ChronologicalActivityItem } from "@/lib/task-timeline";
 import {
   type TaskStreamEvent,
@@ -252,38 +253,28 @@ function messagePartToActivityItem(
   if (part.type === "tool") {
     const toolName = part.tool;
     const status = part.state.status;
-    const details: string[] = [];
     const callId = part.callID ?? part.id;
-    appendDetail(details, "Input", part.state.input, 300);
+    const presentation = buildToolActivityPresentation({
+      toolName,
+      status,
+      state: part.state,
+    });
+    const details = [...(presentation.details ?? [])];
+    const attachmentCount = part.state.attachments?.length ?? 0;
 
-    if (status === "pending") {
-      appendDetail(details, "Request", part.state.raw, 300);
-    }
-
-    if (status === "running") {
-      appendDetail(details, "Action", part.state.title);
-    }
-
-    if (status === "completed") {
-      appendDetail(details, "Result", part.state.title);
-      appendDetail(details, "Output", part.state.output, 320);
-
-      const attachmentCount = part.state.attachments?.length ?? 0;
-      if (attachmentCount > 0) {
-        details.push(`Attachments: ${attachmentCount}`);
-      }
-    }
-
-    if (status === "error") {
-      appendDetail(details, "Error", part.state.error, 320);
+    if (attachmentCount > 0) {
+      details.push(`Attachments: ${attachmentCount}`);
     }
 
     return {
       id: event.id,
       stateKey: `tool:${callId}`,
       icon: getToolActivityIcon(toolName),
-      label: `${toolName}: ${status}`,
+      label: presentation.label,
+      summary: presentation.summary,
+      badges: presentation.badges,
       details: details.length > 0 ? details : undefined,
+      detailSections: presentation.detailSections,
       tone: status === "error" ? "error" : status === "completed" ? "success" : "muted",
       spinning: status === "running",
       createdAt: event.createdAt,
