@@ -62,6 +62,9 @@ export function TaskList() {
 
   const projectsById = new Map(projects.map((project) => [project.id, project]));
   const groupedTasks = buildTaskSidebarGroups({ tasks, projects, pullRequests });
+  const visibleGroups = isSidebarLoading
+    ? TASK_SIDEBAR_GROUPS
+    : TASK_SIDEBAR_GROUPS.filter((group) => groupedTasks[group.key].length > 0);
 
   function handleDeleteDialogOpenChange(open: boolean) {
     if (deletingTask) {
@@ -117,7 +120,7 @@ export function TaskList() {
       </div>
 
       <nav className="neo-scroll flex-1 space-y-3 overflow-x-hidden overflow-y-auto px-2 pb-24 md:pb-2">
-        {TASK_SIDEBAR_GROUPS.map((group) => {
+        {visibleGroups.map((group) => {
           const tasksInGroup = groupedTasks[group.key];
 
           return (
