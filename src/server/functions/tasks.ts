@@ -118,7 +118,11 @@ export const updateTask = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       taskId: z.string(),
-      title: z.string(),
+      title: z.string().optional(),
+      runnerSessionId: z.string().nullable().optional(),
+      runnerType: z.string().nullable().optional(),
+      workspacePath: z.string().nullable().optional(),
+      error: z.string().nullable().optional(),
     }),
   )
   .handler(async ({ data: input, context }) => {
@@ -134,16 +138,20 @@ export const updateTask = createServerFn({ method: "POST" })
       notFound("Task not found");
     }
 
-    const title = input.title.trim();
-    if (title.length === 0) {
-      badRequest("title is required");
+    const { taskId: _, ...fields } = input;
+    const updates = Object.fromEntries(
+      Object.entries(fields).filter(([, v]) => v !== undefined),
+    ) as Partial<typeof schema.tasks.$inferInsert>;
+
+    if (Object.keys(updates).length === 0) {
+      badRequest("No task fields to update");
     }
 
     const result = await withTransaction(db, async (tx, txid) => {
       const updatedAt = Date.now();
       await tx
         .update(schema.tasks)
-        .set({ title, updatedAt })
+        .set({ ...updates, updatedAt })
         .where(and(eq(schema.tasks.id, input.taskId), eq(schema.tasks.organizationId, orgId)));
 
       const updatedTask = await tx.query.tasks.findFirst({

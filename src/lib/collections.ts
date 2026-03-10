@@ -76,6 +76,22 @@ function txidsToMatch(txids: Array<number>) {
   return { txid: txids };
 }
 
+const taskFieldMap: Record<string, keyof Partial<Task>> = {
+  title: "title",
+  runnerType: "runner_type",
+  runnerSessionId: "runner_session_id",
+  workspacePath: "workspace_path",
+  error: "error",
+};
+
+function getTaskUpdateInput(changes: Partial<Task>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(taskFieldMap)
+      .filter(([, snakeKey]) => changes[snakeKey] !== undefined)
+      .map(([camelKey, snakeKey]) => [camelKey, changes[snakeKey]]),
+  );
+}
+
 function createCollections(baseUrl: string) {
   const projectsCollection = createCollection(
     electricCollectionOptions({
@@ -157,12 +173,17 @@ function createCollections(baseUrl: string) {
         const txids: Array<number> = [];
 
         for (const mutation of transaction.mutations) {
-          const title = mutation.modified.title.trim();
-          if (title.length === 0) {
-            throw new Error("Task title cannot be empty");
+          const changes = getTaskUpdateInput(mutation.changes);
+          if (Object.keys(changes).length === 0) {
+            continue;
           }
 
-          const { txid } = await updateTask({ data: { taskId: String(mutation.key), title } });
+          const { txid } = await updateTask({
+            data: {
+              taskId: String(mutation.key),
+              ...changes,
+            },
+          });
           if (txid !== undefined) {
             txids.push(txid);
           }
