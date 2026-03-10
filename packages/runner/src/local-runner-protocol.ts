@@ -1,4 +1,4 @@
-import type { ProviderListResponse } from "@opencode-ai/sdk";
+import type { FileDiff, ProviderListResponse } from "@opencode-ai/sdk";
 
 export const LOCAL_RUNNER_PROTOCOL_VERSION = "v1alpha1";
 
@@ -65,6 +65,16 @@ export type ListAssistantSessionsRequest = {
 
 export type ListAssistantSessionsResponse = {
   sessions: AssistantSessionSummary[];
+};
+
+export type GetAssistantSessionDiffRequest = {
+  directory: string;
+  messageId?: string;
+  sessionId: string;
+};
+
+export type GetAssistantSessionDiffResponse = {
+  diffs: FileDiff[];
 };
 
 export type PromptAssistantSessionRequest = {

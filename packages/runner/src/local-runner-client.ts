@@ -5,6 +5,8 @@ import type {
   DeleteWorkspaceResponse,
   EnsureAssistantSessionRequest,
   EnsureAssistantSessionResponse,
+  GetAssistantSessionDiffRequest,
+  GetAssistantSessionDiffResponse,
   ListAssistantSessionsRequest,
   ListAssistantSessionsResponse,
   ListOpencodeModelsRequest,
@@ -31,6 +33,22 @@ export function createLocalRunnerClient(baseUrl: string) {
       body: EnsureAssistantSessionRequest,
     ): Promise<EnsureAssistantSessionResponse> {
       return await postJson(`${normalizedBaseUrl}/assistant/session/ensure`, body);
+    },
+    async getAssistantSessionDiff(
+      params: GetAssistantSessionDiffRequest,
+    ): Promise<GetAssistantSessionDiffResponse> {
+      const searchParams = new URLSearchParams({
+        directory: params.directory,
+        sessionId: params.sessionId,
+      });
+
+      if (params.messageId) {
+        searchParams.set("messageId", params.messageId);
+      }
+
+      return await getJson(
+        `${normalizedBaseUrl}/assistant/session/diff?${searchParams.toString()}`,
+      );
     },
     async health(): Promise<LocalRunnerHealthResponse> {
       return await getJson(`${normalizedBaseUrl}/health`);

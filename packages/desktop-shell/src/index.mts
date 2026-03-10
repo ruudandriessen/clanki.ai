@@ -49,6 +49,10 @@ function registerIpcHandlers(): void {
     return await getDesktopRunnerController().deleteRunnerWorkspace(args);
   });
 
+  ipcMain.handle("desktop-runner:get-diff", async (_event, args) => {
+    return await getDesktopRunnerController().getRunnerDiff(args);
+  });
+
   ipcMain.handle("desktop-runner:list-models", async (_event, args) => {
     return await getDesktopRunnerController().listRunnerModels(args);
   });
