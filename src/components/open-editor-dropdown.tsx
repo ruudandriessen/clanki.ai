@@ -1,6 +1,5 @@
 import { ChevronDown, ExternalLink, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { openDesktopWorkspaceInEditor, type DesktopWorkspaceEditor } from "@/lib/desktop-runner";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { openDesktopWorkspaceInEditor, type DesktopWorkspaceEditor } from "@/lib/desktop-runner";
 
 type OpenEditorDropdownProps = {
   onError?: (message: string | null) => void;

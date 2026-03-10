@@ -1,8 +1,8 @@
-import { useState, type ComponentProps } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "@tanstack/react-db";
 import { useHotkey } from "@tanstack/react-hotkeys";
+import { useNavigate } from "@tanstack/react-router";
 import { Loader2, Plus } from "lucide-react";
+import { useState, type ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";

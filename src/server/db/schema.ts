@@ -1,12 +1,12 @@
 import {
-  bigint,
-  boolean,
-  index,
-  integer,
-  pgTable,
-  text,
-  timestamp,
-  uniqueIndex,
+    bigint,
+    boolean,
+    index,
+    integer,
+    pgTable,
+    text,
+    timestamp,
+    uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 const msTimestamp = (name: string) => bigint(name, { mode: "number" });
@@ -16,55 +16,55 @@ const msTimestamp = (name: string) => bigint(name, { mode: "number" });
 // ---------------------------------------------------------------------------
 
 export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("emailVerified").notNull(),
-  image: text("image"),
-  accessStatus: text("access_status").notNull().default("pending"),
-  createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true, mode: "date" }).notNull(),
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull().unique(),
+    emailVerified: boolean("emailVerified").notNull(),
+    image: text("image"),
+    accessStatus: text("access_status").notNull().default("pending"),
+    createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true, mode: "date" }).notNull(),
 });
 
 export const session = pgTable("session", {
-  id: text("id").primaryKey(),
-  expiresAt: timestamp("expiresAt", { withTimezone: true, mode: "date" }).notNull(),
-  token: text("token").notNull().unique(),
-  ipAddress: text("ipAddress"),
-  userAgent: text("userAgent"),
-  userId: text("userId")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  activeOrganizationId: text("activeOrganizationId"),
-  createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true, mode: "date" }).notNull(),
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expiresAt", { withTimezone: true, mode: "date" }).notNull(),
+    token: text("token").notNull().unique(),
+    ipAddress: text("ipAddress"),
+    userAgent: text("userAgent"),
+    userId: text("userId")
+        .notNull()
+        .references(() => user.id, { onDelete: "cascade" }),
+    activeOrganizationId: text("activeOrganizationId"),
+    createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true, mode: "date" }).notNull(),
 });
 
 export const account = pgTable("account", {
-  id: text("id").primaryKey(),
-  accountId: text("accountId").notNull(),
-  providerId: text("providerId").notNull(),
-  userId: text("userId")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  accessToken: text("accessToken"),
-  refreshToken: text("refreshToken"),
-  idToken: text("idToken"),
-  accessTokenExpiresAt: timestamp("accessTokenExpiresAt", { withTimezone: true, mode: "date" }),
-  refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt", { withTimezone: true, mode: "date" }),
-  scope: text("scope"),
-  password: text("password"),
-  createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true, mode: "date" }).notNull(),
+    id: text("id").primaryKey(),
+    accountId: text("accountId").notNull(),
+    providerId: text("providerId").notNull(),
+    userId: text("userId")
+        .notNull()
+        .references(() => user.id, { onDelete: "cascade" }),
+    accessToken: text("accessToken"),
+    refreshToken: text("refreshToken"),
+    idToken: text("idToken"),
+    accessTokenExpiresAt: timestamp("accessTokenExpiresAt", { withTimezone: true, mode: "date" }),
+    refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt", { withTimezone: true, mode: "date" }),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true, mode: "date" }).notNull(),
 });
 
 export const verification = pgTable("verification", {
-  id: text("id").primaryKey(),
-  identifier: text("identifier").notNull(),
-  value: text("value").notNull(),
-  expiresAt: timestamp("expiresAt", { withTimezone: true, mode: "date" }).notNull(),
-  createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }),
-  updatedAt: timestamp("updatedAt", { withTimezone: true, mode: "date" }),
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expiresAt", { withTimezone: true, mode: "date" }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }),
+    updatedAt: timestamp("updatedAt", { withTimezone: true, mode: "date" }),
 });
 
 // ---------------------------------------------------------------------------
@@ -72,23 +72,23 @@ export const verification = pgTable("verification", {
 // ---------------------------------------------------------------------------
 
 export const userProviderCredentials = pgTable(
-  "user_provider_credentials",
-  {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    provider: text("provider").notNull(),
-    encryptedApiKey: text("encrypted_api_key").notNull(),
-    authType: text("auth_type").notNull().default("api"),
-    encryptedAuthJson: text("encrypted_auth_json"),
-    createdAt: msTimestamp("created_at").notNull(),
-    updatedAt: msTimestamp("updated_at").notNull(),
-  },
-  (t) => [
-    uniqueIndex("user_provider_unique").on(t.userId, t.provider),
-    index("user_provider_user").on(t.userId),
-  ],
+    "user_provider_credentials",
+    {
+        id: text("id").primaryKey(),
+        userId: text("user_id")
+            .notNull()
+            .references(() => user.id, { onDelete: "cascade" }),
+        provider: text("provider").notNull(),
+        encryptedApiKey: text("encrypted_api_key").notNull(),
+        authType: text("auth_type").notNull().default("api"),
+        encryptedAuthJson: text("encrypted_auth_json"),
+        createdAt: msTimestamp("created_at").notNull(),
+        updatedAt: msTimestamp("updated_at").notNull(),
+    },
+    (t) => [
+        uniqueIndex("user_provider_unique").on(t.userId, t.provider),
+        index("user_provider_user").on(t.userId),
+    ],
 );
 
 // ---------------------------------------------------------------------------
@@ -96,39 +96,39 @@ export const userProviderCredentials = pgTable(
 // ---------------------------------------------------------------------------
 
 export const organization = pgTable("organization", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  slug: text("slug").unique(),
-  logo: text("logo"),
-  createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
-  metadata: text("metadata"),
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    slug: text("slug").unique(),
+    logo: text("logo"),
+    createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
+    metadata: text("metadata"),
 });
 
 export const member = pgTable("member", {
-  id: text("id").primaryKey(),
-  organizationId: text("organizationId")
-    .notNull()
-    .references(() => organization.id, { onDelete: "cascade" }),
-  userId: text("userId")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  role: text("role").notNull().default("member"),
-  createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
+    id: text("id").primaryKey(),
+    organizationId: text("organizationId")
+        .notNull()
+        .references(() => organization.id, { onDelete: "cascade" }),
+    userId: text("userId")
+        .notNull()
+        .references(() => user.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("member"),
+    createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
 });
 
 export const invitation = pgTable("invitation", {
-  id: text("id").primaryKey(),
-  organizationId: text("organizationId")
-    .notNull()
-    .references(() => organization.id, { onDelete: "cascade" }),
-  email: text("email").notNull(),
-  role: text("role"),
-  status: text("status").notNull().default("pending"),
-  expiresAt: timestamp("expiresAt", { withTimezone: true, mode: "date" }).notNull(),
-  inviterId: text("inviterId")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
+    id: text("id").primaryKey(),
+    organizationId: text("organizationId")
+        .notNull()
+        .references(() => organization.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: text("role"),
+    status: text("status").notNull().default("pending"),
+    expiresAt: timestamp("expiresAt", { withTimezone: true, mode: "date" }).notNull(),
+    inviterId: text("inviterId")
+        .notNull()
+        .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt", { withTimezone: true, mode: "date" }).notNull(),
 });
 
 // ---------------------------------------------------------------------------
@@ -136,12 +136,12 @@ export const invitation = pgTable("invitation", {
 // ---------------------------------------------------------------------------
 
 export const installations = pgTable("installations", {
-  installationId: integer("installation_id").primaryKey(),
-  accountLogin: text("account_login").notNull(),
-  accountType: text("account_type").notNull(),
-  createdAt: msTimestamp("created_at").notNull(),
-  deletedAt: msTimestamp("deleted_at"),
-  updatedAt: msTimestamp("updated_at"),
+    installationId: integer("installation_id").primaryKey(),
+    accountLogin: text("account_login").notNull(),
+    accountType: text("account_type").notNull(),
+    createdAt: msTimestamp("created_at").notNull(),
+    deletedAt: msTimestamp("deleted_at"),
+    updatedAt: msTimestamp("updated_at"),
 });
 
 // ---------------------------------------------------------------------------
@@ -149,24 +149,24 @@ export const installations = pgTable("installations", {
 // ---------------------------------------------------------------------------
 
 export const projects = pgTable(
-  "projects",
-  {
-    id: text("id").primaryKey(),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organization.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    repoUrl: text("repo_url"),
-    installationId: integer("installation_id").references(() => installations.installationId, {
-      onDelete: "set null",
-    }),
-    setupCommand: text("setup_command"),
-    runCommand: text("run_command"),
-    runPort: integer("run_port"),
-    createdAt: msTimestamp("created_at").notNull(),
-    updatedAt: msTimestamp("updated_at").notNull(),
-  },
-  (t) => [index("project_org").on(t.organizationId, t.createdAt)],
+    "projects",
+    {
+        id: text("id").primaryKey(),
+        organizationId: text("organization_id")
+            .notNull()
+            .references(() => organization.id, { onDelete: "cascade" }),
+        name: text("name").notNull(),
+        repoUrl: text("repo_url"),
+        installationId: integer("installation_id").references(() => installations.installationId, {
+            onDelete: "set null",
+        }),
+        setupCommand: text("setup_command"),
+        runCommand: text("run_command"),
+        runPort: integer("run_port"),
+        createdAt: msTimestamp("created_at").notNull(),
+        updatedAt: msTimestamp("updated_at").notNull(),
+    },
+    (t) => [index("project_org").on(t.organizationId, t.createdAt)],
 );
 
 // ---------------------------------------------------------------------------
@@ -174,49 +174,49 @@ export const projects = pgTable(
 // ---------------------------------------------------------------------------
 
 export const pullRequests = pgTable(
-  "pull_requests",
-  {
-    id: text("id").primaryKey(),
-    installationId: integer("installation_id")
-      .notNull()
-      .references(() => installations.installationId, { onDelete: "cascade" }),
-    repository: text("repository").notNull(),
-    branch: text("branch"),
-    prNumber: integer("pr_number").notNull(),
-    openedAt: msTimestamp("opened_at").notNull(),
-    mergedBy: text("merged_by"),
-    mergedAt: msTimestamp("merged_at"),
-    readyAt: msTimestamp("ready_at"),
-    state: text("state").notNull().default("open"),
-    reviewState: text("review_state"),
-    reviewUpdatedAt: msTimestamp("review_updated_at"),
-    checksCount: integer("checks_count"),
-    checksCompletedCount: integer("checks_completed_count"),
-    checksState: text("checks_state"),
-    checksConclusion: text("checks_conclusion"),
-    checksUpdatedAt: msTimestamp("checks_updated_at"),
-  },
-  (t) => [
-    uniqueIndex("pr_repo_number").on(t.repository, t.prNumber),
-    index("pr_installation").on(t.installationId),
-  ],
+    "pull_requests",
+    {
+        id: text("id").primaryKey(),
+        installationId: integer("installation_id")
+            .notNull()
+            .references(() => installations.installationId, { onDelete: "cascade" }),
+        repository: text("repository").notNull(),
+        branch: text("branch"),
+        prNumber: integer("pr_number").notNull(),
+        openedAt: msTimestamp("opened_at").notNull(),
+        mergedBy: text("merged_by"),
+        mergedAt: msTimestamp("merged_at"),
+        readyAt: msTimestamp("ready_at"),
+        state: text("state").notNull().default("open"),
+        reviewState: text("review_state"),
+        reviewUpdatedAt: msTimestamp("review_updated_at"),
+        checksCount: integer("checks_count"),
+        checksCompletedCount: integer("checks_completed_count"),
+        checksState: text("checks_state"),
+        checksConclusion: text("checks_conclusion"),
+        checksUpdatedAt: msTimestamp("checks_updated_at"),
+    },
+    (t) => [
+        uniqueIndex("pr_repo_number").on(t.repository, t.prNumber),
+        index("pr_installation").on(t.installationId),
+    ],
 );
 
 export const pullRequestCheckRuns = pgTable(
-  "pull_request_check_runs",
-  {
-    id: text("id").primaryKey(),
-    repository: text("repository").notNull(),
-    prNumber: integer("pr_number").notNull(),
-    checkRunId: text("check_run_id").notNull(),
-    status: text("status").notNull(),
-    conclusion: text("conclusion"),
-    updatedAt: msTimestamp("updated_at").notNull(),
-  },
-  (t) => [
-    uniqueIndex("pr_check_run_unique").on(t.repository, t.prNumber, t.checkRunId),
-    index("pr_check_run_lookup").on(t.repository, t.prNumber),
-  ],
+    "pull_request_check_runs",
+    {
+        id: text("id").primaryKey(),
+        repository: text("repository").notNull(),
+        prNumber: integer("pr_number").notNull(),
+        checkRunId: text("check_run_id").notNull(),
+        status: text("status").notNull(),
+        conclusion: text("conclusion"),
+        updatedAt: msTimestamp("updated_at").notNull(),
+    },
+    (t) => [
+        uniqueIndex("pr_check_run_unique").on(t.repository, t.prNumber, t.checkRunId),
+        index("pr_check_run_lookup").on(t.repository, t.prNumber),
+    ],
 );
 
 // ---------------------------------------------------------------------------
@@ -224,25 +224,25 @@ export const pullRequestCheckRuns = pgTable(
 // ---------------------------------------------------------------------------
 
 export const tasks = pgTable(
-  "tasks",
-  {
-    id: text("id").primaryKey(),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organization.id, { onDelete: "cascade" }),
-    projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
-    title: text("title").notNull(),
-    status: text("status").notNull().default("open"),
-    branch: text("branch"),
-    runnerType: text("runner_type"),
-    runnerSessionId: text("runner_session_id"),
-    streamId: text("stream_id").notNull(),
-    workspacePath: text("workspace_path"),
-    error: text("error"),
-    createdAt: msTimestamp("created_at").notNull(),
-    updatedAt: msTimestamp("updated_at").notNull(),
-  },
-  (t) => [index("task_org").on(t.organizationId, t.createdAt)],
+    "tasks",
+    {
+        id: text("id").primaryKey(),
+        organizationId: text("organization_id")
+            .notNull()
+            .references(() => organization.id, { onDelete: "cascade" }),
+        projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
+        title: text("title").notNull(),
+        status: text("status").notNull().default("open"),
+        branch: text("branch"),
+        runnerType: text("runner_type"),
+        runnerSessionId: text("runner_session_id"),
+        streamId: text("stream_id").notNull(),
+        workspacePath: text("workspace_path"),
+        error: text("error"),
+        createdAt: msTimestamp("created_at").notNull(),
+        updatedAt: msTimestamp("updated_at").notNull(),
+    },
+    (t) => [index("task_org").on(t.organizationId, t.createdAt)],
 );
 
 // ---------------------------------------------------------------------------
@@ -250,21 +250,21 @@ export const tasks = pgTable(
 // ---------------------------------------------------------------------------
 
 export const taskMessages = pgTable(
-  "task_messages",
-  {
-    id: text("id").primaryKey(),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organization.id, { onDelete: "cascade" }),
-    taskId: text("task_id")
-      .notNull()
-      .references(() => tasks.id, { onDelete: "cascade" }),
-    role: text("role").notNull(),
-    content: text("content").notNull(),
-    createdAt: msTimestamp("created_at").notNull(),
-  },
-  (t) => [
-    index("task_message_org").on(t.organizationId, t.createdAt),
-    index("task_message_task").on(t.taskId, t.createdAt),
-  ],
+    "task_messages",
+    {
+        id: text("id").primaryKey(),
+        organizationId: text("organization_id")
+            .notNull()
+            .references(() => organization.id, { onDelete: "cascade" }),
+        taskId: text("task_id")
+            .notNull()
+            .references(() => tasks.id, { onDelete: "cascade" }),
+        role: text("role").notNull(),
+        content: text("content").notNull(),
+        createdAt: msTimestamp("created_at").notNull(),
+    },
+    (t) => [
+        index("task_message_org").on(t.organizationId, t.createdAt),
+        index("task_message_task").on(t.taskId, t.createdAt),
+    ],
 );

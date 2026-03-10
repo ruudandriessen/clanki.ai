@@ -1,6 +1,7 @@
-import type { ChildProcess } from "node:child_process";
 import net from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
+
+import type { ChildProcess } from "node:child_process";
 
 type WaitOptions = {
   check?: () => void;

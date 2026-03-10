@@ -1,227 +1,228 @@
-import type { Server } from "node:http";
 import { createAdaptorServer } from "@hono/node-server";
 import { Hono, type Context } from "hono";
-import { getAssistantSessionDiff } from "./assistant-session-diff";
 import { ensureAssistantSession, promptAssistantSession } from "./assistant-session";
+import { getAssistantSessionDiff } from "./assistant-session-diff";
 import { listAssistantSessions } from "./list-assistant-sessions";
 import {
-  LOCAL_RUNNER_PROTOCOL_VERSION,
-  type CreateAssistantSessionRequest,
-  type DeleteWorkspaceRequest,
-  type EnsureAssistantSessionRequest,
-  type GetAssistantSessionDiffRequest,
-  type ListAssistantSessionsRequest,
-  type ListOpencodeModelsRequest,
-  type PromptAssistantSessionRequest,
-  type PromptTaskAssistantSessionRequest,
+    LOCAL_RUNNER_PROTOCOL_VERSION,
+    type CreateAssistantSessionRequest,
+    type DeleteWorkspaceRequest,
+    type EnsureAssistantSessionRequest,
+    type GetAssistantSessionDiffRequest,
+    type ListAssistantSessionsRequest,
+    type ListOpencodeModelsRequest,
+    type PromptAssistantSessionRequest,
+    type PromptTaskAssistantSessionRequest,
 } from "./local-runner-protocol";
 import { listOpencodeModels } from "./opencode-models";
 import { promptTaskAssistantSession } from "./task-assistant-session";
 import { createWorkspace, deleteWorkspace } from "./workspace";
 
+import type { Server } from "node:http";
+
 export type LocalRunnerServerOptions = {
-  host?: string;
-  port?: number;
+    host?: string;
+    port?: number;
 };
 
 export function createLocalRunnerApp(): Hono {
-  const app = new Hono();
+    const app = new Hono();
 
-  app.use("*", async (c, next) => {
-    try {
-      await next();
-    } finally {
-      setCorsHeaders(c);
-    }
-  });
-
-  app.options("*", (c) => c.body(null, 204));
-
-  app.onError((error, c) => {
-    return c.json(
-      {
-        error: error instanceof Error ? error.message : String(error),
-      },
-      error instanceof RequestError ? error.statusCode : 500,
-    );
-  });
-
-  app.get("/health", (c) => c.json({ ok: true }));
-
-  app.get("/runner/info", (c) =>
-    c.json({
-      capabilities: {
-        assistantSessions: true,
-      },
-      protocolVersion: LOCAL_RUNNER_PROTOCOL_VERSION,
-      runnerType: "local-worktree",
-    }),
-  );
-
-  app.get("/opencode/models", async (c) => {
-    const directory = readDirectoryQuery(c);
-
-    return c.json(
-      await listOpencodeModels({
-        directory,
-      } satisfies ListOpencodeModelsRequest),
-    );
-  });
-
-  app.get("/assistant/sessions", async (c) => {
-    const directory = readDirectoryQuery(c);
-
-    return c.json({
-      sessions: await listAssistantSessions({
-        directory,
-      } satisfies ListAssistantSessionsRequest),
-    });
-  });
-
-  app.get("/assistant/session/diff", async (c) => {
-    const directory = readDirectoryQuery(c);
-    const sessionId = readRequiredQuery(c, "sessionId");
-    const messageId = readOptionalQuery(c, "messageId");
-
-    return c.json({
-      diffs: await getAssistantSessionDiff({
-        directory,
-        messageId,
-        sessionId,
-      } satisfies GetAssistantSessionDiffRequest),
-    });
-  });
-
-  app.post("/assistant/session/create", async (c) => {
-    const body = await readJson<CreateAssistantSessionRequest>(c);
-    const workspaceDirectory = createWorkspace({
-      repoUrl: body.repoUrl,
-      title: body.taskTitle,
+    app.use("*", async (c, next) => {
+        try {
+            await next();
+        } finally {
+            setCorsHeaders(c);
+        }
     });
 
-    try {
-      const session = await ensureAssistantSession({
-        directory: workspaceDirectory,
-        existingSessionId: null,
-        model: body.model,
-        provider: body.provider,
-        taskTitle: body.taskTitle,
-      });
+    app.options("*", (c) => c.body(null, 204));
 
-      return c.json({
-        sessionId: session.sessionId,
-        workspaceDirectory,
-      });
-    } catch (error) {
-      deleteWorkspace(workspaceDirectory);
-      throw error;
-    }
-  });
+    app.onError((error, c) => {
+        return c.json(
+            {
+                error: error instanceof Error ? error.message : String(error),
+            },
+            error instanceof RequestError ? error.statusCode : 500,
+        );
+    });
 
-  app.post("/assistant/session/ensure", async (c) => {
-    const body = await readJson<EnsureAssistantSessionRequest>(c);
+    app.get("/health", (c) => c.json({ ok: true }));
 
-    return c.json(
-      await ensureAssistantSession({
-        directory: body.directory,
-        existingSessionId: body.sessionId,
-        model: body.model,
-        provider: body.provider,
-        taskTitle: body.taskTitle,
-      }),
+    app.get("/runner/info", (c) =>
+        c.json({
+            capabilities: {
+                assistantSessions: true,
+            },
+            protocolVersion: LOCAL_RUNNER_PROTOCOL_VERSION,
+            runnerType: "local-worktree",
+        }),
     );
-  });
 
-  app.post("/workspace/delete", async (c) => {
-    const body = await readJson<DeleteWorkspaceRequest>(c);
+    app.get("/opencode/models", async (c) => {
+        const directory = readDirectoryQuery(c);
 
-    deleteWorkspace(body.workspaceDirectory);
+        return c.json(
+            await listOpencodeModels({
+                directory,
+            } satisfies ListOpencodeModelsRequest),
+        );
+    });
 
-    return c.json({ ok: true });
-  });
+    app.get("/assistant/sessions", async (c) => {
+        const directory = readDirectoryQuery(c);
 
-  app.post("/assistant/session/prompt", async (c) => {
-    const body = await readJson<PromptAssistantSessionRequest>(c);
+        return c.json({
+            sessions: await listAssistantSessions({
+                directory,
+            } satisfies ListAssistantSessionsRequest),
+        });
+    });
 
-    await promptAssistantSession(body);
+    app.get("/assistant/session/diff", async (c) => {
+        const directory = readDirectoryQuery(c);
+        const sessionId = readRequiredQuery(c, "sessionId");
+        const messageId = readOptionalQuery(c, "messageId");
 
-    return c.json({ ok: true });
-  });
+        return c.json({
+            diffs: await getAssistantSessionDiff({
+                directory,
+                messageId,
+                sessionId,
+            } satisfies GetAssistantSessionDiffRequest),
+        });
+    });
 
-  app.post("/assistant/session/task-prompt", async (c) => {
-    const body = await readJson<PromptTaskAssistantSessionRequest>(c);
+    app.post("/assistant/session/create", async (c) => {
+        const body = await readJson<CreateAssistantSessionRequest>(c);
+        const workspaceDirectory = createWorkspace({
+            repoUrl: body.repoUrl,
+            title: body.taskTitle,
+        });
 
-    await promptTaskAssistantSession(body);
+        try {
+            const session = await ensureAssistantSession({
+                directory: workspaceDirectory,
+                existingSessionId: null,
+                model: body.model,
+                provider: body.provider,
+                taskTitle: body.taskTitle,
+            });
 
-    return c.json({ ok: true });
-  });
+            return c.json({
+                sessionId: session.sessionId,
+                workspaceDirectory,
+            });
+        } catch (error) {
+            deleteWorkspace(workspaceDirectory);
+            throw error;
+        }
+    });
 
-  app.notFound((c) => c.json({ error: `Unknown route: ${c.req.method} ${c.req.path}` }, 404));
+    app.post("/assistant/session/ensure", async (c) => {
+        const body = await readJson<EnsureAssistantSessionRequest>(c);
 
-  return app;
+        return c.json(
+            await ensureAssistantSession({
+                directory: body.directory,
+                existingSessionId: body.sessionId,
+                model: body.model,
+                provider: body.provider,
+                taskTitle: body.taskTitle,
+            }),
+        );
+    });
+
+    app.post("/workspace/delete", async (c) => {
+        const body = await readJson<DeleteWorkspaceRequest>(c);
+
+        deleteWorkspace(body.workspaceDirectory);
+
+        return c.json({ ok: true });
+    });
+
+    app.post("/assistant/session/prompt", async (c) => {
+        const body = await readJson<PromptAssistantSessionRequest>(c);
+
+        await promptAssistantSession(body);
+
+        return c.json({ ok: true });
+    });
+
+    app.post("/assistant/session/task-prompt", async (c) => {
+        const body = await readJson<PromptTaskAssistantSessionRequest>(c);
+
+        await promptTaskAssistantSession(body);
+
+        return c.json({ ok: true });
+    });
+
+    app.notFound((c) => c.json({ error: `Unknown route: ${c.req.method} ${c.req.path}` }, 404));
+
+    return app;
 }
 
 class RequestError extends Error {
-  constructor(
-    message: string,
-    readonly statusCode: 400 | 404 = 400,
-  ) {
-    super(message);
-  }
+    constructor(
+        message: string,
+        readonly statusCode: 400 | 404 = 400,
+    ) {
+        super(message);
+    }
 }
 
 export function startLocalRunnerServer(options?: LocalRunnerServerOptions): Promise<Server> {
-  const host = options?.host ?? "127.0.0.1";
-  const port = options?.port ?? 4318;
-  const app = createLocalRunnerApp();
-  const server = createAdaptorServer({
-    fetch: app.fetch,
-    hostname: host,
-    port,
-  }) as Server;
+    const host = options?.host ?? "127.0.0.1";
+    const port = options?.port ?? 4318;
+    const app = createLocalRunnerApp();
+    const server = createAdaptorServer({
+        fetch: app.fetch,
+        hostname: host,
+        port,
+    }) as Server;
 
-  return new Promise((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(port, host, () => {
-      server.off("error", reject);
-      resolve(server);
+    return new Promise((resolve, reject) => {
+        server.once("error", reject);
+        server.listen(port, host, () => {
+            server.off("error", reject);
+            resolve(server);
+        });
     });
-  });
 }
 
 async function readJson<T>(c: Context): Promise<T> {
-  const body = (await c.req.text()).trim();
-  if (body.length === 0) {
-    throw new RequestError("Expected JSON request body");
-  }
+    const body = (await c.req.text()).trim();
+    if (body.length === 0) {
+        throw new RequestError("Expected JSON request body");
+    }
 
-  try {
-    return JSON.parse(body) as T;
-  } catch {
-    throw new RequestError("Invalid JSON request body");
-  }
+    try {
+        return JSON.parse(body) as T;
+    } catch {
+        throw new RequestError("Invalid JSON request body");
+    }
 }
 
 function setCorsHeaders(c: Context): void {
-  c.header("Access-Control-Allow-Headers", "Content-Type");
-  c.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  c.header("Access-Control-Allow-Origin", "*");
+    c.header("Access-Control-Allow-Headers", "Content-Type");
+    c.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    c.header("Access-Control-Allow-Origin", "*");
 }
 
 function readDirectoryQuery(c: Context): string {
-  return readRequiredQuery(c, "directory");
+    return readRequiredQuery(c, "directory");
 }
 
 function readOptionalQuery(c: Context, key: string): string | undefined {
-  const value = c.req.query(key)?.trim();
-  return value && value.length > 0 ? value : undefined;
+    const value = c.req.query(key)?.trim();
+    return value && value.length > 0 ? value : undefined;
 }
 
 function readRequiredQuery(c: Context, key: string): string {
-  const value = readOptionalQuery(c, key) ?? "";
-  if (value.length === 0) {
-    throw new RequestError(`${key} query parameter is required`);
-  }
+    const value = readOptionalQuery(c, key) ?? "";
+    if (value.length === 0) {
+        throw new RequestError(`${key} query parameter is required`);
+    }
 
-  return value;
+    return value;
 }

@@ -1,6 +1,5 @@
-import { Navigate, createFileRoute } from "@tanstack/react-router";
-import { TaskPage } from "@/pages/task-page";
 import { and, eq, useLiveQuery } from "@tanstack/react-db";
+import { Navigate, createFileRoute } from "@tanstack/react-router";
 import {
   projectsCollection,
   pullRequestsCollection,
@@ -8,6 +7,7 @@ import {
   tasksCollection,
 } from "@/lib/collections";
 import { extractOrgRepoFromUrl, getPullRequestStatus } from "@/lib/pull-request";
+import { TaskPage } from "@/pages/task-page";
 
 export const Route = createFileRoute("/_layout/tasks/$taskId")({
   loader: () => {

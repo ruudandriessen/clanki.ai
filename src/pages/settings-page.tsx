@@ -1,14 +1,14 @@
-import { useState } from "react";
-import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useLiveQuery } from "@tanstack/react-db";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { BookMarked, Loader2, Plus } from "lucide-react";
+import { useState } from "react";
+import { AddProjectDialog } from "../components/add-project-dialog";
+import { useOrganization } from "../components/layout/use-organization";
+import { projectsCollection } from "../lib/collections";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { AddProjectDialog } from "../components/add-project-dialog";
-import { useOrganization } from "../components/layout/use-organization";
-import { projectsCollection } from "../lib/collections";
 import { updateProjectRunCommand, updateProjectSetupCommand } from "@/server/functions/projects";
 
 function formatMsTimestamp(msTimestamp: bigint): string {

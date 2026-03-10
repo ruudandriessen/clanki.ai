@@ -1,22 +1,22 @@
 {
-  "$schema": "https://unpkg.com/knip@5/schema.json",
-  "workspaces": {
-    ".": {
-      "entry": ["src/router.tsx", "src/routes/**/*.{ts,tsx}", "src/lib/auth-client.ts"],
-      "project": ["src/**/*.{ts,tsx}"],
-      "ignore": ["src/components/ui/**", "src/routeTree.gen.ts", "src/server/db/schema.ts"]
+    "$schema": "https://unpkg.com/knip@5/schema.json",
+    "workspaces": {
+        ".": {
+            "entry": ["src/router.tsx", "src/routes/**/*.{ts,tsx}", "src/lib/auth-client.ts"],
+            "project": ["src/**/*.{ts,tsx}"],
+            "ignore": ["src/components/ui/**", "src/routeTree.gen.ts", "src/server/db/schema.ts"]
+        },
+        "packages/desktop-shell": {
+            "entry": ["src/preload.mts"],
+            "project": ["src/**/*.mts"]
+        },
+        "packages/runner": {
+            "project": ["src/**/*.ts"]
+        },
+        "packages/marketing": {
+            "entry": ["src/pages/**/*.{astro,ts}"],
+            "project": ["src/**/*.{astro,ts}"]
+        }
     },
-    "packages/desktop-shell": {
-      "entry": ["src/preload.mts"],
-      "project": ["src/**/*.mts"]
-    },
-    "packages/runner": {
-      "project": ["src/**/*.ts"]
-    },
-    "packages/marketing": {
-      "entry": ["src/pages/**/*.{astro,ts}"],
-      "project": ["src/**/*.{astro,ts}"]
-    }
-  },
-  "ignoreDependencies": ["tailwindcss", "shadcn", "tw-animate-css"]
+    "ignoreDependencies": ["tailwindcss", "shadcn", "tw-animate-css"]
 }

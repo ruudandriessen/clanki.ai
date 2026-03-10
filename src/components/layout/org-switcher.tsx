@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
 import { Building2, Pencil, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useEffect, useRef, useState } from "react";
 import { authClient } from "../../lib/auth-client";
 import { useOrganization } from "./use-organization";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export function OrgSwitcher() {
   const activeOrg = useOrganization();

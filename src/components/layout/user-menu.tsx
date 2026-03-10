@@ -1,5 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, LogOut, Settings } from "lucide-react";
+import { signOut, useSession } from "../../lib/auth-client";
+import { cn } from "../../lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -11,8 +13,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "../../lib/utils";
-import { signOut, useSession } from "../../lib/auth-client";
 
 type UserMenuProps = {
   showIdentity?: boolean;

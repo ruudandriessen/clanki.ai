@@ -1,6 +1,6 @@
+import { app, BrowserWindow, ipcMain, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { createAppServerController } from "./app-server.mjs";
 import { createDesktopRunnerController } from "./desktop-runner.mjs";
 

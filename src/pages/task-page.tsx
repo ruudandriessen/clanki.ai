@@ -1,19 +1,15 @@
-import { useEffect, useRef, useState } from "react";
 import { useLiveQuery, eq } from "@tanstack/react-db";
 import { AlertCircle, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { taskMessagesCollection, tasksCollection } from "../lib/collections";
+import { useTaskEventStream } from "../lib/use-task-event-stream";
 import { TaskPageCodeView } from "@/components/task-page-code-view";
 import { TaskPageHeader } from "@/components/task-page-header";
-import { TaskPageMessageList } from "@/components/task-page-message-list";
 import { TaskPageInput } from "@/components/task-page-input";
+import { TaskPageMessageList } from "@/components/task-page-message-list";
 import { promptDesktopRunnerTask } from "@/lib/desktop-runner";
 import { failTaskRun } from "@/lib/fail-task-run";
 import { isDesktopApp } from "@/lib/is-desktop-app";
-import {
-  localStorageKeys,
-  sessionStateKeys,
-  useLocalStorageState,
-  useSessionState,
-} from "@/lib/session-state";
 import { useRunnerDiff } from "@/lib/runner-diffs";
 import {
   getDefaultRunnerModelSelection,
@@ -22,6 +18,12 @@ import {
   useRunnerModels,
 } from "@/lib/runner-models";
 import {
+  localStorageKeys,
+  sessionStateKeys,
+  useLocalStorageState,
+  useSessionState,
+} from "@/lib/session-state";
+import {
   buildChronologicalTimeline,
   buildTaskStreamActivityItems,
   getLatestAssistantMessage,
@@ -29,8 +31,6 @@ import {
   getLatestUserMessageCreatedAt,
 } from "@/lib/task-timeline";
 import { startTaskRun } from "@/server/functions/task-runs";
-import { taskMessagesCollection, tasksCollection } from "../lib/collections";
-import { useTaskEventStream } from "../lib/use-task-event-stream";
 
 const CREATE_PR_MESSAGE = "Create a PR for me";
 

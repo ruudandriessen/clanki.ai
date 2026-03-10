@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { ChevronRight, Wrench } from "lucide-react";
+import { useState } from "react";
 import { TaskStreamActivity, type TaskStreamActivityItem } from "@/components/task-stream-activity";
 import { cn } from "@/lib/utils";
 

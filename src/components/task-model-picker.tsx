@@ -1,11 +1,4 @@
 import { ChevronDown, Loader2 } from "lucide-react";
-import type { DesktopRunnerModelSelection } from "@/lib/desktop-runner";
-import {
-  getRunnerModelOptionGroups,
-  parseRunnerModelSelection,
-  serializeRunnerModelSelection,
-  type RunnerModelOption,
-} from "@/lib/runner-models";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,7 +9,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  getRunnerModelOptionGroups,
+  parseRunnerModelSelection,
+  serializeRunnerModelSelection,
+  type RunnerModelOption,
+} from "@/lib/runner-models";
 import { cn } from "@/lib/utils";
+
+import type { DesktopRunnerModelSelection } from "@/lib/desktop-runner";
 
 type TaskModelPickerProps = {
   disabled?: boolean;

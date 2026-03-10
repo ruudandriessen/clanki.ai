@@ -1,17 +1,17 @@
 {
-  "name": "@clanki/runner",
-  "private": true,
-  "type": "module",
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "scripts": {
-    "build": "bun build ./src/cli.ts --target=bun --format=esm --packages=bundle --outfile=./dist/cli.mjs",
-    "dev": "bun run ./src/cli.ts"
-  },
-  "dependencies": {
-    "@hono/node-server": "^1.19.9",
-    "@opencode-ai/sdk": "^1.2.1",
-    "hono": "^4.11.7"
-  }
+    "name": "@clanki/runner",
+    "private": true,
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "build": "bun build ./src/cli.ts --target=bun --format=esm --packages=bundle --outfile=./dist/cli.mjs",
+        "dev": "bun run ./src/cli.ts"
+    },
+    "dependencies": {
+        "@hono/node-server": "^1.19.9",
+        "@opencode-ai/sdk": "^1.2.1",
+        "hono": "^4.11.7"
+    }
 }

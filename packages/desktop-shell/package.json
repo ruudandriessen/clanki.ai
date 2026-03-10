@@ -1,10 +1,10 @@
 {
-  "name": "@clanki/desktop-shell",
-  "private": true,
-  "type": "module",
-  "main": "./dist/index.mjs",
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput"
-  }
+    "name": "@clanki/desktop-shell",
+    "private": true,
+    "type": "module",
+    "main": "./dist/index.mjs",
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput"
+    }
 }

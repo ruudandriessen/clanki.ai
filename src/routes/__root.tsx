@@ -1,11 +1,12 @@
+import { HotkeysProvider } from "@tanstack/react-hotkeys";
 /// <reference types="vite/client" />
 import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
-import { HotkeysProvider } from "@tanstack/react-hotkeys";
-import type { ReactNode } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { themeInitializationScript } from "@/lib/theme";
 import appCss from "@/index.css?url";
+import { themeInitializationScript } from "@/lib/theme";
+
+import type { ReactNode } from "react";
 
 export const Route = createRootRoute({
   head: () => ({

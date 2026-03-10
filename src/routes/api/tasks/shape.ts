@@ -6,22 +6,22 @@ import { electricFn } from "@/server/lib/electric";
 import { requireSession } from "@/server/requireSession";
 
 export const Route = createFileRoute("/api/tasks/shape")({
-  server: {
-    handlers: {
-      GET: async ({ request }: { request: Request }) => {
-        const session = await requireSession(request);
-        const orgId = session.session.activeOrganizationId ?? null;
+    server: {
+        handlers: {
+            GET: async ({ request }: { request: Request }) => {
+                const session = await requireSession(request);
+                const orgId = session.session.activeOrganizationId ?? null;
 
-        if (!orgId) {
-          return Response.json({ error: "No active organization" }, { status: 400 });
-        }
+                if (!orgId) {
+                    return Response.json({ error: "No active organization" }, { status: 400 });
+                }
 
-        return electricFn({
-          request,
-          table: "tasks",
-          where: clauseToString(eq(schema.tasks.organizationId, orgId)),
-        });
-      },
+                return electricFn({
+                    request,
+                    table: "tasks",
+                    where: clauseToString(eq(schema.tasks.organizationId, orgId)),
+                });
+            },
+        },
     },
-  },
 });

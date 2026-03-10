@@ -1,10 +1,11 @@
-import type { KeyboardEvent, RefObject } from "react";
 import { Loader2, Send } from "lucide-react";
 import { TaskModelPicker } from "@/components/task-model-picker";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+
 import type { getRunnerModelOptions } from "@/lib/runner-models";
+import type { KeyboardEvent, RefObject } from "react";
 
 interface TaskPageInputProps {
   inputRef: RefObject<HTMLTextAreaElement | null>;

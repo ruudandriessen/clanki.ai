@@ -1,11 +1,12 @@
-import type { RefObject } from "react";
 import { Loader2 } from "lucide-react";
-import { TaskStreamActivity } from "@/components/task-stream-activity";
-import { MarkdownContent } from "@/components/markdown-content";
 import { AnimatedStreamItem } from "@/components/animated-stream-item";
 import { CollapsedActivityGroup } from "@/components/collapsed-activity-group";
+import { MarkdownContent } from "@/components/markdown-content";
+import { TaskStreamActivity } from "@/components/task-stream-activity";
 import { formatDuration } from "@/lib/format-duration";
+
 import type { TimelineEntry } from "@/lib/task-timeline";
+import type { RefObject } from "react";
 
 interface TaskPageMessageListProps {
   messageListRef: RefObject<HTMLDivElement | null>;

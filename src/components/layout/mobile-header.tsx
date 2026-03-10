@@ -1,7 +1,7 @@
 import { Menu, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useOrganization } from "./use-organization";
 import { UserMenu } from "./user-menu";
+import { Button } from "@/components/ui/button";
 
 type MobileHeaderProps = {
   sidebarOpen: boolean;

@@ -1,7 +1,5 @@
-import { useState } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
 import { useLiveQuery } from "@tanstack/react-db";
-import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/react";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   CheckCheck,
   CircleAlert,
@@ -10,8 +8,12 @@ import {
   MessageSquare,
   Trash2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/react";
+import { useState } from "react";
+import { projectsCollection, pullRequestsCollection, tasksCollection } from "../../lib/collections";
+import { cn } from "../../lib/utils";
 import { NewTaskButton } from "@/components/new-task-button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -20,8 +22,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "../../lib/utils";
-import { projectsCollection, pullRequestsCollection, tasksCollection } from "../../lib/collections";
 import { deleteDesktopRunnerWorkspace } from "@/lib/desktop-runner";
 import {
   buildTaskSidebarGroups,

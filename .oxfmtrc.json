@@ -1,6 +1,6 @@
 {
     "$schema": "./node_modules/oxfmt/configuration_schema.json",
-    "ignorePatterns": ["worker/migrations-postgres/","src/routeTree.gen.ts"],
+    "ignorePatterns": ["src/routeTree.gen.ts", "drizzle/"],
     "experimentalSortImports": {
         "newlinesBetween": false,
         "groups": [

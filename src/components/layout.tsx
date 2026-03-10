@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
 import { Outlet, useRouterState } from "@tanstack/react-router";
-import { AppQueryProvider } from "@/components/app-query-provider";
+import { useEffect, useState } from "react";
 import { cn } from "../lib/utils";
 import { MobileHeader } from "./layout/mobile-header";
 import { Sidebar } from "./layout/sidebar";
+import { AppQueryProvider } from "@/components/app-query-provider";
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);

@@ -1,19 +1,19 @@
 {
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "react", "import", "unicorn"],
-  "categories": {
-    "correctness": "warn",
-    "suspicious": "warn"
-  },
-  "env": {
-    "browser": true
-  },
-  "globals": {
-    "Bun": "readonly"
-  },
-  "rules": {
-    "react/react-in-jsx-scope": "off",
-    "import/no-unassigned-import": "off"
-  },
-  "ignorePatterns": ["dist/", "node_modules/", ".vercel/", ".astro/"]
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "plugins": ["typescript", "react", "import", "unicorn"],
+    "categories": {
+        "correctness": "warn",
+        "suspicious": "warn"
+    },
+    "env": {
+        "browser": true
+    },
+    "globals": {
+        "Bun": "readonly"
+    },
+    "rules": {
+        "react/react-in-jsx-scope": "off",
+        "import/no-unassigned-import": "off"
+    },
+    "ignorePatterns": ["dist/", "node_modules/", ".vercel/", ".astro/"]
 }

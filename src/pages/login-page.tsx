@@ -1,8 +1,8 @@
-import { useState } from "react";
 import { Github, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { signIn } from "../lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { signIn } from "../lib/auth-client";
 
 export function LoginPage() {
   const [isSigningIn, setIsSigningIn] = useState(false);

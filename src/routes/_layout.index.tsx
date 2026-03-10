@@ -1,7 +1,7 @@
-import { useEffect } from "react";
 import { useLiveQuery } from "@tanstack/react-db";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 import { NewTaskButton } from "@/components/new-task-button";
 import { projectsCollection, pullRequestsCollection, tasksCollection } from "@/lib/collections";
 import { getFirstSidebarTaskId } from "@/lib/task-sidebar";
