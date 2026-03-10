@@ -1,0 +1,19 @@
+{
+    "$schema": "./node_modules/oxfmt/configuration_schema.json",
+    "ignorePatterns": [],
+    "experimentalSortImports": {
+        "newlinesBetween": false,
+        "groups": [
+            ["value-builtin", "value-external"],
+            ["value-internal", "value-parent", "value-sibling", "value-index"],
+            {
+                "newlinesBetween": true
+            },
+            "type-import",
+            "unknown"
+        ]
+    },
+    "experimentalSortPackageJson": {
+        "sortScripts": true
+    }
+}
