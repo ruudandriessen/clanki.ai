@@ -25,7 +25,7 @@ export function TaskPageCodeView({
   isRunnerBackedTask,
   preparingWorkspace,
 }: TaskPageCodeViewProps) {
-  const { theme } = useTheme();
+  const { mode } = useTheme();
 
   if (preparingWorkspace) {
     return (
@@ -96,7 +96,7 @@ export function TaskPageCodeView({
                 diffStyle: "split",
                 lineDiffType: "word",
                 overflow: "scroll",
-                themeType: theme,
+                themeType: mode,
               }}
               className="runner-diff-view"
             />
