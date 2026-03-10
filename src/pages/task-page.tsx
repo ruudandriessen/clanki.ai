@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLiveQuery, eq } from "@tanstack/react-db";
+import { useMutation } from "@tanstack/react-query";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { TaskPageHeader } from "@/components/task-page-header";
 import { TaskPageMessageList } from "@/components/task-page-message-list";
@@ -79,7 +80,6 @@ export function TaskPage({
     null,
   );
   const [localError, setLocalError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
   const runEvents = useTaskEventStream({ taskId, streamId });
   const [now, setNow] = useState(() => Date.now());
   const messageListRef = useRef<HTMLDivElement>(null);
@@ -130,7 +130,6 @@ export function TaskPage({
         : (selectedModel ?? lastUsedModel ?? defaultModelSelection);
   const runnerModelErrorMessage =
     runnerModelsError instanceof Error ? runnerModelsError.message : null;
-  const displayError = localError ?? error;
 
   useEffect(() => {
     if (!shouldStickToBottomRef.current) {
@@ -166,26 +165,8 @@ export function TaskPage({
     };
   }, [isRunning]);
 
-  async function handleSend(contentOverride?: string) {
-    const content = (contentOverride ?? input).trim();
-    if (!content || sending || isRunning || !taskId) return;
-    if (isReadOnlyRemoteTask) {
-      setLocalError("This task is attached to a local runner session and is read-only here.");
-      return;
-    }
-
-    shouldStickToBottomRef.current = true;
-    setSending(true);
-    setLocalError(null);
-    setSelectedModel(activeModelSelection);
-    setLastUsedModel(activeModelSelection);
-    if (contentOverride === undefined) {
-      setInput("");
-    }
-
-    let taskRun: Awaited<ReturnType<typeof startTaskRun>> | null = null;
-
-    try {
+  const sendMutation = useMutation({
+    mutationFn: async (content: string) => {
       const optimisticUpdatedAt = BigInt(Date.now());
       tasksCollection.update(taskId, (draft) => {
         draft.status = "running";
@@ -204,39 +185,66 @@ export function TaskPage({
       await messageTx.isPersisted.promise;
 
       if (isRunnerBackedTask && runnerSessionId && workspacePath) {
-        taskRun = await startTaskRun({
+        const taskRun = await startTaskRun({
           data: {
             taskId,
           },
         });
 
-        await promptDesktopRunnerTask({
-          backendBaseUrl: globalThis.location.origin,
-          callbackToken: taskRun.callbackToken,
-          directory: workspacePath,
-          executionId: taskRun.executionId,
-          model: activeModelSelection?.model,
-          prompt: content,
-          provider: activeModelSelection?.provider,
-          sessionId: runnerSessionId,
-        });
-      }
-    } catch (sendError) {
-      setLocalError(sendError instanceof Error ? sendError.message : "Failed to send message");
+        try {
+          await promptDesktopRunnerTask({
+            backendBaseUrl: globalThis.location.origin,
+            callbackToken: taskRun.callbackToken,
+            directory: workspacePath,
+            executionId: taskRun.executionId,
+            model: activeModelSelection?.model,
+            prompt: content,
+            provider: activeModelSelection?.provider,
+            sessionId: runnerSessionId,
+          });
+        } catch (promptError) {
+          await failTaskRun({
+            backendBaseUrl: globalThis.location.origin,
+            callbackToken: taskRun.callbackToken,
+            errorMessage:
+              promptError instanceof Error
+                ? promptError.message
+                : "Failed to send message to runner",
+            executionId: taskRun.executionId,
+          }).catch(() => undefined);
 
-      if (taskRun) {
-        await failTaskRun({
-          backendBaseUrl: globalThis.location.origin,
-          callbackToken: taskRun.callbackToken,
-          errorMessage:
-            sendError instanceof Error ? sendError.message : "Failed to send message to runner",
-          executionId: taskRun.executionId,
-        }).catch(() => undefined);
+          throw promptError;
+        }
       }
-    } finally {
-      setSending(false);
+    },
+    onSettled: () => {
       inputRef.current?.focus();
+    },
+  });
+
+  const sending = sendMutation.isPending;
+  const sendError = sendMutation.error;
+  const displayError =
+    localError ?? (sendError instanceof Error ? sendError.message : null) ?? error;
+
+  function handleSend(contentOverride?: string) {
+    const content = (contentOverride ?? input).trim();
+    if (!content || sending || isRunning || !taskId) return;
+    if (isReadOnlyRemoteTask) {
+      setLocalError("This task is attached to a local runner session and is read-only here.");
+      return;
     }
+
+    shouldStickToBottomRef.current = true;
+    setLocalError(null);
+    sendMutation.reset();
+    setSelectedModel(activeModelSelection);
+    setLastUsedModel(activeModelSelection);
+    if (contentOverride === undefined) {
+      setInput("");
+    }
+
+    sendMutation.mutate(content);
   }
 
   function handleMessageListScroll() {
@@ -271,7 +279,7 @@ export function TaskPage({
         sending={sending}
         isRunning={isRunning}
         onError={setLocalError}
-        onCreatePr={() => void handleSend(CREATE_PR_MESSAGE)}
+        onCreatePr={() => handleSend(CREATE_PR_MESSAGE)}
       />
 
       {displayError ? (
@@ -297,7 +305,7 @@ export function TaskPage({
         inputRef={inputRef}
         input={input}
         onInputChange={setInput}
-        onSend={() => void handleSend()}
+        onSend={() => handleSend()}
         isRunning={isRunning}
         isReadOnlyRemoteTask={isReadOnlyRemoteTask}
         sending={sending}
