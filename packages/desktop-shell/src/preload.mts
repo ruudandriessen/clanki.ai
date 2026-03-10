@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld("clankiDesktop", {
   deleteRunnerWorkspace(workspaceDirectory: string) {
     return ipcRenderer.invoke("desktop-runner:delete-workspace", { workspaceDirectory });
   },
+  getRunnerHealth() {
+    return ipcRenderer.invoke("desktop-runner:get-health");
+  },
   listRunnerModels(args: { directory: string }) {
     return ipcRenderer.invoke("desktop-runner:list-models", args);
   },

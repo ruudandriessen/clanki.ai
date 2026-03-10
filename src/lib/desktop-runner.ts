@@ -11,6 +11,10 @@ export type DesktopRunnerModelSelection = {
   provider: string;
 };
 
+export type DesktopRunnerHealthResponse = {
+  ok: boolean;
+};
+
 export type DesktopRunnerModelProvider = {
   id: string;
   models: Record<string, { id: string; name: string }>;
@@ -29,6 +33,7 @@ type DesktopRunnerBridge = {
     repoUrl: string,
   ) => Promise<CreateDesktopRunnerSessionResponse>;
   deleteRunnerWorkspace: (workspaceDirectory: string) => Promise<void>;
+  getRunnerHealth: () => Promise<DesktopRunnerHealthResponse>;
   listRunnerModels: (args: { directory: string }) => Promise<ListDesktopRunnerModelsResponse>;
   openWorkspaceInEditor: (args: {
     editor: DesktopWorkspaceEditor;
@@ -69,6 +74,10 @@ export async function createDesktopRunnerSession(
 
 export async function deleteDesktopRunnerWorkspace(workspaceDirectory: string): Promise<void> {
   await getDesktopRunnerBridge().deleteRunnerWorkspace(workspaceDirectory);
+}
+
+export async function getDesktopRunnerHealth(): Promise<DesktopRunnerHealthResponse> {
+  return await getDesktopRunnerBridge().getRunnerHealth();
 }
 
 export async function listDesktopRunnerModels(args: {

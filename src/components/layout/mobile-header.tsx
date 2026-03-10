@@ -1,5 +1,7 @@
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { isDesktopApp } from "@/lib/is-desktop-app";
+import { RunnerHealthDot } from "./runner-health-dot";
 import { useOrganization } from "./use-organization";
 import { UserMenu } from "./user-menu";
 
@@ -10,6 +12,7 @@ type MobileHeaderProps = {
 
 export function MobileHeader({ sidebarOpen, onToggleSidebar }: MobileHeaderProps) {
   const activeOrg = useOrganization();
+  const desktopApp = isDesktopApp();
   const orgName = activeOrg.data?.name;
 
   return (
@@ -26,9 +29,12 @@ export function MobileHeader({ sidebarOpen, onToggleSidebar }: MobileHeaderProps
           {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           <span className="sr-only">{sidebarOpen ? "Close" : "Open"}</span>
         </Button>
-        <span className="min-w-0 truncate px-1 text-center text-[11px] font-bold tracking-[0.08em] uppercase text-muted-foreground">
-          {orgName ?? "Organization"}
-        </span>
+        <div className="flex min-w-0 items-center justify-center gap-1.5 px-1">
+          <span className="truncate text-center text-[11px] font-bold tracking-[0.08em] uppercase text-muted-foreground">
+            {orgName ?? "Organization"}
+          </span>
+          {desktopApp ? <RunnerHealthDot /> : null}
+        </div>
         <div className="justify-self-end">
           <UserMenu menuDirection="up" />
         </div>

@@ -2,11 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { Building2, Pencil, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { isDesktopApp } from "@/lib/is-desktop-app";
 import { authClient } from "../../lib/auth-client";
+import { RunnerHealthDot } from "./runner-health-dot";
 import { useOrganization } from "./use-organization";
 
 export function OrgSwitcher() {
   const activeOrg = useOrganization();
+  const desktopApp = isDesktopApp();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
@@ -87,19 +90,22 @@ export function OrgSwitcher() {
 
   return (
     <div className="border-b border-border px-3 py-3">
-      <Button
-        type="button"
-        variant="ghost"
-        onClick={() => {
-          setName(org.name);
-          setEditing(true);
-        }}
-        className="group h-auto w-full justify-start gap-2 px-2.5 py-1.5 text-sm text-foreground shadow-none hover:border-transparent hover:bg-accent/70 hover:shadow-none"
-      >
-        <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-        <span className="truncate font-medium">{org.name}</span>
-        <Pencil className="w-3 h-3 text-muted-foreground ml-auto shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity" />
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => {
+            setName(org.name);
+            setEditing(true);
+          }}
+          className="group h-auto flex-1 justify-start gap-2 px-2.5 py-1.5 text-sm text-foreground shadow-none hover:border-transparent hover:bg-accent/70 hover:shadow-none"
+        >
+          <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          <span className="min-w-0 flex-1 truncate font-medium">{org.name}</span>
+          <Pencil className="w-3 h-3 text-muted-foreground ml-auto shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity" />
+        </Button>
+        {desktopApp ? <RunnerHealthDot /> : null}
+      </div>
     </div>
   );
 }

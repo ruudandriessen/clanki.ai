@@ -75,9 +75,11 @@ type AppRunnerController = {
     workspaceDirectory: string;
   }>;
   deleteRunnerWorkspace: (args: DeleteRunnerWorkspaceArgs) => Promise<void>;
+  getRunnerHealth: () => Promise<{ ok: boolean }>;
   listRunnerModels: (args: { directory: string }) => Promise<ListRunnerModelsResponse>;
   openWorkspaceInEditor: (args: OpenWorkspaceInEditorArgs) => Promise<void>;
   promptRunnerTask: (args: PromptRunnerTaskArgs) => Promise<void>;
+  ensureRunnerStarted: () => Promise<void>;
   stop: () => Promise<void>;
 };
 
@@ -136,6 +138,14 @@ export function createDesktopRunnerController({
         directory: args.directory,
       }).toString()}`,
     );
+  }
+
+  async function getRunnerHealth(): Promise<{ ok: boolean }> {
+    if (!runnerProcess) {
+      return { ok: false };
+    }
+
+    return { ok: await isRunnerHealthy(runnerProcess.baseUrl) };
   }
 
   async function promptRunnerTask(args: PromptRunnerTaskArgs): Promise<void> {
@@ -211,6 +221,10 @@ export function createDesktopRunnerController({
     await stopChildProcess(child);
   }
 
+  async function ensureRunnerStarted(): Promise<void> {
+    await ensureRunner();
+  }
+
   async function ensureRunner(): Promise<RunnerProcess> {
     if (runnerProcess && (await isRunnerHealthy(runnerProcess.baseUrl))) {
       return runnerProcess;
@@ -267,9 +281,11 @@ export function createDesktopRunnerController({
   return {
     createRunnerSession,
     deleteRunnerWorkspace,
+    getRunnerHealth,
     listRunnerModels,
     openWorkspaceInEditor,
     promptRunnerTask,
+    ensureRunnerStarted,
     stop,
   };
 }

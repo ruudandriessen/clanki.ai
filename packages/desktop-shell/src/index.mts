@@ -49,6 +49,10 @@ function registerIpcHandlers(): void {
     return await getDesktopRunnerController().deleteRunnerWorkspace(args);
   });
 
+  ipcMain.handle("desktop-runner:get-health", async () => {
+    return await getDesktopRunnerController().getRunnerHealth();
+  });
+
   ipcMain.handle("desktop-runner:list-models", async (_event, args) => {
     return await getDesktopRunnerController().listRunnerModels(args);
   });
@@ -159,6 +163,12 @@ registerIpcHandlers();
 app
   .whenReady()
   .then(async () => {
+    void getDesktopRunnerController()
+      .ensureRunnerStarted()
+      .catch((error) => {
+        console.error("Failed to start the local runner during app startup", error);
+      });
+
     await createMainWindow();
 
     app.on("activate", async () => {
