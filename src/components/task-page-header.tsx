@@ -3,6 +3,7 @@ import { ExternalLink } from "lucide-react";
 import { OpenEditorDropdown } from "@/components/open-editor-dropdown";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { hotkeys } from "@/lib/hotkeys";
 import {
   formatChecksProgress,
@@ -51,6 +52,30 @@ export function TaskPageHeader({
 }: TaskPageHeaderProps) {
   const canCreatePr = !!branchName && !pullRequest && !sending && !isRunning;
   useHotkey(hotkeys.createPr.keys, () => onCreatePr(), { enabled: canCreatePr });
+
+  const createPrButton = branchName ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span tabIndex={-1}>
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            disabled={sending || isRunning}
+            onClick={onCreatePr}
+          >
+            Create PR
+          </Button>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <span className="flex items-center gap-2">
+          {hotkeys.createPr.label}
+          <Kbd keys={hotkeys.createPr.keys} />
+        </span>
+      </TooltipContent>
+    </Tooltip>
+  ) : null;
 
   return (
     <div className="shrink-0 border-b border-border bg-card px-4 py-3 md:px-6">
@@ -121,18 +146,7 @@ export function TaskPageHeader({
               </div>
             </div>
           ) : branchName ? (
-            <div className="space-y-1 text-right">
-              <Button
-                type="button"
-                variant="outline"
-                size="xs"
-                disabled={sending || isRunning}
-                onClick={onCreatePr}
-              >
-                Create a PR
-                <Kbd keys={hotkeys.createPr.keys} />
-              </Button>
-            </div>
+            <div className="space-y-1 text-right">{createPrButton}</div>
           ) : null}
         </div>
       </div>
