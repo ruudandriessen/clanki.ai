@@ -10,7 +10,7 @@ export type TaskSidebarGroup = "merged" | "needsAction" | "openNoPr" | "awaiting
 export const TASK_SIDEBAR_GROUPS: Array<{ key: TaskSidebarGroup; label: string }> = [
   { key: "merged", label: "Merged" },
   { key: "needsAction", label: "Needs action" },
-  { key: "openNoPr", label: "Open (no PR)" },
+  { key: "openNoPr", label: "Idle" },
   { key: "awaitingReview", label: "Awaiting review" },
   { key: "running", label: "Running" },
 ];
