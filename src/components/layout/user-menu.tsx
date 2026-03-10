@@ -1,6 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, LogOut, Settings } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -76,9 +75,6 @@ export function UserMenu({ showIdentity = false, menuDirection = "down" }: UserM
               Settings
             </Link>
           </DropdownMenuItem>
-
-          <ThemeToggle variant="menu-item" />
-
           <DropdownMenuItem
             onSelect={() =>
               void signOut({
