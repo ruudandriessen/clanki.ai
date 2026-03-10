@@ -18,7 +18,7 @@ export function TaskStreamActivityRow({
   const { action, details } = splitActivityLabel(item.label);
 
   return (
-    <div className="flex items-start gap-2.5 rounded-md border border-border/50 bg-muted/25 px-2.5 py-2 text-xs">
+    <div className="flex items-start gap-2.5 py-1 text-xs">
       <Icon
         className={cn(
           "mt-0.5 h-3.5 w-3.5 shrink-0",
@@ -27,42 +27,41 @@ export function TaskStreamActivityRow({
         )}
       />
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
           <span className="text-[11px] font-medium text-muted-foreground">{action}</span>
-          {item.summary ? null : details ? (
+          {item.summary ? (
+            hasExpandableDetails ? (
+              <button
+                type="button"
+                aria-expanded={expanded}
+                onClick={() => setExpanded((current) => !current)}
+                className="flex min-w-0 items-center gap-1 text-left text-foreground transition-colors hover:text-foreground/80"
+              >
+                <ChevronRight
+                  className={cn(
+                    "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform",
+                    expanded && "rotate-90",
+                  )}
+                />
+                <span className="min-w-0 truncate font-medium sm:whitespace-pre-wrap sm:break-words sm:truncate-none">
+                  {item.summary}
+                </span>
+              </button>
+            ) : (
+              <span className="min-w-0 truncate font-medium text-foreground sm:whitespace-pre-wrap sm:break-words sm:truncate-none">
+                {item.summary}
+              </span>
+            )
+          ) : details ? (
             <span className="text-muted-foreground">{details}</span>
           ) : null}
         </div>
-        {item.summary ? (
-          hasExpandableDetails ? (
-            <button
-              type="button"
-              aria-expanded={expanded}
-              onClick={() => setExpanded((current) => !current)}
-              className="mt-0.5 flex min-w-0 items-start gap-1 text-left text-foreground transition-colors hover:text-foreground/80"
-            >
-              <ChevronRight
-                className={cn(
-                  "mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform",
-                  expanded && "rotate-90",
-                )}
-              />
-              <span className="min-w-0 whitespace-pre-wrap break-words font-medium">
-                {item.summary}
-              </span>
-            </button>
-          ) : (
-            <div className="mt-0.5 whitespace-pre-wrap break-words font-medium text-foreground">
-              {item.summary}
-            </div>
-          )
-        ) : null}
         {item.badges && item.badges.length > 0 ? (
           <div className="mt-1 flex flex-wrap gap-1">
             {item.badges.map((badge) => (
               <span
                 key={`${item.id}-${badge}`}
-                className="rounded-sm border border-border/60 bg-background/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                className="rounded-sm bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
               >
                 {badge}
               </span>
@@ -85,7 +84,7 @@ export function TaskStreamActivityRow({
           </div>
         ) : null}
         {item.summary && hasExpandableDetails && expanded ? (
-          <div className="mt-2 space-y-2 rounded-sm border border-border/60 bg-background/80 p-2">
+          <div className="mt-2 space-y-2 border-l border-border/70 pl-3">
             {item.detailSections?.map((section) => (
               <div key={`${item.id}-${section.label}`} className="space-y-1">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -94,7 +93,8 @@ export function TaskStreamActivityRow({
                 <div
                   className={cn(
                     "whitespace-pre-wrap break-words text-[11px] text-foreground",
-                    section.code && "overflow-x-auto rounded-sm bg-muted/40 px-2 py-1 font-mono",
+                    section.code &&
+                      "overflow-x-auto rounded-sm border border-border/60 bg-muted/30 px-2 py-1.5 font-mono",
                   )}
                 >
                   {section.value}

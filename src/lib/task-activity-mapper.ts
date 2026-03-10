@@ -260,7 +260,10 @@ function messagePartToActivityItem(
       state: part.state,
     });
     const details = [...(presentation.details ?? [])];
-    const attachmentCount = part.state.attachments?.length ?? 0;
+    const attachmentCount =
+      status === "completed" && "attachments" in part.state
+        ? (part.state.attachments?.length ?? 0)
+        : 0;
 
     if (attachmentCount > 0) {
       details.push(`Attachments: ${attachmentCount}`);
