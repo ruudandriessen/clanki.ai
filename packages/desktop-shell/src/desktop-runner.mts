@@ -37,6 +37,14 @@ type RunnerModelProvider = {
   name: string;
 };
 
+type RunnerDiff = {
+  additions: number;
+  after: string;
+  before: string;
+  deletions: number;
+  file: string;
+};
+
 type ListRunnerModelsResponse = {
   connected: string[];
   default: Record<string, string>;
@@ -75,6 +83,7 @@ type AppRunnerController = {
     workspaceDirectory: string;
   }>;
   deleteRunnerWorkspace: (args: DeleteRunnerWorkspaceArgs) => Promise<void>;
+  getRunnerDiff: (args: { directory: string; sessionId: string }) => Promise<RunnerDiff[]>;
   listRunnerModels: (args: { directory: string }) => Promise<ListRunnerModelsResponse>;
   openWorkspaceInEditor: (args: OpenWorkspaceInEditorArgs) => Promise<void>;
   promptRunnerTask: (args: PromptRunnerTaskArgs) => Promise<void>;
@@ -92,6 +101,10 @@ type PromptTaskAssistantSessionResponse = {
 
 type DeleteWorkspaceResponse = {
   ok: boolean;
+};
+
+type GetRunnerDiffResponse = {
+  diffs: RunnerDiff[];
 };
 
 export function createDesktopRunnerController({
@@ -136,6 +149,21 @@ export function createDesktopRunnerController({
         directory: args.directory,
       }).toString()}`,
     );
+  }
+
+  async function getRunnerDiff(args: {
+    directory: string;
+    sessionId: string;
+  }): Promise<RunnerDiff[]> {
+    const runner = await ensureRunner();
+    const payload = await getRunnerJson<GetRunnerDiffResponse>(
+      `${runner.baseUrl}/assistant/session/diff?${new URLSearchParams({
+        directory: args.directory,
+        sessionId: args.sessionId,
+      }).toString()}`,
+    );
+
+    return payload.diffs;
   }
 
   async function promptRunnerTask(args: PromptRunnerTaskArgs): Promise<void> {
@@ -267,6 +295,7 @@ export function createDesktopRunnerController({
   return {
     createRunnerSession,
     deleteRunnerWorkspace,
+    getRunnerDiff,
     listRunnerModels,
     openWorkspaceInEditor,
     promptRunnerTask,

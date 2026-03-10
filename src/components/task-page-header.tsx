@@ -1,6 +1,7 @@
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { ExternalLink } from "lucide-react";
 import { OpenEditorDropdown } from "@/components/open-editor-dropdown";
+import { TaskPageViewToggle } from "@/components/task-page-view-toggle";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -30,6 +31,9 @@ interface TaskPageHeaderProps {
   } | null;
   desktopApp: boolean;
   isRunnerBackedTask: boolean;
+  showCodeModeToggle: boolean;
+  onViewModeChange: (mode: "chat" | "code") => void;
+  viewMode: "chat" | "code";
   workspacePath: string | null;
   sending: boolean;
   isRunning: boolean;
@@ -44,6 +48,9 @@ export function TaskPageHeader({
   pullRequest,
   desktopApp,
   isRunnerBackedTask,
+  showCodeModeToggle,
+  onViewModeChange,
+  viewMode,
   workspacePath,
   sending,
   isRunning,
@@ -93,6 +100,11 @@ export function TaskPageHeader({
           </div>
         </div>
         <div className="shrink-0 flex items-center gap-2">
+          <TaskPageViewToggle
+            showCodeMode={showCodeModeToggle}
+            viewMode={viewMode}
+            onViewModeChange={onViewModeChange}
+          />
           {desktopApp && isRunnerBackedTask && workspacePath ? (
             <OpenEditorDropdown onError={onError} workspacePath={workspacePath} />
           ) : null}

@@ -17,6 +17,14 @@ export type DesktopRunnerModelProvider = {
   name: string;
 };
 
+export type DesktopRunnerDiff = {
+  additions: number;
+  after: string;
+  before: string;
+  deletions: number;
+  file: string;
+};
+
 export type ListDesktopRunnerModelsResponse = {
   connected: string[];
   default: Record<string, string>;
@@ -29,6 +37,7 @@ type DesktopRunnerBridge = {
     repoUrl: string,
   ) => Promise<CreateDesktopRunnerSessionResponse>;
   deleteRunnerWorkspace: (workspaceDirectory: string) => Promise<void>;
+  getRunnerDiff: (args: { directory: string; sessionId: string }) => Promise<DesktopRunnerDiff[]>;
   listRunnerModels: (args: { directory: string }) => Promise<ListDesktopRunnerModelsResponse>;
   openWorkspaceInEditor: (args: {
     editor: DesktopWorkspaceEditor;
@@ -69,6 +78,13 @@ export async function createDesktopRunnerSession(
 
 export async function deleteDesktopRunnerWorkspace(workspaceDirectory: string): Promise<void> {
   await getDesktopRunnerBridge().deleteRunnerWorkspace(workspaceDirectory);
+}
+
+export async function getDesktopRunnerDiff(args: {
+  directory: string;
+  sessionId: string;
+}): Promise<DesktopRunnerDiff[]> {
+  return await getDesktopRunnerBridge().getRunnerDiff(args);
 }
 
 export async function listDesktopRunnerModels(args: {

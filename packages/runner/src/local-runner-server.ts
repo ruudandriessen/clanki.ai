@@ -1,6 +1,7 @@
 import type { Server } from "node:http";
 import { createAdaptorServer } from "@hono/node-server";
 import { Hono, type Context } from "hono";
+import { getAssistantSessionDiff } from "./assistant-session-diff";
 import { ensureAssistantSession, promptAssistantSession } from "./assistant-session";
 import { listAssistantSessions } from "./list-assistant-sessions";
 import {
@@ -8,6 +9,7 @@ import {
   type CreateAssistantSessionRequest,
   type DeleteWorkspaceRequest,
   type EnsureAssistantSessionRequest,
+  type GetAssistantSessionDiffRequest,
   type ListAssistantSessionsRequest,
   type ListOpencodeModelsRequest,
   type PromptAssistantSessionRequest,
@@ -73,6 +75,20 @@ export function createLocalRunnerApp(): Hono {
       sessions: await listAssistantSessions({
         directory,
       } satisfies ListAssistantSessionsRequest),
+    });
+  });
+
+  app.get("/assistant/session/diff", async (c) => {
+    const directory = readDirectoryQuery(c);
+    const sessionId = readRequiredQuery(c, "sessionId");
+    const messageId = readOptionalQuery(c, "messageId");
+
+    return c.json({
+      diffs: await getAssistantSessionDiff({
+        directory,
+        messageId,
+        sessionId,
+      } satisfies GetAssistantSessionDiffRequest),
     });
   });
 
@@ -193,10 +209,19 @@ function setCorsHeaders(c: Context): void {
 }
 
 function readDirectoryQuery(c: Context): string {
-  const directory = c.req.query("directory")?.trim() ?? "";
-  if (directory.length === 0) {
-    throw new RequestError("directory query parameter is required");
+  return readRequiredQuery(c, "directory");
+}
+
+function readOptionalQuery(c: Context, key: string): string | undefined {
+  const value = c.req.query(key)?.trim();
+  return value && value.length > 0 ? value : undefined;
+}
+
+function readRequiredQuery(c: Context, key: string): string {
+  const value = readOptionalQuery(c, key) ?? "";
+  if (value.length === 0) {
+    throw new RequestError(`${key} query parameter is required`);
   }
 
-  return directory;
+  return value;
 }

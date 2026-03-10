@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLiveQuery, eq } from "@tanstack/react-db";
 import { AlertCircle, Loader2 } from "lucide-react";
+import { TaskPageCodeView } from "@/components/task-page-code-view";
 import { TaskPageHeader } from "@/components/task-page-header";
 import { TaskPageMessageList } from "@/components/task-page-message-list";
 import { TaskPageInput } from "@/components/task-page-input";
@@ -13,6 +14,7 @@ import {
   useLocalStorageState,
   useSessionState,
 } from "@/lib/session-state";
+import { useRunnerDiff } from "@/lib/runner-diffs";
 import {
   getDefaultRunnerModelSelection,
   getRunnerModelOptions,
@@ -74,6 +76,7 @@ export function TaskPage({
     sessionStateKeys.taskModel(taskId),
     null,
   );
+  const [viewMode, setViewMode] = useSessionState(sessionStateKeys.taskView(taskId), "chat");
   const [lastUsedModel, setLastUsedModel] = useLocalStorageState(
     localStorageKeys.lastUsedTaskModel(),
     null,
@@ -131,6 +134,18 @@ export function TaskPage({
         : (selectedModel ?? lastUsedModel ?? defaultModelSelection);
   const runnerModelErrorMessage =
     runnerModelsError instanceof Error ? runnerModelsError.message : null;
+  const showCodeModeToggle = willBeRunnerBacked;
+  const {
+    data: diffs,
+    error: runnerDiffError,
+    isLoading: isDiffLoading,
+  } = useRunnerDiff({
+    directory: isRunnerBackedTask ? workspacePath : null,
+    enabled: viewMode === "code",
+    refetchIntervalMs: isRunning ? 3_000 : undefined,
+    sessionId: isRunnerBackedTask ? runnerSessionId : null,
+  });
+  const runnerDiffErrorMessage = runnerDiffError instanceof Error ? runnerDiffError.message : null;
   const displayError = localError ?? error;
 
   useEffect(() => {
@@ -144,6 +159,12 @@ export function TaskPage({
   useEffect(() => {
     shouldStickToBottomRef.current = true;
   }, [taskId]);
+
+  useEffect(() => {
+    if (!showCodeModeToggle && viewMode !== "chat") {
+      setViewMode("chat");
+    }
+  }, [setViewMode, showCodeModeToggle, viewMode]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -268,6 +289,9 @@ export function TaskPage({
         pullRequest={pullRequest}
         desktopApp={desktopApp}
         isRunnerBackedTask={isRunnerBackedTask}
+        showCodeModeToggle={showCodeModeToggle}
+        onViewModeChange={setViewMode}
+        viewMode={viewMode}
         workspacePath={workspacePath}
         sending={sending}
         isRunning={isRunning}
@@ -284,16 +308,26 @@ export function TaskPage({
         </div>
       ) : null}
 
-      <TaskPageMessageList
-        messageListRef={messageListRef}
-        messagesEndRef={messagesEndRef}
-        onScroll={handleMessageListScroll}
-        showEmptyState={showEmptyState}
-        preparingWorkspace={preparingWorkspace}
-        timelineEntries={timelineEntries}
-        isRunning={isRunning}
-        runningDurationMs={runningDurationMs}
-      />
+      {viewMode === "code" ? (
+        <TaskPageCodeView
+          diffs={diffs}
+          diffErrorMessage={runnerDiffErrorMessage}
+          isDiffLoading={isDiffLoading}
+          isRunnerBackedTask={isRunnerBackedTask}
+          preparingWorkspace={preparingWorkspace}
+        />
+      ) : (
+        <TaskPageMessageList
+          messageListRef={messageListRef}
+          messagesEndRef={messagesEndRef}
+          onScroll={handleMessageListScroll}
+          showEmptyState={showEmptyState}
+          preparingWorkspace={preparingWorkspace}
+          timelineEntries={timelineEntries}
+          isRunning={isRunning}
+          runningDurationMs={runningDurationMs}
+        />
+      )}
 
       <TaskPageInput
         inputRef={inputRef}
