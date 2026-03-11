@@ -146,8 +146,8 @@ export const localStorageKeys = {
       "last-used-task-model",
     ),
   theme: () =>
-    createStorageStateKey<"light" | "dark">("local", "theme", {
-      parse: (value) => (value === "dark" ? "dark" : "light"),
+    createStorageStateKey<string>("local", "theme", {
+      parse: (value) => value,
       serialize: (value) => value,
     }),
 };

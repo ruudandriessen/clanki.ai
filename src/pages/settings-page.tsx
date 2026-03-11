@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useLiveQuery } from "@tanstack/react-db";
-import { BookMarked, Loader2, Plus } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { BookMarked, Check, Loader2, Plus } from "lucide-react";
+import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { themeOptions } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 import { AddProjectDialog } from "../components/add-project-dialog";
 import { useOrganization } from "../components/layout/use-organization";
 import { projectsCollection } from "../lib/collections";
@@ -18,6 +20,7 @@ function formatMsTimestamp(msTimestamp: bigint): string {
 export function SettingsPage() {
   const navigate = useNavigate();
   const { addProject } = useSearch({ from: "/_layout/settings" });
+  const { theme, setTheme } = useTheme();
   const { data: projects, isLoading } = useLiveQuery((q) =>
     q.from({ p: projectsCollection }).orderBy(({ p }) => p.created_at, "asc"),
   );
@@ -134,22 +137,75 @@ export function SettingsPage() {
 
       <div className="neo-stagger space-y-6">
         <section>
-          <Card>
-            <CardHeader className="gap-3 md:flex md:flex-row md:items-center md:justify-between">
-              <div className="space-y-1">
-                <CardTitle>Appearance</CardTitle>
-                <CardDescription>
-                  Switch the interface between the default light theme and a new dark mode.
-                </CardDescription>
-              </div>
-              <ThemeToggle className="w-full md:w-auto" />
-            </CardHeader>
-          </Card>
+          <div className="mb-4 space-y-1">
+            <h3 className="text-sm font-bold tracking-widest text-foreground uppercase">
+              Appearance
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Pick the droid colourway you want Clanki to use on this device.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2.5">
+            {Object.entries(themeOptions).map(([_, option]) => {
+              const isSelected = option.id === theme;
+              const modeLabel = themeOptions[option.id].mode === "dark" ? "Night Ops" : "Day Shift";
+
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setTheme(option.id)}
+                  className={cn(
+                    "group relative min-w-56 flex-1 basis-56 rounded-md border border-border bg-card/75 p-3 text-left transition-all hover:-translate-y-px hover:bg-card",
+                    isSelected
+                      ? "bg-linear-to-br from-primary/16 to-card shadow-[4px_4px_0_0_var(--color-border)]"
+                      : "shadow-[2px_2px_0_0_var(--color-border)] hover:shadow-[4px_4px_0_0_var(--color-border)]",
+                  )}
+                >
+                  <span className="flex items-start justify-between gap-2">
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-semibold uppercase">
+                        {option.label}
+                      </span>
+                    </span>
+                    <span
+                      className={cn(
+                        "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/80 text-muted-foreground transition-colors",
+                        isSelected && "bg-primary text-primary-foreground",
+                      )}
+                    >
+                      <Check className="h-2.5 w-2.5" />
+                    </span>
+                  </span>
+
+                  <p className="mt-1 text-xs leading-4 text-muted-foreground">
+                    {option.description}
+                  </p>
+
+                  <span className="mt-2 flex items-center justify-between gap-2">
+                    <span className="inline-flex rounded-full border border-border/70 bg-background/70 px-1.5 py-0.5 text-[9px] font-medium tracking-[0.05em] text-muted-foreground uppercase">
+                      {modeLabel}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      {option.previewColors.map((color) => (
+                        <span
+                          key={color}
+                          className="h-3 w-3 rounded-full border border-border/70 shadow-[1px_1px_0_0_var(--color-border)]"
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </section>
 
         <section>
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-bold tracking-[0.1em] text-foreground uppercase">
+            <h3 className="text-sm font-bold tracking-widest text-foreground uppercase">
               Projects
             </h3>
             <Button type="button" onClick={() => setManualDialogOpen(true)}>
@@ -163,7 +219,7 @@ export function SettingsPage() {
               <Loader2 className="h-5 w-5 animate-spin" />
             </div>
           ) : projects.length === 0 ? (
-            <div className="neo-surface flex flex-col items-center justify-center gap-3 rounded-[var(--radius-md)] border-dashed py-12 text-muted-foreground">
+            <div className="neo-surface flex flex-col items-center justify-center gap-3 rounded-md border-dashed py-12 text-muted-foreground">
               <BookMarked className="h-8 w-8" />
               <p className="text-sm">No projects yet. Add a repository to get started.</p>
             </div>

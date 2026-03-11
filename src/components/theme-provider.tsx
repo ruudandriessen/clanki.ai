@@ -1,17 +1,24 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { localStorageKeys } from "@/lib/session-state";
-import { applyTheme, defaultTheme, getStoredTheme, type Theme } from "@/lib/theme";
+import {
+  applyTheme,
+  type ClankerId,
+  defaultTheme,
+  getStoredTheme,
+  getThemeMode,
+  type ThemeMode,
+} from "@/lib/theme";
 
 type ThemeContextValue = {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-  toggleTheme: () => void;
+  theme: ClankerId;
+  mode: ThemeMode;
+  setTheme: (theme: ClankerId) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(defaultTheme);
+  const [theme, setThemeState] = useState<ClankerId>(defaultTheme);
 
   useEffect(() => {
     setThemeState(getStoredTheme());
@@ -21,7 +28,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyTheme(theme);
   }, [theme]);
 
-  const setTheme = (nextTheme: Theme) => {
+  const mode = getThemeMode(theme);
+
+  const setTheme = (nextTheme: ClankerId) => {
     setThemeState(nextTheme);
 
     if (typeof window === "undefined") {
@@ -35,14 +44,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
-
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
+    <ThemeContext.Provider value={{ theme, mode, setTheme }}>{children}</ThemeContext.Provider>
   );
 }
 
