@@ -4,7 +4,7 @@ export type ThemeMode = "light" | "dark";
 
 export type ClankerId = "r2d2" | "k2so" | "bb8" | "ig11" | "bd1" | "ig88";
 
-export type ClankerThemeOption = {
+type ClankerThemeOption = {
   id: ClankerId;
   label: string;
   description: string;
@@ -81,7 +81,7 @@ export function getThemeMode(theme: ClankerId) {
   return themeOptions[theme].mode;
 }
 
-export function getThemeColor(theme: ClankerId) {
+function getThemeColor(theme: ClankerId) {
   return themeOptions[theme].themeColor;
 }
 
