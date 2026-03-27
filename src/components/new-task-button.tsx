@@ -1,5 +1,5 @@
 import { useState, type ComponentProps } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useLiveQuery } from "@tanstack/react-db";
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { ChevronDown, Loader2, Plus } from "lucide-react";
@@ -31,16 +31,26 @@ export function NewTaskButton({
 }: NewTaskButtonProps) {
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { data: projects } = useLiveQuery((query) =>
     query.from({ p: projectsCollection }).orderBy(({ p }) => p.created_at, "asc"),
+  );
+  const { data: tasks } = useLiveQuery((query) =>
+    query.from({ t: tasksCollection }).orderBy(({ t }) => t.updated_at, "desc"),
   );
 
   const [defaultProject] = projects;
   const hasProjects = projects.length > 0;
   const hasMultipleProjects = projects.length > 1;
   const singleProject = hasMultipleProjects ? undefined : defaultProject;
+  const currentTaskId = pathname.startsWith("/tasks/") ? pathname.split("/")[2] : undefined;
+  const currentTask = currentTaskId ? tasks.find((task) => task.id === currentTaskId) : undefined;
+  const currentProject = currentTask?.project_id
+    ? projects.find((project) => project.id === currentTask.project_id)
+    : undefined;
+  const hotkeyProject = currentProject ?? defaultProject;
 
-  useHotkey(hotkeys.newTask.keys, () => handleNewTask(), { enabled: hotkeyEnabled });
+  useHotkey(hotkeys.newTask.keys, () => handleNewTask(hotkeyProject), { enabled: hotkeyEnabled });
 
   function handleNewTask(project = defaultProject) {
     const repoUrl = project?.repo_url;
