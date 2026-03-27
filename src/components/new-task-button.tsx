@@ -2,9 +2,16 @@ import { useState, type ComponentProps } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "@tanstack/react-db";
 import { useHotkey } from "@tanstack/react-hotkeys";
-import { Loader2, Plus } from "lucide-react";
+import { ChevronDown, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { projectsCollection, tasksCollection } from "@/lib/collections";
 import { createDesktopRunnerSession } from "@/lib/desktop-runner";
@@ -29,12 +36,15 @@ export function NewTaskButton({
   );
 
   const [defaultProject] = projects;
+  const hasProjects = projects.length > 0;
+  const hasMultipleProjects = projects.length > 1;
+  const singleProject = hasMultipleProjects ? undefined : defaultProject;
 
   useHotkey(hotkeys.newTask.keys, () => handleNewTask(), { enabled: hotkeyEnabled });
 
-  function handleNewTask() {
-    const repoUrl = defaultProject?.repo_url;
-    if (creating || !defaultProject || !repoUrl) {
+  function handleNewTask(project = defaultProject) {
+    const repoUrl = project?.repo_url;
+    if (creating || !project || !repoUrl) {
       return;
     }
 
@@ -45,8 +55,8 @@ export function NewTaskButton({
     const taskId = crypto.randomUUID();
     tasksCollection.insert({
       id: taskId,
-      organization_id: defaultProject.organization_id,
-      project_id: defaultProject.id,
+      organization_id: project.organization_id,
+      project_id: project.id,
       title: taskTitle,
       status: "open",
       stream_id: null,
@@ -86,19 +96,63 @@ export function NewTaskButton({
   const button = (
     <Button
       type="button"
-      disabled={creating || !defaultProject}
-      onClick={() => handleNewTask()}
+      disabled={creating || !hasProjects || (!hasMultipleProjects && !singleProject?.repo_url)}
+      onClick={hasMultipleProjects ? undefined : () => handleNewTask(singleProject)}
       {...props}
     >
       {icon}
       {iconOnly ? null : (
         <>
           <span>New task</span>
-          <Kbd keys={hotkeys.newTask.keys} />
+          {hasMultipleProjects ? <ChevronDown className="w-3.5 h-3.5" /> : null}
+          {hasMultipleProjects ? null : <Kbd keys={hotkeys.newTask.keys} />}
         </>
       )}
     </Button>
   );
+
+  if (hasMultipleProjects) {
+    const content = (
+      <DropdownMenuContent align={iconOnly ? "end" : "start"} className="min-w-56">
+        <DropdownMenuLabel>Select project</DropdownMenuLabel>
+        {projects.map((project) => (
+          <DropdownMenuItem
+            key={project.id}
+            disabled={creating || !project.repo_url}
+            onSelect={() => handleNewTask(project)}
+          >
+            {project.name}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    );
+
+    if (iconOnly) {
+      return (
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>{button}</DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>
+              <span className="flex items-center gap-2">
+                {hotkeys.newTask.label}
+                <Kbd keys={hotkeys.newTask.keys} />
+              </span>
+            </TooltipContent>
+          </Tooltip>
+          {content}
+        </DropdownMenu>
+      );
+    }
+
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>{button}</DropdownMenuTrigger>
+        {content}
+      </DropdownMenu>
+    );
+  }
 
   if (iconOnly) {
     return (
