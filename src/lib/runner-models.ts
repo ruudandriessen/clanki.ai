@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  listDesktopRunnerModels,
-  type DesktopRunnerModelSelection,
-  type ListDesktopRunnerModelsResponse,
+import type {
+  DesktopRunnerModelSelection,
+  ListDesktopRunnerModelsResponse,
 } from "@/lib/desktop-runner";
 import { isDesktopApp } from "@/lib/is-desktop-app";
+import { listTaskOpencodeModels } from "@/server/functions/opencode-models";
 
 export type RunnerModelOption = {
   label: string;
@@ -30,8 +30,8 @@ export function useRunnerModels(directory: string | null) {
   return useQuery({
     queryKey: RUNNER_MODELS_QUERY_KEY,
     queryFn: async () =>
-      await listDesktopRunnerModels({
-        directory: normalizedDirectory,
+      await listTaskOpencodeModels({
+        data: { directory: normalizedDirectory },
       }),
     enabled: desktopApp && normalizedDirectory.length > 0,
     gcTime: Number.POSITIVE_INFINITY,

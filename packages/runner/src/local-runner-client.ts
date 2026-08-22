@@ -5,8 +5,6 @@ import type {
   DeleteWorkspaceResponse,
   GetAssistantSessionArchitectureDiffRequest,
   GetAssistantSessionArchitectureDiffResponse,
-  ListOpencodeModelsRequest,
-  ListOpencodeModelsResponse,
   LocalRunnerHealthResponse,
   LocalRunnerInfoResponse,
 } from "@clanki/protocol";
@@ -37,15 +35,6 @@ export function createLocalRunnerClient(baseUrl: string) {
     },
     async info(): Promise<LocalRunnerInfoResponse> {
       return await getJson(`${normalizedBaseUrl}/runner/info`);
-    },
-    async listOpencodeModels(
-      params: ListOpencodeModelsRequest,
-    ): Promise<ListOpencodeModelsResponse> {
-      return await getJson(
-        `${normalizedBaseUrl}/opencode/models?${new URLSearchParams({
-          directory: params.directory,
-        }).toString()}`,
-      );
     },
   };
 }

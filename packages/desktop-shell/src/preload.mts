@@ -11,9 +11,6 @@ contextBridge.exposeInMainWorld("clankiDesktop", {
   getRunnerArchitectureDiff(args: { directory: string }) {
     return ipcRenderer.invoke("desktop-runner:get-architecture-diff", args);
   },
-  listRunnerModels(args: { directory: string }) {
-    return ipcRenderer.invoke("desktop-runner:list-models", args);
-  },
   openWorkspaceInEditor(args: { editor: DesktopWorkspaceEditor; workspaceDirectory: string }) {
     return ipcRenderer.invoke("desktop-runner:open-workspace-in-editor", args);
   },

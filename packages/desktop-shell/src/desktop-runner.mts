@@ -7,7 +7,6 @@ import type {
   CreateAssistantSessionResponse,
   DeleteWorkspaceResponse,
   DesktopWorkspaceEditor,
-  ListOpencodeModelsResponse,
 } from "@clanki/protocol";
 import {
   attachProcessStderr,
@@ -56,7 +55,6 @@ type AppRunnerController = {
   }>;
   deleteRunnerWorkspace: (args: DeleteRunnerWorkspaceArgs) => Promise<void>;
   getRunnerArchitectureDiff: (args: { directory: string }) => Promise<ArchitectureDiff>;
-  listRunnerModels: (args: { directory: string }) => Promise<ListOpencodeModelsResponse>;
   openWorkspaceInEditor: (args: OpenWorkspaceInEditorArgs) => Promise<void>;
   stop: () => Promise<void>;
 };
@@ -92,17 +90,6 @@ export function createDesktopRunnerController({
       sessionId: payload.sessionId,
       workspaceDirectory: payload.workspaceDirectory,
     };
-  }
-
-  async function listRunnerModels(args: {
-    directory: string;
-  }): Promise<ListOpencodeModelsResponse> {
-    const runner = await ensureRunner();
-    return await getRunnerJson<ListOpencodeModelsResponse>(
-      `${runner.baseUrl}/opencode/models?${new URLSearchParams({
-        directory: args.directory,
-      }).toString()}`,
-    );
   }
 
   async function getRunnerArchitectureDiff(args: { directory: string }): Promise<ArchitectureDiff> {
@@ -224,7 +211,6 @@ export function createDesktopRunnerController({
     createRunnerSession,
     deleteRunnerWorkspace,
     getRunnerArchitectureDiff,
-    listRunnerModels,
     openWorkspaceInEditor,
     stop,
   };

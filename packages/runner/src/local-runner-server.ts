@@ -7,9 +7,7 @@ import {
   type CreateAssistantSessionRequest,
   type DeleteWorkspaceRequest,
   type GetAssistantSessionArchitectureDiffRequest,
-  type ListOpencodeModelsRequest,
 } from "@clanki/protocol";
-import { listOpencodeModels } from "./opencode-models";
 import { createWorkspace, deleteWorkspace } from "./workspace";
 
 export type LocalRunnerServerOptions = {
@@ -50,16 +48,6 @@ export function createLocalRunnerApp(): Hono {
       runnerType: "local-worktree",
     }),
   );
-
-  app.get("/opencode/models", async (c) => {
-    const directory = readDirectoryQuery(c);
-
-    return c.json(
-      await listOpencodeModels({
-        directory,
-      } satisfies ListOpencodeModelsRequest),
-    );
-  });
 
   app.get("/assistant/session/architecture-diff", async (c) => {
     const directory = readDirectoryQuery(c);
