@@ -3,9 +3,9 @@ import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { migrate } from "drizzle-orm/libsql/migrator";
 import { describe, expect, test } from "bun:test";
-import { getMigrationsFolder } from "@/server/db/migrations-folder";
-import * as schema from "@/server/db/schema";
-import { loadTaskThreadSnapshots, resolveTaskExecutionState } from "@/server/lib/task-thread-state";
+import { getMigrationsFolder } from "../db/migrations-folder";
+import * as schema from "../db/schema";
+import { loadTaskThreadSnapshots, resolveTaskExecutionState } from "./task-thread-state";
 
 async function createTestDb() {
   const client = createClient({ url: ":memory:" });
