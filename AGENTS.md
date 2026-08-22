@@ -1,183 +1,239 @@
 # AGENTS.md
 
-## Project
+Drop-in operating instructions for coding agents. Read this file before every task.
 
-Bun workspace monorepo managed with [Vite+](https://viteplus.dev). Local desktop app: TanStack Start + SQLite control plane, a local OpenCode runner, and an Electron shell. The root package hosts the web app; sibling packages live under `packages/`.
+**Working code only. Finish the job. Plausibility is not correctness.**
 
-## Commands
+This file follows the [AGENTS.md](https://agents.md) open standard (Linux Foundation / Agentic AI Foundation). Claude Code, Codex, Cursor, Windsurf, Copilot, Aider, Devin, Amp read it natively. For tools that look elsewhere, symlink:
 
-Use the `vp` CLI (Vite+) for day-to-day work:
-
-- `vp install` — install dependencies
-- `vp dev` — start the TanStack Start app in dev mode
-- `vp run build` — build web, runner, desktop shell, and typecheck
-- `vp run electron:dev` — start the desktop app with the local runner
-- `vp check` — format, lint, and type-check
-- `vp run knip` — detect unused files, exports, and dependencies
-- `vp run test` — run tests
-
-Package-specific commands:
-
-- `vp -C packages/runner run dev` — local runner
-
-Tooling config lives in the root `vite.config.ts` (`lint`, `fmt`, `run`, `staged` blocks).
-
-## Pre-commit
-
-Always run `vp check --fix` and `vp run knip` before committing.
-
-## Commits
-
-This project enforces [Conventional Commits](https://www.conventionalcommits.org/) via commitlint in CI.
-
-Format: `<type>(<optional scope>): <description>`
-
-Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
-
-Examples:
-
-- `feat: add user login flow`
-- `fix(runner): handle empty request body`
-- `docs: update README with setup steps`
-
-## Code Style
-
-### One component per file
-
-Every React component must live in its own file. Do not define multiple components in a single `.tsx` file (except tiny local inline render helpers that are not reusable components).
-
-### Keep functions in dedicated files
-
-Split reusable functions into dedicated files instead of grouping many unrelated functions in one file. Keep files focused on a single concern, and prefer extracting helper functions once they are shared across modules or grow beyond small local logic.
-
-### Keep configuration surface minimal
-
-Do not introduce new environment variables, feature flags, or configuration options unless explicitly requested by the user/product requirement.
-
-Prefer sensible defaults and direct implementation over optional knobs. If configurability is needed later, add it in a follow-up change when requested.
-
-### React Compiler: avoid manual memoization by default
-
-This project uses the React Compiler. Do not add `useMemo`/`useCallback` for routine derived values or inline handlers unless there is a specific non-compiler reason.
-
-- Prefer direct expressions and plain functions in components.
-- Only add memoization when required for correctness or integration constraints (for example, stable identity required by an external API).
-
-### Avoid `useEffect` unless it is actually required
-
-Do not introduce `useEffect` for routine derivations, event handling, or state synchronization that can be expressed directly during render or through existing data flow.
-
-- Prefer deriving values from props/state inline.
-- Prefer handling user actions in event handlers.
-- Only use `useEffect` when you are synchronizing with an external system or browser API and there is no simpler render-driven approach.
-
-### Use shadcn components where applicable
-
-For new UI work, prefer existing shadcn primitives from `src/components/ui` (for example `Button`, `Input`, `Textarea`, `Dialog`, `DropdownMenu`, `Card`, `Avatar`) instead of custom base controls.
-
-Only create custom component wrappers when there is no suitable shadcn primitive or when product-specific behavior requires it.
-
-### Design style (neobrutal, but clean)
-
-The app's visual direction is neobrutalist: bold palette, clear borders, and strong typography.
-
-Apply this style with restraint:
-
-- Keep borders and shadows moderate (`border` over `border-2` by default).
-- Prefer flat or lightly elevated surfaces for dense UI areas (sidebar, chat timeline, tool summaries).
-- Avoid stacked boxed treatments in repeated lists (for example tool activity rows).
-- Preserve readability first: generous spacing, clear contrast, and calm message surfaces.
-- Keep top-level marketing-like surfaces visually expressive; keep operational areas cleaner.
-
-### Prefer `??` over `||` for default values
-
-Use the nullish coalescing operator (`??`) instead of logical OR (`||`) when providing fallback/default values. `??` only falls back on `null`/`undefined`, while `||` also falls back on `0`, `""`, and `false` — which are often valid values.
-
-```ts
-// Good — only falls back when value is null/undefined
-const color = colors[name] ?? "#default";
-const count = counts[key] ?? 0;
-
-// Bad — would also fall back on 0, "", or false
-const color = colors[name] || "#default";
-const count = counts[key] || 0;
+```bash
+ln -s AGENTS.md CLAUDE.md
+ln -s AGENTS.md GEMINI.md
 ```
 
-Keep `||` for boolean logic (e.g., `a > 0 || b > 0`) and sort tiebreakers (e.g., `a.localeCompare(b) || a.x.localeCompare(b.x)`).
+---
 
-### Avoid unnecessary defensive code
+## 0. Non-negotiables
 
-Do not add speculative fallbacks, extra guards, or `throw` statements for cases the application does not expect to happen.
+These rules override everything else in this file when in conflict:
 
-- Prefer the direct code path that matches the actual product assumptions.
-- Add defensive handling only when there is a concrete, known failure mode to support.
-- Do not introduce "safety" defaults that can hide real bugs or make behavior harder to reason about.
+1. **No flattery, no filler.** Skip openers like "Great question", "You're absolutely right", "Excellent idea", "I'd be happy to". Start with the answer or the action.
+2. **Disagree when you disagree.** If the user's premise is wrong, say so before doing the work. Agreeing with false premises to be polite is the single worst failure mode in coding agents.
+3. **Never fabricate.** Not file paths, not commit hashes, not API names, not test results, not library functions. If you don't know, read the file, run the command, or say "I don't know, let me check."
+4. **Stop when confused.** If the task has two plausible interpretations, ask. Do not pick silently and proceed.
+5. **Touch only what you must.** Every changed line must trace directly to the user's request. No drive-by refactors, reformatting, or "while I was in there" cleanups.
 
-### Type-safe route and search params (TanStack Router)
+---
 
-The router is registered in `src/router.tsx` via `declare module "@tanstack/react-router"`. This gives TanStack Router full type information about every route's path params and search params. Always use this — never bypass it with `strict: false` or type assertions.
+## 1. Before writing code
 
-**Route params** — use `from` so the types are inferred from the route tree. The `from` value is the **route ID**, which includes ID-route parents (e.g. the `layout` ID route makes the task route ID `/layout/tasks/$taskId`, even though the URL is `/tasks/$taskId`):
+**Goal: understand the problem and the codebase before producing a diff.**
 
-```ts
-// Good — fully type-safe, inferred from the registered route tree
-const { taskId } = useParams({ from: "/layout/tasks/$taskId" });
+- State your plan in one or two sentences before editing. For anything non-trivial, produce a numbered list of steps with a verification check for each.
+- Read the files you will touch. Read the files that call the files you will touch. Claude Code: use subagents for exploration so the main context stays clean.
+- Match existing patterns in the codebase. If the project uses pattern X, use pattern X, even if you'd do it differently in a greenfield repo.
+- Surface assumptions out loud: "I'm assuming you want X, Y, Z. If that's wrong, say so." Do not bury assumptions inside the implementation.
+- If two approaches exist, present both with tradeoffs. Do not pick one silently. Exception: trivial tasks (typo, rename, log line) where the diff fits in one sentence.
 
-// Bad — opts out of type safety
-const { taskId } = useParams({ strict: false }) as { taskId: string };
-```
+---
 
-**Search params** — define a `validateSearch` on the route so `useSearch` returns typed values:
+## 2. Writing code: simplicity first
 
-```ts
-// In the route definition (router.tsx or a route file)
-const myRoute = createRoute({
-  getParentRoute: () => layoutRoute,
-  path: "/my-route",
-  validateSearch: (search: Record<string, unknown>) => ({
-    page: Number(search.page ?? 1),
-    filter: (search.filter as string) ?? "",
-  }),
-  component: MyComponent,
-});
+**Goal: the minimum code that solves the stated problem. Nothing speculative.**
 
-// In the component — fully typed { page: number, filter: string }
-// Note: from uses route ID "/layout/my-route" since parent is the layout ID route
-const { page, filter } = useSearch({ from: "/layout/my-route" });
-```
+- No features beyond what was asked.
+- No abstractions for single-use code. No configurability, flexibility, or hooks that were not requested.
+- No error handling for impossible scenarios. Handle the failures that can actually happen.
+- If the solution runs 200 lines and could be 50, rewrite it before showing it.
+- If you find yourself adding "for future extensibility", stop. Future extensibility is a future decision.
+- Bias toward deleting code over adding code. Shipping less is almost always better.
 
-**Navigate / Link** — `to` uses the **URL path** (not the route ID), so it does not include ID-route prefixes:
+The test: would a senior engineer reading the diff call this overcomplicated? If yes, simplify.
 
-```tsx
-navigate({ to: "/tasks/$taskId", params: { taskId: id } });
-<Link to="/tasks/$taskId" params={{ taskId: id }}>
-  Task
-</Link>;
-```
+---
 
-**Rules:**
+## 3. Surgical changes
 
-- Never use `strict: false` on `useParams` or `useSearch` — it returns a union of all routes and defeats type safety.
-- Never use `as` type assertions to cast param/search types.
-- Always pass `from` (the **route ID**) to `useParams` and `useSearch` so types are inferred. Route IDs include ID-route parent prefixes (e.g. `/layout/...`), while `to` uses URL paths.
-- When adding search params to a route, always add `validateSearch` with sensible defaults so malformed URLs don't crash the app.
+**Goal: clean, reviewable diffs. Change only what the request requires.**
 
-### System components
+- Do not "improve" adjacent code, comments, formatting, or imports that are not part of the task.
+- Do not refactor code that works just because you are in the file.
+- Do not delete pre-existing dead code unless asked. If you notice it, mention it in the summary.
+- Do clean up orphans created by your own changes (unused imports, variables, functions your edit made obsolete).
+- Match the project's existing style exactly: indentation, quotes, naming, file layout.
 
-The product app is local. The public marketing site is separate.
+The test: every changed line traces directly to the user's request. If a line fails that test, revert it.
 
-1. **Control plane** — TanStack Start with SQLite on the user's machine. Stores projects, tasks, and messages. Talks to GitHub through the `gh` CLI.
-2. **Runner** — a local process that manages sessions and runs work in git worktrees. Requires `opencode` on the host machine. This is the execution plane.
-3. **Desktop app** — an Electron shell that starts the local TanStack Start server and the runner, and provides native OS integration.
-4. **Marketing site** — the Astro site in `packages/marketing`. It is hosted separately and is not part of the desktop control plane.
+---
 
-### Remote-ready constraints
+## 4. Goal-driven execution
 
-- Do not hardcode local-only assumptions into the domain model if they would block a remote runner later.
-- Keep runner operations small and explicit so the same contract can later be implemented by a daemon on a self-hosted machine.
-- Defer the remote implementation itself for now; design for it, but optimize the current work for the local runner first.
+**Goal: define success as something you can verify, then loop until verified.**
 
-### Scope guardrails
+Rewrite vague asks into verifiable goals before starting:
 
-- Do not introduce broad new configuration surfaces unless a concrete product need requires it.
-- Prefer direct defaults for local execution over adding feature flags for every behavior.
+- "Add validation" becomes "Write tests for invalid inputs (empty, malformed, oversized), then make them pass."
+- "Fix the bug" becomes "Write a failing test that reproduces the reported symptom, then make it pass."
+- "Refactor X" becomes "Ensure the existing test suite passes before and after, and no public API changes."
+- "Make it faster" becomes "Benchmark the current hot path, identify the bottleneck with profiling, change it, show the benchmark is faster."
+
+For every task:
+
+1. State the success criteria before writing code.
+2. Write the verification (test, script, benchmark, screenshot diff) where practical.
+3. Run the verification. Read the output. Do not claim success without checking.
+4. If the verification fails, fix the cause, not the test.
+
+---
+
+## 5. Tool use and verification
+
+- Prefer running the code to guessing about the code. If a test suite exists, run it. If a linter exists, run it. If a type checker exists, run it.
+- Never report "done" based on a plausible-looking diff alone. Plausibility is not correctness.
+- When debugging, address root causes, not symptoms. Suppressing the error is not fixing the error.
+- For UI changes, verify visually: screenshot before, screenshot after, describe the diff.
+- Use CLI tools (gh, aws, gcloud, kubectl) when they exist. They are more context-efficient than reading docs or hitting APIs unauthenticated.
+- When reading logs, errors, or stack traces, read the whole thing. Half-read traces produce wrong fixes.
+
+---
+
+## 6. Session hygiene
+
+- Context is the constraint. Long sessions with accumulated failed attempts perform worse than fresh sessions with a better prompt.
+- After two failed corrections on the same issue, stop. Summarize what you learned and ask the user to reset the session with a sharper prompt.
+- Use subagents (Claude Code: "use subagents to investigate X") for exploration tasks that would otherwise pollute the main context with dozens of file reads.
+- When committing, write descriptive commit messages (subject under 72 chars, body explains the why). No "update file" or "fix bug" commits. No "Co-Authored-By: Claude" attribution unless the project explicitly wants it.
+
+---
+
+## 7. Communication style
+
+- Direct, not diplomatic. "This won't scale because X" beats "That's an interesting approach, but have you considered...".
+- Concise by default. Two or three short paragraphs unless the user asks for depth. No padding, no restating the question, no ceremonial closings.
+- When a question has a clear answer, give it. When it does not, say so and give your best read on the tradeoffs.
+- Celebrate only what matters: shipping, solving genuinely hard problems, metrics that moved. Not feature ideas, not scope creep, not "wouldn't it be cool if".
+- No excessive bullet points, no unprompted headers, no emoji. Prose is usually clearer than structure for short answers.
+
+---
+
+## 8. When to ask, when to proceed
+
+**Ask before proceeding when:**
+
+- The request has two plausible interpretations and the choice materially affects the output.
+- The change touches something you've been told is load-bearing, versioned, or has a migration path.
+- You need a credential, a secret, or a production resource you don't have access to.
+- The user's stated goal and the literal request appear to conflict.
+
+**Proceed without asking when:**
+
+- The task is trivial and reversible (typo, rename a local variable, add a log line).
+- The ambiguity can be resolved by reading the code or running a command.
+- The user has already answered the question once in this session.
+
+---
+
+## 9. Self-improvement loop
+
+**This file is living. Keep it short by keeping it honest.**
+
+After every session where the agent did something wrong:
+
+1. Ask: was the mistake because this file lacks a rule, or because the agent ignored a rule?
+2. If lacking: add the rule under "Project Learnings" below, written as concretely as possible ("Always use X for Y" not "be careful with Y").
+3. If ignored: the rule may be too long, too vague, or buried. Tighten it or move it up.
+4. Every few weeks, prune. For each line, ask: "Would removing this cause the agent to make a mistake?" If no, delete. Bloated AGENTS.md files get ignored wholesale.
+
+Boris Cherny (creator of Claude Code) keeps his team's file around 100 lines. Under 300 is a good ceiling. Over 500 and you are fighting your own config.
+
+---
+
+## 10. Project context
+
+**Fill this in per project. Keep it specific. Delete sections that don't apply.**
+
+### Stack
+
+- Language and version: TypeScript `^5.7.0`, React `^19.0.0`. Bun `1.4.0` (`devEngines.packageManager` in root `package.json`).
+- Framework(s): Vite+ (`vite-plus`) monorepo; TanStack Start / Router / Query; Tailwind CSS 4; Drizzle ORM + libSQL/SQLite; Electron 36 desktop shell; Hono local runner; Astro 5 marketing site.
+- Package manager: Bun workspaces (`packages/*`), lockfile `bun.lock`. Day-to-day CLI is `vp` (Vite+).
+- Runtime / deployment target: local desktop app (Electron + local TanStack Start server + local OpenCode runner). `packages/marketing` is a separate hosted Astro site.
+
+### Commands
+
+Root `package.json` scripts (also used via `vp run <script>` / `bun run <script>`). CI uses `vp`.
+
+- Install: `vp install` (CI: `voidzero-dev/setup-vp` with `run-install: true`). `bun install` matches the Bun workspace.
+- Build: `vp run build` — protocol, web, runner, desktop-shell, then typecheck
+- Test (all): `vp run test` / `bun test`
+- Test (single file): `bun test path/to/file.test.ts`
+- Lint: `vp lint` (`lint` script). Combined format+lint+typecheck: `vp check`. Auto-fix: `vp check --fix` / `vp lint --fix`
+- Typecheck: `vp run typecheck` (`tsc --noEmit` in `vite.config.ts` `run.tasks`)
+- Run locally: `vp dev` (TanStack Start). Desktop: `vp run electron:dev`. Runner: `vp -C packages/runner run dev`
+- Format: `vp fmt --write .` (`format` script). Check: `vp fmt --check .`
+- Unused code: `vp run knip`
+
+Pre-commit (existing project rule): `vp check --fix` and `vp run knip`.
+
+Prefer single-file or single-test runs during iteration. Full suites are for the final verification pass.
+
+### Layout
+
+- Source lives in:
+  - `src/` — TanStack Start control plane (routes, components, server functions, SQLite)
+  - `packages/protocol/src/` — shared protocol types
+  - `packages/runner/src/` — local OpenCode runner
+  - `packages/desktop-shell/src/` — Electron shell
+  - `packages/cli/src/` — CLI / analysis engine
+  - `packages/marketing/src/` — Astro marketing site
+- Tests live in: colocated `*.test.ts` next to source (`src/**/*.test.ts`, `packages/cli/src/**/*.test.ts`). No `pyproject.toml`, `Cargo.toml`, or `Makefile`.
+- Do not modify: `src/routeTree.gen.ts` (TanStack Router generated); `packages/marketing/.astro/` (Astro generated); `dist/`, `release/`, `.output/`, `.nitro/` (build outputs); `drizzle/*.sql` and `drizzle/meta/` (generated by `vp run db:generate`)
+
+### Conventions specific to this repo
+
+- Naming: one React component per `.tsx` file (tiny local render helpers allowed). Split reusable functions into dedicated files.
+- Import style: `@/*` → `./src/*` (`tsconfig.json` paths). ESM (`"type": "module"`).
+- Error handling pattern: do not add speculative fallbacks, extra guards, or `throw`s for cases the app does not expect. Handle known failure modes only.
+- Testing pattern and framework: `bun:test` (`describe` / `test` / `expect`), files named `*.test.ts`.
+- Conventional Commits via commitlint (`feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`).
+- React Compiler is on (`babel-plugin-react-compiler` in `vite.config.ts`). Do not add routine `useMemo` / `useCallback`.
+- Do not use `useEffect` for derivations, event handling, or state sync that can live in render or handlers.
+- New UI: shadcn primitives in `src/components/ui`. Design is neobrutal but restrained (`border` over `border-2` in dense UI).
+- Prefer `??` over `||` for defaults.
+- TanStack Router: register types in `src/router.tsx`. Use `useParams` / `useSearch` with `from` (route ID, including ID-route parents like `/layout/tasks/$taskId`). Never `strict: false` or `as` casts on params. `to` uses the URL path (`/tasks/$taskId`). Add `validateSearch` when adding search params.
+- System: (1) control plane — TanStack Start + SQLite, GitHub via `gh`; (2) runner — local OpenCode sessions in git worktrees; (3) desktop — Electron shell; (4) marketing — Astro in `packages/marketing`, not part of the desktop control plane.
+- Keep the config surface minimal. No new env vars, feature flags, or knobs unless requested.
+- Remote-ready: do not hardcode local-only assumptions that would block a remote runner later. Keep runner operations small and explicit. Do not implement the remote runner unless asked.
+
+### Forbidden
+
+- Do not edit `src/routeTree.gen.ts`.
+- Do not use `useParams({ strict: false })` or type-assert route/search params.
+- Do not add `useMemo` / `useCallback` / `useEffect` for routine derived values.
+- Do not put multiple reusable React components in one file.
+- Do not add environment variables or feature flags unless explicitly requested.
+
+---
+
+## 11. Project Learnings
+
+**Accumulated corrections. This section is for the agent to maintain, not just the human.**
+
+When the user corrects your approach, append a one-line rule here before ending the session. Write it concretely ("Always use X for Y"), never abstractly ("be careful with Y"). If an existing line already covers the correction, tighten it instead of adding a new one. Remove lines when the underlying issue goes away (model upgrades, refactors, process changes).
+
+- (empty)
+
+---
+
+## 12. How this file was built
+
+This boilerplate synthesizes:
+
+- Sean Donahoe's IJFW ("It Just F\*cking Works") principles: one install, working code, no ceremony.
+- Andrej Karpathy's observations on LLM coding pitfalls (the four principles: think-first, simplicity, surgical changes, goal-driven execution).
+- Boris Cherny's public Claude Code workflow (reactive pruning, keep it ~100 lines, only rules that fix real mistakes).
+- Anthropic's official Claude Code best practices (explore-plan-code-commit, verification loops, context as the scarce resource).
+- Community anti-sycophancy patterns (explicit banned phrases, direct-not-diplomatic).
+- The AGENTS.md open standard (cross-tool portability via symlinks).
+
+Read once. Edit sections 10 and 11 for your project. Prune the rest over time. This file gets better the more you use it.
