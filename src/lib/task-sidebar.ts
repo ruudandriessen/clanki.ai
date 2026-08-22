@@ -141,8 +141,8 @@ export function getTaskSidebarGroupLabel(groupKey: TaskSidebarGroup): string {
   return TASK_SIDEBAR_GROUPS.find((group) => group.key === groupKey)?.label ?? groupKey;
 }
 
-function isSnoozedSidebarGroup(groupKey: TaskSidebarGroup): boolean {
-  return groupKey !== "needsAction";
+function isVisibleSidebarGroup(groupKey: TaskSidebarGroup): boolean {
+  return groupKey === "needsAction" || groupKey === "openNoPr";
 }
 
 export function partitionSidebarTasks(
@@ -154,7 +154,7 @@ export function partitionSidebarTasks(
   let activeSnoozedTask: OrderedSidebarTask | null = null;
 
   for (const entry of orderedTasks) {
-    if (!isSnoozedSidebarGroup(entry.groupKey)) {
+    if (isVisibleSidebarGroup(entry.groupKey)) {
       visibleTasks.push(entry);
       continue;
     }
