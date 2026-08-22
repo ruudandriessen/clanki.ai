@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["index.ts", "bin.ts", "scripts", "src", "vite.config.ts"],
+  "include": ["index.ts", "bin.ts", "src"],
   "compilerOptions": {
     "types": ["bun-types"]
   }

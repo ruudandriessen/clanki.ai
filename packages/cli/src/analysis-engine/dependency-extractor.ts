@@ -1,15 +1,16 @@
 import path from "node:path";
 import ts from "typescript";
-import type { SourceFileDependencySummary } from "../functions/run/models/report";
+import { shouldAnalyzeSourceFile, toProjectRelativePath } from "./source-files";
+import type { SourceFileDependency } from "./types";
 
 export function collectSourceFileDependencies(
   program: ts.Program,
   projectDirectory: string,
   compilerOptions: ts.CompilerOptions,
-): SourceFileDependencySummary[] {
+): SourceFileDependency[] {
   const sourceFiles = program
     .getSourceFiles()
-    .filter((sourceFile: ts.SourceFile) => shouldAnalyzeSourceFile(program, sourceFile));
+    .filter((sourceFile) => shouldAnalyzeSourceFile(program, sourceFile));
   const projectSourceFilePaths = new Set(
     sourceFiles.map((sourceFile) => path.resolve(sourceFile.fileName)),
   );
@@ -24,9 +25,7 @@ export function collectSourceFileDependencies(
   const dependenciesByFile = new Map<string, Set<string>>();
 
   for (const sourceFile of sourceFiles) {
-    const fromFile = normalizePath(
-      path.relative(projectDirectory, path.resolve(sourceFile.fileName)),
-    );
+    const fromFile = toProjectRelativePath(sourceFile.fileName, projectDirectory);
 
     for (const moduleSpecifier of collectSourceFileModuleSpecifiers(sourceFile)) {
       const resolvedModule = ts.resolveModuleName(
@@ -47,7 +46,7 @@ export function collectSourceFileDependencies(
         continue;
       }
 
-      const toFile = normalizePath(path.relative(projectDirectory, resolvedPath));
+      const toFile = toProjectRelativePath(resolvedPath, projectDirectory);
 
       if (fromFile === toFile) {
         continue;
@@ -57,7 +56,7 @@ export function collectSourceFileDependencies(
     }
   }
 
-  const dependencies: SourceFileDependencySummary[] = [];
+  const dependencies: SourceFileDependency[] = [];
 
   for (const [fromFile, toFiles] of dependenciesByFile.entries()) {
     const sortedTargets = Array.from(toFiles).toSorted((left, right) => left.localeCompare(right));
@@ -109,10 +108,6 @@ function collectSourceFileModuleSpecifiers(sourceFile: ts.SourceFile): string[] 
   return Array.from(moduleSpecifiers);
 }
 
-function normalizePath(value: string): string {
-  return value.split(path.sep).join("/");
-}
-
 function addSetEntry(map: Map<string, Set<string>>, key: string, value: string): void {
   const existing = map.get(key);
 
@@ -122,8 +117,4 @@ function addSetEntry(map: Map<string, Set<string>>, key: string, value: string):
   }
 
   map.set(key, new Set([value]));
-}
-
-function shouldAnalyzeSourceFile(program: ts.Program, sourceFile: ts.SourceFile): boolean {
-  return !sourceFile.isDeclarationFile && !program.isSourceFileFromExternalLibrary(sourceFile);
 }
