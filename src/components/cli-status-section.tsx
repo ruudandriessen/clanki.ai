@@ -107,7 +107,7 @@ export function CliStatusSection({ gh, isLoading, opencode }: CliStatusSectionPr
               />
               <CliStatusRow
                 name="OpenCode CLI (opencode)"
-                description="Used by the local runner to execute agent sessions."
+                description="Used by task chat to execute agent sessions."
                 status={opencode ?? { status: "not-setup" }}
               />
             </div>

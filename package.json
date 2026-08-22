@@ -37,6 +37,7 @@
   "dependencies": {
     "@clanki/protocol": "workspace:*",
     "@libsql/client": "^0.15.15",
+    "@opencode-ai/sdk": "^1.2.1",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/ai": "^0.48.0",
     "@tanstack/ai-opencode": "^0.3.4",

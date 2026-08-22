@@ -2,7 +2,6 @@ import type {
   ArchitectureDiff,
   CreateDesktopRunnerSessionResponse,
   DesktopWorkspaceEditor,
-  ListDesktopRunnerModelsResponse,
 } from "@clanki/protocol";
 
 export type {
@@ -18,7 +17,6 @@ type DesktopRunnerBridge = {
   ) => Promise<CreateDesktopRunnerSessionResponse>;
   deleteRunnerWorkspace: (workspaceDirectory: string) => Promise<void>;
   getRunnerArchitectureDiff: (args: { directory: string }) => Promise<ArchitectureDiff>;
-  listRunnerModels: (args: { directory: string }) => Promise<ListDesktopRunnerModelsResponse>;
   openWorkspaceInEditor: (args: {
     editor: DesktopWorkspaceEditor;
     workspaceDirectory: string;
@@ -54,12 +52,6 @@ export async function getDesktopRunnerArchitectureDiff(args: {
   directory: string;
 }): Promise<ArchitectureDiff> {
   return await getDesktopRunnerBridge().getRunnerArchitectureDiff(args);
-}
-
-export async function listDesktopRunnerModels(args: {
-  directory: string;
-}): Promise<ListDesktopRunnerModelsResponse> {
-  return await getDesktopRunnerBridge().listRunnerModels(args);
 }
 
 export async function openDesktopWorkspaceInEditor(args: {

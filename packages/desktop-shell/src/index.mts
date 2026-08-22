@@ -53,10 +53,6 @@ function registerIpcHandlers(): void {
     return await getDesktopRunnerController().getRunnerArchitectureDiff(args);
   });
 
-  ipcMain.handle("desktop-runner:list-models", async (_event, args) => {
-    return await getDesktopRunnerController().listRunnerModels(args);
-  });
-
   ipcMain.handle("desktop-runner:open-workspace-in-editor", async (_event, args) => {
     return await getDesktopRunnerController().openWorkspaceInEditor(args);
   });

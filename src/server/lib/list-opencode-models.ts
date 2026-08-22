@@ -1,5 +1,5 @@
-import { createLocalRunnerOpencodeClient } from "./opencode-client";
 import type { ListOpencodeModelsResponse } from "@clanki/protocol";
+import { createOpencode } from "@opencode-ai/sdk";
 
 export async function listOpencodeModels(args: {
   directory: string;
@@ -9,20 +9,25 @@ export async function listOpencodeModels(args: {
     throw new Error("directory is required");
   }
 
-  const { client } = await createLocalRunnerOpencodeClient({ directory });
-  const providerListResponse = await client.provider.list({
-    query: { directory },
-  });
+  const { client, server } = await createOpencode();
 
-  if (!providerListResponse.response.ok) {
-    throw new Error(formatStatusError("Failed to list OpenCode models", providerListResponse));
+  try {
+    const providerListResponse = await client.provider.list({
+      query: { directory },
+    });
+
+    if (!providerListResponse.response.ok) {
+      throw new Error(formatStatusError("Failed to list OpenCode models", providerListResponse));
+    }
+
+    return {
+      connected: providerListResponse.data?.connected ?? [],
+      default: providerListResponse.data?.default ?? {},
+      providers: providerListResponse.data?.all ?? [],
+    };
+  } finally {
+    server.close();
   }
-
-  return {
-    connected: providerListResponse.data?.connected ?? [],
-    default: providerListResponse.data?.default ?? {},
-    providers: providerListResponse.data?.all ?? [],
-  };
 }
 
 function formatStatusError(
