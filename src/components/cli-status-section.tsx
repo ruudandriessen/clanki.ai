@@ -1,6 +1,7 @@
 import { AlertCircle, CheckCircle2, Loader2, Terminal, XCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import type { GhCliStatus, OpencodeCliStatus } from "@/shared/cli-status";
+import type { GhCliStatus } from "@/lib/external-clis/gh";
+import type { OpencodeCliStatus } from "@/lib/external-clis/opencode";
 import { cn } from "@/lib/utils";
 
 type CliStatusRowProps = {
