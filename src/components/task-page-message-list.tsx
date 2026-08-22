@@ -75,11 +75,11 @@ export function TaskPageMessageList({
               <AnimatedStreamItem key={entry.id}>
                 <div className={isUserMessage ? "flex justify-end" : ""}>
                   <div
-                    className={`${
+                    className={
                       isUserMessage
                         ? "w-fit rounded-[var(--radius-md)] border border-border/60 bg-primary/95 px-4 py-2.5 text-primary-foreground"
                         : "max-w-3xl rounded-[var(--radius-md)] border border-border/70 bg-card/80 px-4 py-2.5 text-foreground"
-                    }`}
+                    }
                   >
                     {isUserMessage ? (
                       <div className="text-sm leading-relaxed whitespace-pre-wrap">

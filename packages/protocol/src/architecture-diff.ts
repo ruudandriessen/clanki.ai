@@ -1,4 +1,5 @@
 export type ArchitectureDiffFileStatus = "added" | "removed" | "modified" | "unchanged";
+
 export type ArchitectureDiffEdgeStatus = "added" | "removed" | "unchanged";
 
 export type ArchitectureDiffFile = {

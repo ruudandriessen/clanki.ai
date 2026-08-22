@@ -2,8 +2,8 @@ import { Loader2 } from "lucide-react";
 import { ArchitectureDiffChangeList } from "@/components/architecture-diff-change-list";
 import { ArchitectureDiffGraph } from "@/components/architecture-diff-graph";
 import { ArchitectureDiffSummary } from "@/components/architecture-diff-summary";
-import type { ArchitectureDiff } from "@/lib/architecture-diff";
-import { hasArchitectureDiffChanges } from "@/lib/architecture-diff";
+import type { ArchitectureDiff } from "@clanki/protocol";
+import { hasArchitectureDiffChanges } from "@clanki/protocol";
 
 interface TaskPageArchitectureViewProps {
   diff: ArchitectureDiff | undefined;

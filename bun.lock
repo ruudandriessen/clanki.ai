@@ -5,6 +5,7 @@
     "": {
       "name": "clanki",
       "dependencies": {
+        "@clanki/protocol": "workspace:*",
         "@libsql/client": "^0.15.15",
         "@tailwindcss/vite": "^4.1.18",
         "@tanstack/ai": "^0.48.0",
@@ -68,6 +69,9 @@
     },
     "packages/desktop-shell": {
       "name": "@clanki/desktop-shell",
+      "dependencies": {
+        "@clanki/protocol": "workspace:*",
+      },
     },
     "packages/marketing": {
       "name": "@clanki/marketing",
@@ -78,10 +82,14 @@
         "ioredis": "^5.6.1",
       },
     },
+    "packages/protocol": {
+      "name": "@clanki/protocol",
+    },
     "packages/runner": {
       "name": "@clanki/runner",
       "dependencies": {
         "@clanki/cli": "workspace:*",
+        "@clanki/protocol": "workspace:*",
         "@hono/node-server": "^1.19.9",
         "@opencode-ai/sdk": "^1.2.1",
         "hono": "^4.11.7",
@@ -186,6 +194,8 @@
     "@clanki/desktop-shell": ["@clanki/desktop-shell@workspace:packages/desktop-shell"],
 
     "@clanki/marketing": ["@clanki/marketing@workspace:packages/marketing"],
+
+    "@clanki/protocol": ["@clanki/protocol@workspace:packages/protocol"],
 
     "@clanki/runner": ["@clanki/runner@workspace:packages/runner"],
 

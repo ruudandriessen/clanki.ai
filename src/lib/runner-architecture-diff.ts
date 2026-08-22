@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { ArchitectureDiff } from "@/lib/architecture-diff";
+import type { ArchitectureDiff } from "@clanki/protocol";
 import { getDesktopRunnerArchitectureDiff } from "@/lib/desktop-runner";
 import { isDesktopApp } from "@/lib/is-desktop-app";
 

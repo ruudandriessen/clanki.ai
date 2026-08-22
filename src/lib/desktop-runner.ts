@@ -1,29 +1,15 @@
-import type { ArchitectureDiff } from "@/lib/architecture-diff";
+import type {
+  ArchitectureDiff,
+  CreateDesktopRunnerSessionResponse,
+  DesktopWorkspaceEditor,
+  ListDesktopRunnerModelsResponse,
+} from "@clanki/protocol";
 
-type CreateDesktopRunnerSessionResponse = {
-  runnerType: string;
-  sessionId: string;
-  workspaceDirectory: string;
-};
-
-export type DesktopWorkspaceEditor = "cursor" | "vscode" | "zed";
-
-export type DesktopRunnerModelSelection = {
-  model: string;
-  provider: string;
-};
-
-export type DesktopRunnerModelProvider = {
-  id: string;
-  models: Record<string, { id: string; name: string }>;
-  name: string;
-};
-
-export type ListDesktopRunnerModelsResponse = {
-  connected: string[];
-  default: Record<string, string>;
-  providers: DesktopRunnerModelProvider[];
-};
+export type {
+  DesktopRunnerModelSelection,
+  DesktopWorkspaceEditor,
+  ListDesktopRunnerModelsResponse,
+} from "@clanki/protocol";
 
 type DesktopRunnerBridge = {
   createRunnerSession: (
@@ -56,7 +42,7 @@ function getDesktopRunnerBridge(): DesktopRunnerBridge {
 export async function createDesktopRunnerSession(
   title: string,
   repoUrl: string,
-): Promise<{ runnerType: string; sessionId: string; workspaceDirectory: string }> {
+): Promise<CreateDesktopRunnerSessionResponse> {
   return await getDesktopRunnerBridge().createRunnerSession(title, repoUrl);
 }
 

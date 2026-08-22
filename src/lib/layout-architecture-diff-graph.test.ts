@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import type { ArchitectureDiff } from "./architecture-diff";
+import type { ArchitectureDiff } from "@clanki/protocol";
 import { layoutArchitectureDiffGraph } from "./layout-architecture-diff-graph";
 
 describe("layoutArchitectureDiffGraph", () => {

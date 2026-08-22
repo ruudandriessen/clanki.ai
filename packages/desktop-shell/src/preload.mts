@@ -1,3 +1,4 @@
+import type { DesktopWorkspaceEditor } from "@clanki/protocol";
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("clankiDesktop", {
@@ -13,7 +14,7 @@ contextBridge.exposeInMainWorld("clankiDesktop", {
   listRunnerModels(args: { directory: string }) {
     return ipcRenderer.invoke("desktop-runner:list-models", args);
   },
-  openWorkspaceInEditor(args: { editor: "cursor" | "vscode" | "zed"; workspaceDirectory: string }) {
+  openWorkspaceInEditor(args: { editor: DesktopWorkspaceEditor; workspaceDirectory: string }) {
     return ipcRenderer.invoke("desktop-runner:open-workspace-in-editor", args);
   },
 });

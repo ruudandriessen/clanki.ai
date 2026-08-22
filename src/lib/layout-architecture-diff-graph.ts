@@ -2,7 +2,7 @@ import type {
   ArchitectureDiff,
   ArchitectureDiffEdge,
   ArchitectureDiffFile,
-} from "@/lib/architecture-diff";
+} from "@clanki/protocol";
 
 const NODE_WIDTH = 188;
 const NODE_HEIGHT = 44;

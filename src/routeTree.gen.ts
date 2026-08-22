@@ -131,7 +131,8 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutTasksTaskIdRoute: LayoutTasksTaskIdRoute,
 }
 
-const LayoutRouteWithChildren = LayoutRoute._addFileChildren(LayoutRouteChildren)
+const LayoutRouteWithChildren =
+  LayoutRoute._addFileChildren(LayoutRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
