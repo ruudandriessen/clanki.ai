@@ -33,13 +33,13 @@ function hasFailingChecks(checksConclusion: string | null | undefined): boolean 
 function getSidebarGroupKey(params: {
   checksConclusion: string | null | undefined;
   hasError: boolean;
+  isRunning: boolean;
   pullRequestStatus: PullRequestStatus | null;
   reviewState: string | null | undefined;
-  taskStatus: string;
 }): TaskSidebarGroup {
-  const { checksConclusion, hasError, pullRequestStatus, reviewState, taskStatus } = params;
+  const { checksConclusion, hasError, isRunning, pullRequestStatus, reviewState } = params;
 
-  if (taskStatus === "running") {
+  if (isRunning) {
     return "running";
   }
 
@@ -102,7 +102,7 @@ function buildTaskSidebarGroups(params: {
         : null;
     const pullRequestStatus = pullRequest ? getPullRequestStatus(pullRequest) : null;
     const groupKey = getSidebarGroupKey({
-      taskStatus: task.status,
+      isRunning: task.is_running,
       pullRequestStatus,
       reviewState: pullRequest?.review_state,
       checksConclusion: pullRequest?.checks_conclusion,

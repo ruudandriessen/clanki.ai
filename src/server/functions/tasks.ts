@@ -5,6 +5,7 @@ import type { AppDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { withTransaction } from "@/server/db/transaction";
 import { toTask } from "@/server/lib/to-task";
+import { loadTaskThreadStates } from "@/server/lib/task-thread-state";
 import { dbMiddleware } from "../middleware";
 import { badRequest, notFound, parseOptionalId, parseOptionalTimestamp } from "./common";
 
@@ -20,7 +21,11 @@ export const listTasks = createServerFn({ method: "GET" })
     const rows = await context.db.query.tasks.findMany({
       orderBy: (tasks, { desc: orderDesc }) => [orderDesc(tasks.updatedAt)],
     });
-    return rows.map(toTask);
+    const threadStates = await loadTaskThreadStates(
+      context.db,
+      rows.map((row) => row.id),
+    );
+    return rows.map((row) => toTask(row, threadStates.get(row.id)));
   });
 
 export const createTask = createServerFn({ method: "POST" })
@@ -124,7 +129,8 @@ export const updateTask = createServerFn({ method: "POST" })
       notFound("Task not found");
     }
 
-    return toTask(updated);
+    const threadStates = await loadTaskThreadStates(context.db, [updated.id]);
+    return toTask(updated, threadStates.get(updated.id));
   });
 
 export const deleteTask = createServerFn({ method: "POST" })
