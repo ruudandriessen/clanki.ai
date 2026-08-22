@@ -1,5 +1,5 @@
 import { opencodeText } from "@tanstack/ai-opencode";
-import { defineSandbox } from "@tanstack/ai-sandbox";
+import { defineSandbox, defineWorkspace, localSource } from "@tanstack/ai-sandbox";
 import { localProcessSandbox } from "@tanstack/ai-sandbox-local-process";
 
 export type TaskHarness = "opencode";
@@ -23,6 +23,10 @@ export function createTaskSandbox(args: { taskId: string; workspacePath: string 
   return defineSandbox({
     id: `task-${args.taskId}`,
     provider: localProcessSandbox({ dir: args.workspacePath }),
+    workspace: defineWorkspace({
+      source: localSource(args.workspacePath),
+      root: "/workspace",
+    }),
     lifecycle: {
       reuse: "thread",
       destroyOnComplete: false,
