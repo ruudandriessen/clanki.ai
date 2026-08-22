@@ -1,6 +1,7 @@
 import { createClient, type Client } from "@libsql/client";
 import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
-import { ensureSchema } from "./ensure-schema";
+import { migrate } from "drizzle-orm/libsql/migrator";
+import { getMigrationsFolder } from "./migrations-folder";
 import * as schema from "./schema";
 import { getSqlitePath } from "./sqlite-path";
 
@@ -19,8 +20,10 @@ const globalWithDbCache = globalThis as GlobalWithDbCache;
 
 async function createDb(sqlitePath: string): Promise<AppDb> {
   const client: Client = createClient({ url: `file:${sqlitePath}` });
-  await ensureSchema(client);
-  return drizzle({ client, schema });
+  const db = drizzle({ client, schema });
+  await migrate(db, { migrationsFolder: getMigrationsFolder() });
+  await client.execute("PRAGMA foreign_keys = ON");
+  return db;
 }
 
 export function getDb(): Promise<AppDb> {
