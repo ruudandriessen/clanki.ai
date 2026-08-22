@@ -16,7 +16,7 @@
   "scripts": {
     "dev": "vp dev",
     "build:web": "vp build",
-    "build": "vp run build:web && vp -C packages/protocol run build && vp -C packages/runner run build && vp -C packages/desktop-shell run build && vp run typecheck",
+    "build": "vp -C packages/protocol run build && vp run build:web && vp -C packages/runner run build && vp -C packages/desktop-shell run build && vp run typecheck",
     "preview": "vp preview",
     "runner:dev": "vp -C packages/runner run dev",
     "electron:start": "vp run build && electron packages/desktop-shell/dist/index.mjs",
