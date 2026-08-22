@@ -1,10 +1,11 @@
 import { useEffect } from "react";
-import { useLiveQuery } from "@tanstack/react-db";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { NewTaskButton } from "@/components/new-task-button";
-import { projectsCollection, pullRequestsCollection, tasksCollection } from "@/lib/collections";
 import { getFirstSidebarTaskId } from "@/lib/task-sidebar";
+import { useProjectPullRequests } from "@/lib/use-project-pull-requests";
+import { useProjects } from "@/lib/use-projects";
+import { useTasks } from "@/lib/use-tasks";
 
 export const Route = createFileRoute("/_layout/")({
   component: HomePage,
@@ -12,15 +13,9 @@ export const Route = createFileRoute("/_layout/")({
 
 function HomePage() {
   const navigate = useNavigate();
-  const { data: tasks, isLoading: isTasksLoading } = useLiveQuery((query) =>
-    query.from({ t: tasksCollection }).orderBy(({ t }) => t.updated_at, "desc"),
-  );
-  const { data: projects } = useLiveQuery((query) =>
-    query.from({ p: projectsCollection }).orderBy(({ p }) => p.created_at, "asc"),
-  );
-  const { data: pullRequests, isLoading: isPullRequestsLoading } = useLiveQuery((query) =>
-    query.from({ pr: pullRequestsCollection }).orderBy(({ pr }) => pr.opened_at, "desc"),
-  );
+  const { data: tasks = [], isLoading: isTasksLoading } = useTasks();
+  const { data: projects = [] } = useProjects();
+  const { data: pullRequests = [], isLoading: isPullRequestsLoading } = useProjectPullRequests();
 
   const isLoading = isTasksLoading || isPullRequestsLoading;
   const firstTaskId = getFirstSidebarTaskId({ tasks, projects, pullRequests });

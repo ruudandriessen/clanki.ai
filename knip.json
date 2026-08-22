@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "workspaces": {
     ".": {
-      "entry": ["src/router.tsx", "src/routes/**/*.{ts,tsx}", "src/lib/auth-client.ts"],
+      "entry": ["src/router.tsx", "src/routes/**/*.{ts,tsx}"],
       "project": ["src/**/*.{ts,tsx}"],
       "ignore": ["src/components/ui/**", "src/routeTree.gen.ts", "src/server/db/schema.ts"]
     },

@@ -1,85 +1,41 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowUpRight, Check, Loader2, Lock, Search, X } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, Loader2, Lock, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Project, projectsCollection } from "@/lib/collections";
+import type { GithubRepo } from "@/lib/github-repo";
+import type { Project } from "@/lib/project";
+import { PROJECTS_QUERY_KEY } from "@/lib/use-projects";
 import { cn } from "../lib/utils";
-import {
-  fetchInstallAppUrl,
-  fetchInstallationRepos,
-  fetchInstallations,
-} from "@/server/functions/installations";
-
-type GitHubRepo = {
-  id: number;
-  fullName: string;
-  name: string;
-  htmlUrl: string;
-  private: boolean;
-};
-
-interface RepoWithInstallation extends GitHubRepo {
-  installationId: number;
-}
+import { listAccessibleGithubRepos } from "@/server/functions/github";
+import { createProjects } from "@/server/functions/projects";
 
 export function AddProjectDialog({
   open,
   onClose,
-  organizationId,
   existingProjects,
-  autoInstall = false,
 }: {
   open: boolean;
   onClose: () => void;
-  organizationId: string | null;
   existingProjects: Project[];
-  autoInstall?: boolean;
 }) {
+  const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
 
   const {
-    data,
+    data: repos = [],
     isLoading: loading,
     error: queryError,
   } = useQuery({
-    queryKey: ["add-project-repos"],
-    queryFn: async () => {
-      const [installs, installAppResponse] = await Promise.all([
-        fetchInstallations(),
-        fetchInstallAppUrl(),
-      ]);
-
-      if (autoInstall && installs.length === 0 && installAppResponse.url) {
-        window.location.assign(installAppResponse.url);
-        return { installations: installs, repos: [], installAppUrl: installAppResponse.url };
-      }
-
-      const allRepos: RepoWithInstallation[] = [];
-      await Promise.all(
-        installs.map(async (inst) => {
-          const installRepos = await fetchInstallationRepos({
-            data: { installationId: inst.installationId },
-          });
-          for (const repo of installRepos) {
-            allRepos.push({ ...repo, installationId: inst.installationId });
-          }
-        }),
-      );
-
-      return { installations: installs, repos: allRepos, installAppUrl: installAppResponse.url };
-    },
+    queryKey: ["github-repos"],
+    queryFn: () => listAccessibleGithubRepos(),
     enabled: open,
     refetchOnWindowFocus: false,
   });
 
-  const installations = data?.installations ?? [];
-  const repos = data?.repos ?? [];
-  const installAppUrl = data?.installAppUrl ?? null;
-
-  const existingRepoUrls = new Set(existingProjects.map((p) => p.repo_url).filter(Boolean));
+  const existingRepoUrls = new Set(existingProjects.map((p) => p.repo_url));
 
   function toggleRepo(htmlUrl: string) {
     setSelected((prev) => {
@@ -91,31 +47,17 @@ export function AddProjectDialog({
   }
 
   const addMutation = useMutation({
-    mutationFn: async (reposToAdd: RepoWithInstallation[]) => {
-      if (!organizationId) {
-        throw new Error("No active organization selected.");
-      }
-
-      const now = Date.now();
-      const projects = reposToAdd.map((r, index) => {
-        const createdAt = now + index;
-        return {
-          id: crypto.randomUUID(),
-          organization_id: organizationId,
-          created_at: BigInt(createdAt),
-          updated_at: BigInt(createdAt),
-          name: r.fullName,
-          repo_url: r.htmlUrl,
-          installation_id: r.installationId,
-          setup_command: null,
-          run_command: null,
-          run_port: null,
-        };
+    mutationFn: async (reposToAdd: GithubRepo[]) => {
+      await createProjects({
+        data: {
+          repos: reposToAdd.map((repo) => ({
+            name: repo.fullName,
+            repoUrl: repo.htmlUrl,
+          })),
+        },
       });
-
-      const tx = projectsCollection.insert(projects);
+      await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
       onClose();
-      await tx.isPersisted.promise;
     },
   });
 
@@ -153,23 +95,6 @@ export function AddProjectDialog({
             <div className="flex items-center justify-center py-16 text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin" />
             </div>
-          ) : installations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center text-muted-foreground">
-              <p className="text-sm font-medium">No GitHub App installations found</p>
-              <p className="text-xs">
-                Install the Clanki GitHub App on your repositories to get started.
-              </p>
-              {installAppUrl ? (
-                <Button
-                  type="button"
-                  className="mt-3"
-                  onClick={() => window.location.assign(installAppUrl)}
-                >
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                  Install GitHub App
-                </Button>
-              ) : null}
-            </div>
           ) : (
             <>
               <div className="px-5 pt-4 pb-2">
@@ -183,18 +108,6 @@ export function AddProjectDialog({
                     className="pl-9"
                   />
                 </div>
-                {installAppUrl ? (
-                  <Button
-                    type="button"
-                    variant="link"
-                    size="sm"
-                    className="mt-2 h-auto p-0 text-xs text-muted-foreground"
-                    onClick={() => window.open(installAppUrl, "_blank")}
-                  >
-                    <ArrowUpRight className="mr-1 inline w-3 h-3" />
-                    Configure repositories
-                  </Button>
-                ) : null}
               </div>
 
               <div className="px-3 pb-3">
@@ -267,7 +180,10 @@ export function AddProjectDialog({
 
         {(addMutation.error ?? queryError) ? (
           <div className="px-5 py-2 text-xs text-destructive">
-            {addMutation.error?.message ?? "Failed to load repositories from GitHub."}
+            {addMutation.error?.message ??
+              (queryError instanceof Error
+                ? queryError.message
+                : "Failed to load repositories with gh.")}
           </div>
         ) : null}
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted px-5 py-4">

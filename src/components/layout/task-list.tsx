@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useLiveQuery } from "@tanstack/react-db";
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/react";
 import {
   CheckCheck,
@@ -21,8 +21,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "../../lib/utils";
-import { projectsCollection, pullRequestsCollection, tasksCollection } from "../../lib/collections";
 import { deleteDesktopRunnerWorkspace } from "@/lib/desktop-runner";
+import { useProjectPullRequests } from "@/lib/use-project-pull-requests";
+import { useProjects } from "@/lib/use-projects";
+import { TASKS_QUERY_KEY, useTasks } from "@/lib/use-tasks";
+import { deleteTask } from "@/server/functions/tasks";
 import {
   buildTaskSidebarGroups,
   TASK_SIDEBAR_GROUPS,
@@ -48,15 +51,10 @@ function renderGroupIcon(group: TaskSidebarGroup) {
 }
 
 export function TaskList() {
-  const { data: tasks, isLoading: isTasksLoading } = useLiveQuery((query) =>
-    query.from({ t: tasksCollection }).orderBy(({ t }) => t.updated_at, "desc"),
-  );
-  const { data: projects } = useLiveQuery((query) =>
-    query.from({ p: projectsCollection }).orderBy(({ p }) => p.created_at, "asc"),
-  );
-  const { data: pullRequests, isLoading: isPullRequestsLoading } = useLiveQuery((query) =>
-    query.from({ pr: pullRequestsCollection }).orderBy(({ pr }) => pr.opened_at, "desc"),
-  );
+  const queryClient = useQueryClient();
+  const { data: tasks = [], isLoading: isTasksLoading } = useTasks();
+  const { data: projects = [] } = useProjects();
+  const { data: pullRequests = [], isLoading: isPullRequestsLoading } = useProjectPullRequests();
 
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const shouldReduceMotion = useReducedMotion();
@@ -101,7 +99,8 @@ export function TaskList() {
         await deleteDesktopRunnerWorkspace(workspacePath);
       }
 
-      tasksCollection.delete(deletingTaskId);
+      await deleteTask({ data: { taskId: deletingTaskId } });
+      await queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
       setTaskToDelete((currentTask) => (currentTask?.id === deletingTaskId ? null : currentTask));
     } catch (error) {
       setDeleteError(error instanceof Error ? error.message : "Failed to delete task");

@@ -1,9 +1,7 @@
-import type { Project, PullRequest, Task } from "@/lib/collections";
-import {
-  extractOrgRepoFromUrl,
-  getPullRequestStatus,
-  type PullRequestStatus,
-} from "@/lib/pull-request";
+import type { Project } from "@/lib/project";
+import type { PullRequest, PullRequestStatus } from "@/lib/pull-request";
+import { extractOrgRepoFromUrl, getPullRequestStatus } from "@/lib/pull-request";
+import type { Task } from "@/lib/task";
 
 export type TaskSidebarGroup = "merged" | "needsAction" | "openNoPr" | "awaitingReview" | "running";
 
@@ -96,7 +94,7 @@ export function buildTaskSidebarGroups(params: {
 
   for (const task of tasks) {
     const projectRepository = extractOrgRepoFromUrl(
-      task.project_id ? projectsById.get(task.project_id)?.repo_url : null,
+      task.project_id ? (projectsById.get(task.project_id)?.repo_url ?? null) : null,
     );
     const pullRequest =
       projectRepository && task.branch

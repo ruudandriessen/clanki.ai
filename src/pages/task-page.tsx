@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLiveQuery, eq } from "@tanstack/react-db";
+import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { TaskPageCodeView } from "@/components/task-page-code-view";
 import { TaskPageHeader } from "@/components/task-page-header";
@@ -28,16 +28,17 @@ import {
   getLatestStreamAssistantPreview,
   getLatestUserMessageCreatedAt,
 } from "@/lib/task-timeline";
+import { taskMessagesQueryKey, useTaskMessages } from "@/lib/use-task-messages";
+import { TASKS_QUERY_KEY } from "@/lib/use-tasks";
+import { useTaskEventStream } from "@/lib/use-task-event-stream";
+import { createTaskMessage } from "@/server/functions/tasks";
 import { startTaskRun } from "@/server/functions/task-runs";
-import { taskMessagesCollection, tasksCollection } from "../lib/collections";
-import { useTaskEventStream } from "../lib/use-task-event-stream";
 
 const CREATE_PR_MESSAGE = "Create a PR for me";
 
 export interface TaskPageProps {
   taskId: string;
   projectName: string;
-  streamId: string | null;
   branchName: string | null;
   pullRequest: {
     prNumber: number;
@@ -62,7 +63,6 @@ export function TaskPage({
   title,
   branchName,
   projectName,
-  streamId,
   pullRequest,
   error,
   isRunning,
@@ -81,23 +81,17 @@ export function TaskPage({
     localStorageKeys.lastUsedTaskModel(),
     null,
   );
+  const queryClient = useQueryClient();
   const [localError, setLocalError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const runEvents = useTaskEventStream({ taskId, streamId });
+  const runEvents = useTaskEventStream(taskId);
   const [now, setNow] = useState(() => Date.now());
   const messageListRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const shouldStickToBottomRef = useRef(true);
 
-  const { data: messages } = useLiveQuery(
-    (q) =>
-      q
-        .from({ m: taskMessagesCollection })
-        .where(({ m }) => eq(m.task_id, taskId))
-        .orderBy(({ m }) => m.created_at, "asc"),
-    [taskId],
-  );
+  const { data: messages = [] } = useTaskMessages(taskId, isRunning ? 2_000 : undefined);
 
   const persistedAssistantMessage = getLatestAssistantMessage(messages);
   const streamAssistantPreview = getLatestStreamAssistantPreview(runEvents);
@@ -208,22 +202,19 @@ export function TaskPage({
     let taskRun: Awaited<ReturnType<typeof startTaskRun>> | null = null;
 
     try {
-      const optimisticUpdatedAt = BigInt(Date.now());
-      tasksCollection.update(taskId, (draft) => {
-        draft.status = "running";
-        draft.error = null;
-        draft.updated_at = optimisticUpdatedAt;
+      await createTaskMessage({
+        data: {
+          taskId,
+          message: {
+            role: "user",
+            content,
+          },
+        },
       });
-
-      const userMessage = {
-        id: crypto.randomUUID(),
-        task_id: taskId,
-        role: "user",
-        content,
-        created_at: optimisticUpdatedAt,
-      };
-      const messageTx = taskMessagesCollection.insert(userMessage);
-      await messageTx.isPersisted.promise;
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: taskMessagesQueryKey(taskId) }),
+      ]);
 
       if (isRunnerBackedTask && runnerSessionId && workspacePath) {
         taskRun = await startTaskRun({

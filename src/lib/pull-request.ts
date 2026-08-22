@@ -1,10 +1,21 @@
 export type PullRequestStatus = "open" | "merged" | "closed" | "draft";
 
-export function getPullRequestStatus(pr: {
-  state?: string;
-  merged_at: bigint | null;
-  ready_at: bigint | null;
-}): PullRequestStatus {
+export type PullRequest = {
+  repository: string;
+  branch: string;
+  pr_number: number;
+  url: string;
+  state: string;
+  review_state: string | null;
+  checks_count: number | null;
+  checks_completed_count: number | null;
+  checks_state: string | null;
+  checks_conclusion: string | null;
+  opened_at: number;
+  merged_at: number | null;
+};
+
+export function getPullRequestStatus(pr: { state?: string }): PullRequestStatus {
   switch (pr.state) {
     case "draft":
       return "draft";
@@ -12,14 +23,8 @@ export function getPullRequestStatus(pr: {
       return "closed";
     case "merged":
       return "merged";
-    case "open":
+    default:
       return "open";
-    default: {
-      if (pr.merged_at !== null) {
-        return "merged";
-      }
-      return pr.ready_at === null ? "draft" : "open";
-    }
   }
 }
 

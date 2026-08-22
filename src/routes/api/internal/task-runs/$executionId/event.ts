@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { Event as OpenCodeEvent } from "@opencode-ai/sdk";
 import { getDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
-import { getEnv } from "@/server/env";
-import { appendTaskEvent } from "@/server/lib/durable-streams";
+import { appendTaskEvent } from "@/server/lib/task-events";
 import { verifyTaskRunCallback } from "@/server/lib/task-run-callback";
 import type { TaskStreamEvent } from "@/shared/task-stream-events";
 
@@ -28,17 +27,10 @@ export const Route = createFileRoute("/api/internal/task-runs/$executionId/event
           return Response.json({ error: "event is required" }, { status: 400 });
         }
 
-        const env = getEnv();
-        const db = getDb(env);
+        const db = await getDb();
         const task = await db.query.tasks.findFirst({
-          where: and(
-            eq(schema.tasks.id, callback.taskId),
-            eq(schema.tasks.organizationId, callback.organizationId),
-          ),
-          columns: {
-            id: true,
-            streamId: true,
-          },
+          where: eq(schema.tasks.id, callback.taskId),
+          columns: { id: true },
         });
 
         if (!task) {
@@ -54,12 +46,7 @@ export const Route = createFileRoute("/api/internal/task-runs/$executionId/event
           payload: JSON.stringify(body.event),
         };
 
-        await appendTaskEvent({
-          env,
-          event: streamEvent,
-          streamId: task.streamId,
-        });
-
+        await appendTaskEvent(db, streamEvent);
         return Response.json({ ok: true });
       },
     },

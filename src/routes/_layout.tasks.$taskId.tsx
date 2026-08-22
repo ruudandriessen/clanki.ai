@@ -1,60 +1,30 @@
 import { Navigate, createFileRoute } from "@tanstack/react-router";
 import { TaskPage } from "@/pages/task-page";
-import { and, eq, useLiveQuery } from "@tanstack/react-db";
-import {
-  projectsCollection,
-  pullRequestsCollection,
-  taskMessagesCollection,
-  tasksCollection,
-} from "@/lib/collections";
 import { extractOrgRepoFromUrl, getPullRequestStatus } from "@/lib/pull-request";
+import { useProjectPullRequests } from "@/lib/use-project-pull-requests";
+import { useProjects } from "@/lib/use-projects";
+import { useTasks } from "@/lib/use-tasks";
 
 export const Route = createFileRoute("/_layout/tasks/$taskId")({
-  loader: () => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    void Promise.all([
-      tasksCollection.preload(),
-      projectsCollection.preload(),
-      pullRequestsCollection.preload(),
-      taskMessagesCollection.preload(),
-    ]);
-  },
   component: () => {
     const { taskId } = Route.useParams();
-    const { data: taskRows, isLoading } = useLiveQuery(
-      (q) =>
-        q
-          .from({ task: tasksCollection })
-          .where(({ task }) => eq(task.id, taskId))
-          .join({ project: projectsCollection }, ({ project, task }) =>
-            eq(project.id, task.project_id),
-          ),
-      [taskId],
-    );
-    const openedTask = taskRows[0];
-    const taskBranch = openedTask?.task.branch ?? null;
-    const taskRepository = openedTask?.project?.repo_url
-      ? extractOrgRepoFromUrl(openedTask?.project?.repo_url)
-      : null;
-
-    const { data: pullRequestMatches } = useLiveQuery(
-      (q) =>
-        q
-          .from({ pr: pullRequestsCollection })
-          .where(({ pr }) =>
-            taskBranch && taskRepository
-              ? and(eq(pr.branch, taskBranch), eq(pr.repository, taskRepository))
-              : eq(pr.id, ""),
+    const { data: tasks = [], isLoading: isTasksLoading } = useTasks(3_000);
+    const { data: projects = [] } = useProjects();
+    const { data: pullRequests = [] } = useProjectPullRequests();
+    const task = tasks.find((candidate) => candidate.id === taskId);
+    const project = task?.project_id
+      ? projects.find((candidate) => candidate.id === task.project_id)
+      : undefined;
+    const taskRepository = extractOrgRepoFromUrl(project?.repo_url ?? null);
+    const pullRequest =
+      taskRepository && task?.branch
+        ? pullRequests.find(
+            (candidate) =>
+              candidate.repository === taskRepository && candidate.branch === task.branch,
           )
-          .orderBy(({ pr }) => pr.opened_at, "desc"),
-      [taskBranch, taskRepository],
-    );
+        : undefined;
 
-    const pullRequest = pullRequestMatches[0];
-    if (!isLoading && !openedTask) {
+    if (!isTasksLoading && !task) {
       return <Navigate to="/" replace />;
     }
 
@@ -62,29 +32,28 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
       <TaskPage
         key={taskId}
         taskId={taskId}
-        title={openedTask?.task.title ?? "New task"}
-        branchName={openedTask?.task.branch ?? null}
-        projectName={openedTask?.project?.name ?? ""}
-        streamId={openedTask?.task.stream_id ?? null}
+        title={task?.title ?? "New task"}
+        branchName={task?.branch ?? null}
+        projectName={project?.name ?? ""}
         pullRequest={
           pullRequest
             ? {
                 prNumber: pullRequest.pr_number,
-                url: `https://github.com/${pullRequest.repository}/pull/${pullRequest.pr_number}`,
+                url: pullRequest.url,
                 status: getPullRequestStatus(pullRequest),
-                reviewState: pullRequest.review_state ?? null,
-                checksCount: pullRequest.checks_count ?? null,
-                checksCompletedCount: pullRequest.checks_completed_count ?? null,
-                checksState: pullRequest.checks_state ?? null,
-                checksConclusion: pullRequest.checks_conclusion ?? null,
+                reviewState: pullRequest.review_state,
+                checksCount: pullRequest.checks_count,
+                checksCompletedCount: pullRequest.checks_completed_count,
+                checksState: pullRequest.checks_state,
+                checksConclusion: pullRequest.checks_conclusion,
               }
             : null
         }
-        error={openedTask?.task.error ?? null}
-        isRunning={(openedTask?.task.status ?? "") === "running"}
-        runnerSessionId={openedTask?.task.runner_session_id ?? null}
-        runnerType={openedTask?.task.runner_type ?? null}
-        workspacePath={openedTask?.task.workspace_path ?? null}
+        error={task?.error ?? null}
+        isRunning={(task?.status ?? "") === "running"}
+        runnerSessionId={task?.runner_session_id ?? null}
+        runnerType={task?.runner_type ?? null}
+        workspacePath={task?.workspace_path ?? null}
       />
     );
   },

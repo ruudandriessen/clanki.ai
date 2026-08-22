@@ -1,10 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getDb } from "@/server/db/client";
-import { getEnv } from "@/server/env";
 import { verifyTaskRunCallback } from "@/server/lib/task-run-callback";
 import { completeTask, insertAssistantTaskMessage } from "@/server/lib/task-execution/helpers";
-import { isSupportedOpencodeProvider, type SupportedOpencodeProvider } from "@/server/lib/opencode";
-import { upsertProviderAuthCredential } from "@/server/lib/provider-credentials";
 
 export const Route = createFileRoute("/api/internal/task-runs/$executionId/complete")({
   server: {
@@ -15,18 +12,14 @@ export const Route = createFileRoute("/api/internal/task-runs/$executionId/compl
           return Response.json({ error: "Invalid callback token" }, { status: 401 });
         }
 
-        let body: {
-          assistantOutput?: string;
-          refreshedAuth?: { provider?: string; auth?: unknown };
-        };
+        let body: { assistantOutput?: string };
         try {
           body = await request.json();
         } catch {
           body = {};
         }
 
-        const env = getEnv();
-        const db = getDb(env);
+        const db = await getDb();
 
         if (
           body.assistantOutput &&
@@ -36,7 +29,6 @@ export const Route = createFileRoute("/api/internal/task-runs/$executionId/compl
           try {
             await insertAssistantTaskMessage({
               db,
-              organizationId: callback.organizationId,
               taskId: callback.taskId,
               content: body.assistantOutput.trim(),
             });
@@ -49,23 +41,7 @@ export const Route = createFileRoute("/api/internal/task-runs/$executionId/compl
           }
         }
 
-        if (body.refreshedAuth?.provider && body.refreshedAuth.auth) {
-          const provider = String(body.refreshedAuth.provider);
-          if (isSupportedOpencodeProvider(provider)) {
-            try {
-              await upsertProviderAuthCredential(
-                db,
-                env,
-                callback.userId,
-                provider as SupportedOpencodeProvider,
-                body.refreshedAuth.auth as Parameters<typeof upsertProviderAuthCredential>[4],
-              );
-            } catch {}
-          }
-        }
-
         await completeTask({ db, taskId: callback.taskId });
-
         return Response.json({ ok: true });
       },
     },

@@ -1,25 +1,20 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { getTaskRunnerCallbackSecret, type AppEnv } from "@/server/env";
+import { getTaskRunnerCallbackSecret } from "./callback-secret";
 
 export type TaskRunCallbackClaims = {
   executionId: string;
   taskId: string;
-  organizationId: string;
-  userId: string;
   provider: string;
   issuedAt: number;
 };
 
-export function createTaskRunCallbackToken(claims: TaskRunCallbackClaims, env: AppEnv): string {
+export function createTaskRunCallbackToken(claims: TaskRunCallbackClaims): string {
   const encodedPayload = Buffer.from(JSON.stringify(claims), "utf8").toString("base64url");
-  const signature = signPayload(encodedPayload, getTaskRunnerCallbackSecret(env));
+  const signature = signPayload(encodedPayload, getTaskRunnerCallbackSecret());
   return `${encodedPayload}.${signature}`;
 }
 
-export function verifyTaskRunCallbackToken(
-  token: string,
-  env: AppEnv,
-): TaskRunCallbackClaims | null {
+export function verifyTaskRunCallbackToken(token: string): TaskRunCallbackClaims | null {
   const parts = token.split(".");
   if (parts.length !== 2) {
     return null;
@@ -30,7 +25,7 @@ export function verifyTaskRunCallbackToken(
     return null;
   }
 
-  const expectedSignature = signPayload(encodedPayload, getTaskRunnerCallbackSecret(env));
+  const expectedSignature = signPayload(encodedPayload, getTaskRunnerCallbackSecret());
   const provided = Buffer.from(encodedSignature);
   const expected = Buffer.from(expectedSignature);
 
@@ -72,10 +67,6 @@ function isTaskRunCallbackClaims(value: unknown): value is TaskRunCallbackClaims
     claims.executionId.trim().length > 0 &&
     typeof claims.taskId === "string" &&
     claims.taskId.trim().length > 0 &&
-    typeof claims.organizationId === "string" &&
-    claims.organizationId.trim().length > 0 &&
-    typeof claims.userId === "string" &&
-    claims.userId.trim().length > 0 &&
     typeof claims.provider === "string" &&
     claims.provider.trim().length > 0 &&
     typeof claims.issuedAt === "number" &&

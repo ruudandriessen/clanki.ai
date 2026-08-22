@@ -1,16 +1,14 @@
-import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { createClient, type Client } from "@libsql/client";
+import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
+import { ensureSchema } from "./ensure-schema";
 import * as schema from "./schema";
+import { getSqlitePath } from "./sqlite-path";
 
-export type AppDb = PostgresJsDatabase<typeof schema>;
-
-type DbEnv = {
-  DATABASE_URL?: string;
-};
+export type AppDb = LibSQLDatabase<typeof schema>;
 
 type DbClientCacheEntry = {
-  url: string;
-  db: AppDb;
+  path: string;
+  dbPromise: Promise<AppDb>;
 };
 
 type GlobalWithDbCache = typeof globalThis & {
@@ -19,31 +17,20 @@ type GlobalWithDbCache = typeof globalThis & {
 
 const globalWithDbCache = globalThis as GlobalWithDbCache;
 
-function createDb(url: string): AppDb {
-  const sql = postgres(url, {
-    fetch_types: false,
-    prepare: false,
-    // Keep per-runtime connection usage predictable in serverless deployments.
-    max: 1,
-    idle_timeout: 20,
-    connect_timeout: 10,
-  });
-
-  return drizzle({ client: sql, schema });
+async function createDb(sqlitePath: string): Promise<AppDb> {
+  const client: Client = createClient({ url: `file:${sqlitePath}` });
+  await ensureSchema(client);
+  return drizzle({ client, schema });
 }
 
-export function getDb(env: DbEnv): AppDb {
-  const url = env.DATABASE_URL;
-  if (!url) {
-    throw new Error("Database connection string is missing");
-  }
-
+export function getDb(): Promise<AppDb> {
+  const sqlitePath = getSqlitePath();
   const cached = globalWithDbCache.__clankiDbClientCache;
-  if (cached && cached.url === url) {
-    return cached.db;
+  if (cached && cached.path === sqlitePath) {
+    return cached.dbPromise;
   }
 
-  const db = createDb(url);
-  globalWithDbCache.__clankiDbClientCache = { url, db };
-  return db;
+  const dbPromise = createDb(sqlitePath);
+  globalWithDbCache.__clankiDbClientCache = { path: sqlitePath, dbPromise };
+  return dbPromise;
 }

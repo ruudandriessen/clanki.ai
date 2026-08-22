@@ -10,13 +10,7 @@ export default defineConfig({
     tailwindcss(),
     tsConfigPaths({ projects: ["./tsconfig.json"] }),
     tanstackStart({}),
-    nitro({
-      vercel: {
-        functions: {
-          maxDuration: 300,
-        },
-      },
-    }),
+    nitro(),
     react({
       babel: {
         plugins: [["babel-plugin-react-compiler"]],

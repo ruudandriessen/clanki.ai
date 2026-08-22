@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
-import { getEnv } from "@/server/env";
 import { verifyTaskRunCallback } from "@/server/lib/task-run-callback";
 
 export const Route = createFileRoute("/api/internal/task-runs/$executionId/branch")({
@@ -38,16 +37,11 @@ export const Route = createFileRoute("/api/internal/task-runs/$executionId/branc
           branch = normalizedBranch.length > 0 ? normalizedBranch : null;
         }
 
-        const db = getDb(getEnv());
+        const db = await getDb();
         await db
           .update(schema.tasks)
           .set({ branch, updatedAt: Date.now() })
-          .where(
-            and(
-              eq(schema.tasks.id, callback.taskId),
-              eq(schema.tasks.organizationId, callback.organizationId),
-            ),
-          );
+          .where(eq(schema.tasks.id, callback.taskId));
 
         return Response.json({ ok: true });
       },

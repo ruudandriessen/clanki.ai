@@ -1,4 +1,3 @@
-import { getEnv } from "@/server/env";
 import {
   type TaskRunCallbackClaims,
   verifyTaskRunCallbackToken,
@@ -28,8 +27,7 @@ export function verifyTaskRunCallback(
     return null;
   }
 
-  const env = getEnv();
-  const claims = verifyTaskRunCallbackToken(token, env);
+  const claims = verifyTaskRunCallbackToken(token);
   if (!claims || claims.executionId !== executionId) {
     return null;
   }

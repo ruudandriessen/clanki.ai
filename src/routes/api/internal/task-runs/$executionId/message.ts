@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getDb } from "@/server/db/client";
-import { getEnv } from "@/server/env";
 import { verifyTaskRunCallback } from "@/server/lib/task-run-callback";
 import { insertAssistantTaskMessage } from "@/server/lib/task-execution/helpers";
 
@@ -24,10 +23,8 @@ export const Route = createFileRoute("/api/internal/task-runs/$executionId/messa
           return Response.json({ error: "content is required" }, { status: 400 });
         }
 
-        const db = getDb(getEnv());
         const taskMessageId = await insertAssistantTaskMessage({
-          db,
-          organizationId: callback.organizationId,
+          db: await getDb(),
           taskId: callback.taskId,
           content: body.content.trim(),
         });
