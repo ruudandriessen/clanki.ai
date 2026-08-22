@@ -1,6 +1,7 @@
 import {
   chat,
   chatParamsFromRequest,
+  memoryStream,
   toServerSentEventsResponse,
   type StreamChunk,
 } from "@tanstack/ai";
@@ -69,7 +70,10 @@ export async function runTaskChat(args: { request: Request; taskId: string }): P
       workspacePath,
       runnerSessionId: task.runnerSessionId,
     }),
-    { abortController },
+    {
+      abortController,
+      durability: { adapter: memoryStream(args.request) },
+    },
   );
 }
 
