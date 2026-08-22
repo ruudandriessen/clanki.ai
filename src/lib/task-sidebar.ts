@@ -140,11 +140,46 @@ export function getTaskSidebarGroupLabel(groupKey: TaskSidebarGroup): string {
   return TASK_SIDEBAR_GROUPS.find((group) => group.key === groupKey)?.label ?? groupKey;
 }
 
+function isSnoozedSidebarGroup(groupKey: TaskSidebarGroup): boolean {
+  return groupKey !== "needsAction";
+}
+
+export function partitionSidebarTasks(
+  orderedTasks: OrderedSidebarTask[],
+  activeTaskId: string | null,
+): { snoozedTasks: OrderedSidebarTask[]; visibleTasks: OrderedSidebarTask[] } {
+  const visibleTasks: OrderedSidebarTask[] = [];
+  const snoozedTasks: OrderedSidebarTask[] = [];
+  let activeSnoozedTask: OrderedSidebarTask | null = null;
+
+  for (const entry of orderedTasks) {
+    if (!isSnoozedSidebarGroup(entry.groupKey)) {
+      visibleTasks.push(entry);
+      continue;
+    }
+
+    if (activeTaskId && entry.task.id === activeTaskId) {
+      activeSnoozedTask = entry;
+      continue;
+    }
+
+    snoozedTasks.push(entry);
+  }
+
+  if (activeSnoozedTask) {
+    visibleTasks.push(activeSnoozedTask);
+  }
+
+  return { snoozedTasks, visibleTasks };
+}
+
 export function getFirstSidebarTaskId(params: {
   projects: Project[];
   pullRequests: PullRequest[];
   tasks: Task[];
 }): string | null {
-  const firstOrderedTask = buildOrderedSidebarTasks(params)[0];
-  return firstOrderedTask?.task.id ?? null;
+  const orderedTasks = buildOrderedSidebarTasks(params);
+  const { snoozedTasks, visibleTasks } = partitionSidebarTasks(orderedTasks, null);
+
+  return visibleTasks[0]?.task.id ?? snoozedTasks[0]?.task.id ?? null;
 }
