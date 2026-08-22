@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { fetchServerSentEvents, useChat } from "@tanstack/ai-react";
 import { AlertCircle, Loader2 } from "lucide-react";
-import { TaskPageCodeView } from "@/components/task-page-code-view";
+import { TaskPageArchitectureView } from "@/components/task-page-architecture-view";
 import { TaskPageHeader } from "@/components/task-page-header";
 import { TaskPageMessageList } from "@/components/task-page-message-list";
 import { TaskPageInput } from "@/components/task-page-input";
@@ -14,7 +14,7 @@ import {
   useLocalStorageState,
   useSessionState,
 } from "@/lib/session-state";
-import { useRunnerDiff } from "@/lib/runner-diffs";
+import { useRunnerArchitectureDiff } from "@/lib/runner-architecture-diff";
 import {
   getDefaultRunnerModelSelection,
   getRunnerModelOptions,
@@ -98,17 +98,18 @@ export function TaskPage({
         : (selectedModel ?? lastUsedModel ?? defaultModelSelection);
   const runnerModelErrorMessage =
     runnerModelsError instanceof Error ? runnerModelsError.message : null;
-  const showCodeModeToggle = willBeRunnerBacked;
+  const showArchitectureModeToggle = willBeRunnerBacked;
   const {
-    data: diffs,
-    error: runnerDiffError,
-    isLoading: isDiffLoading,
-  } = useRunnerDiff({
+    data: architectureDiff,
+    error: runnerArchitectureDiffError,
+    isLoading: isArchitectureDiffLoading,
+  } = useRunnerArchitectureDiff({
     directory: isRunnerBackedTask ? workspacePath : null,
-    enabled: viewMode === "code",
+    enabled: viewMode === "architecture",
     refetchIntervalMs: isRunning ? 3_000 : undefined,
   });
-  const runnerDiffErrorMessage = runnerDiffError instanceof Error ? runnerDiffError.message : null;
+  const runnerArchitectureDiffErrorMessage =
+    runnerArchitectureDiffError instanceof Error ? runnerArchitectureDiffError.message : null;
 
   const {
     messages,
@@ -155,10 +156,10 @@ export function TaskPage({
   }, [taskId]);
 
   useEffect(() => {
-    if (!showCodeModeToggle && viewMode !== "chat") {
+    if (!showArchitectureModeToggle && viewMode !== "chat") {
       setViewMode("chat");
     }
-  }, [setViewMode, showCodeModeToggle, viewMode]);
+  }, [setViewMode, showArchitectureModeToggle, viewMode]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -240,7 +241,7 @@ export function TaskPage({
         pullRequest={pullRequest}
         desktopApp={desktopApp}
         isRunnerBackedTask={isRunnerBackedTask}
-        showCodeModeToggle={showCodeModeToggle}
+        showArchitectureModeToggle={showArchitectureModeToggle}
         onViewModeChange={setViewMode}
         viewMode={viewMode}
         workspacePath={workspacePath}
@@ -259,11 +260,11 @@ export function TaskPage({
         </div>
       ) : null}
 
-      {viewMode === "code" ? (
-        <TaskPageCodeView
-          diffs={diffs}
-          diffErrorMessage={runnerDiffErrorMessage}
-          isDiffLoading={isDiffLoading}
+      {viewMode === "architecture" ? (
+        <TaskPageArchitectureView
+          diff={architectureDiff}
+          diffErrorMessage={runnerArchitectureDiffErrorMessage}
+          isDiffLoading={isArchitectureDiffLoading}
           isRunnerBackedTask={isRunnerBackedTask}
           preparingWorkspace={preparingWorkspace}
         />

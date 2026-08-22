@@ -1,22 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
-import type { DesktopRunnerDiff } from "@/lib/desktop-runner";
-import { getDesktopRunnerDiff } from "@/lib/desktop-runner";
+import type { ArchitectureDiff } from "@/lib/architecture-diff";
+import { getDesktopRunnerArchitectureDiff } from "@/lib/desktop-runner";
 import { isDesktopApp } from "@/lib/is-desktop-app";
 
-type UseRunnerDiffArgs = {
+type UseRunnerArchitectureDiffArgs = {
   directory: string | null;
   enabled?: boolean;
   refetchIntervalMs?: number;
 };
 
-export function useRunnerDiff({ directory, enabled = true, refetchIntervalMs }: UseRunnerDiffArgs) {
+export function useRunnerArchitectureDiff({
+  directory,
+  enabled = true,
+  refetchIntervalMs,
+}: UseRunnerArchitectureDiffArgs) {
   const desktopApp = isDesktopApp();
   const normalizedDirectory = directory?.trim() ?? "";
 
-  return useQuery<DesktopRunnerDiff[]>({
-    queryKey: ["runner-diff", normalizedDirectory],
+  return useQuery<ArchitectureDiff>({
+    queryKey: ["runner-architecture-diff", normalizedDirectory],
     queryFn: async () =>
-      await getDesktopRunnerDiff({
+      await getDesktopRunnerArchitectureDiff({
         directory: normalizedDirectory,
       }),
     enabled: enabled && desktopApp && normalizedDirectory.length > 0,

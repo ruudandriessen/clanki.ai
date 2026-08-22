@@ -10,6 +10,7 @@
     "dev": "bun run ./src/cli.ts"
   },
   "dependencies": {
+    "@clanki/cli": "workspace:*",
     "@hono/node-server": "^1.19.9",
     "@opencode-ai/sdk": "^1.2.1",
     "hono": "^4.11.7"

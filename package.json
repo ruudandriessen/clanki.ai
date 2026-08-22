@@ -35,7 +35,6 @@
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
-    "@pierre/diffs": "^1.0.11",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/ai": "^0.48.0",
     "@tanstack/ai-opencode": "^0.3.4",
