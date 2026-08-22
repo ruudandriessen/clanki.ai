@@ -1,23 +1,45 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
+import type { TaskExecutionState } from "@/lib/task";
 import type { AppDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 
-export type TaskThreadState = {
-  isRunning: boolean;
-  chatError: string | null;
+export type TaskThreadSnapshot = {
+  hasActiveRun: boolean;
+  latestChatError: string | null;
 };
 
-export async function loadTaskThreadStates(
+export function resolveTaskExecutionState(args: {
+  workspaceError: string | null;
+  thread: TaskThreadSnapshot;
+}): TaskExecutionState {
+  if (args.thread.hasActiveRun) {
+    return { kind: "running" };
+  }
+
+  const workspaceMessage = args.workspaceError?.trim();
+  if (workspaceMessage) {
+    return { kind: "blocked", message: workspaceMessage };
+  }
+
+  const chatMessage = args.thread.latestChatError?.trim();
+  if (chatMessage) {
+    return { kind: "failed", message: chatMessage };
+  }
+
+  return { kind: "idle" };
+}
+
+export async function loadTaskThreadSnapshots(
   db: AppDb,
   taskIds: string[],
-): Promise<Map<string, TaskThreadState>> {
-  const states = new Map<string, TaskThreadState>();
+): Promise<Map<string, TaskThreadSnapshot>> {
+  const snapshots = new Map<string, TaskThreadSnapshot>();
   if (taskIds.length === 0) {
-    return states;
+    return snapshots;
   }
 
   for (const taskId of taskIds) {
-    states.set(taskId, { isRunning: false, chatError: null });
+    snapshots.set(taskId, { hasActiveRun: false, latestChatError: null });
   }
 
   const [activeRuns, recentRuns] = await Promise.all([
@@ -33,9 +55,9 @@ export async function loadTaskThreadStates(
   ]);
 
   for (const run of activeRuns) {
-    const state = states.get(run.threadId);
-    if (state) {
-      state.isRunning = true;
+    const snapshot = snapshots.get(run.threadId);
+    if (snapshot) {
+      snapshot.hasActiveRun = true;
     }
   }
 
@@ -46,15 +68,15 @@ export async function loadTaskThreadStates(
     }
     seenThreads.add(run.threadId);
 
-    const state = states.get(run.threadId);
-    if (!state) {
+    const snapshot = snapshots.get(run.threadId);
+    if (!snapshot) {
       continue;
     }
 
     if (run.status === "failed" && run.error) {
-      state.chatError = run.error;
+      snapshot.latestChatError = run.error;
     }
   }
 
-  return states;
+  return snapshots;
 }
