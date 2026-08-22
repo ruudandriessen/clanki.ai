@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 import { describe, expect, test } from "bun:test";
-import { shouldResumeTaskChat } from "./task-chat-resume";
+import { shouldResumeTaskChat } from "./task-chat";
 
 describe("shouldResumeTaskChat", () => {
   test("returns true for joinRun requests", () => {

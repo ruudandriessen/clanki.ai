@@ -7,7 +7,7 @@ import type { StreamChunk } from "@tanstack/ai";
 import { EventType } from "@tanstack/ai";
 import { getMigrationsFolder } from "../db/migrations-folder";
 import * as schema from "../db/schema";
-import { reapStaleAiRuns } from "./reap-stale-ai-runs";
+import { terminalizeOrphanedRunsOnStartup } from "./reap-stale-ai-runs";
 import { sqliteStream } from "./sqlite-stream-durability";
 
 async function createTestDb() {
@@ -91,14 +91,14 @@ describe("sqliteStream", () => {
   });
 });
 
-describe("reapStaleAiRuns", () => {
+describe("terminalizeOrphanedRunsOnStartup", () => {
   test("marks orphaned running runs as interrupted", async () => {
     const { client, db } = await createTestDb();
     const runId = "run-stale-1";
 
     try {
       await seedRun(db, runId);
-      const reaped = await reapStaleAiRuns(db);
+      const reaped = await terminalizeOrphanedRunsOnStartup(db);
       expect(reaped).toBe(1);
 
       const run = await db.query.aiRuns.findFirst({

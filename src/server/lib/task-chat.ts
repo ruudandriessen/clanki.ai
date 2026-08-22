@@ -1,9 +1,16 @@
-import { chat, type StreamChunk } from "@tanstack/ai";
-import { withLocks } from "@tanstack/ai/locks";
+import {
+  chat,
+  chatParamsFromRequest,
+  toServerSentEventsResponse,
+  type StreamChunk,
+} from "@tanstack/ai";
+import { InMemoryLockStore, withLocks } from "@tanstack/ai/locks";
 import type { StreamDurability } from "@tanstack/ai";
 import { withPersistence } from "@tanstack/ai-persistence";
 import { sandboxRunDriver, withSandbox } from "@tanstack/ai-sandbox";
+import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
+import * as schema from "@/server/db/schema";
 import { taskChatPersistence } from "@/server/lib/ai-persistence";
 import { toOpencodeModelRef } from "@/server/lib/opencode";
 import { omitReplayedUserText } from "@/server/lib/omit-replayed-user-text";
@@ -11,7 +18,6 @@ import { readOpencodeSessionId } from "@/server/lib/opencode-session-id";
 import { readWorkspaceBranch } from "@/server/lib/read-workspace-branch";
 import { readTaskChatModel } from "@/server/lib/task-chat-model";
 import { taskChatDurability } from "@/server/lib/task-chat-durability";
-import { taskChatLocks } from "@/server/lib/task-chat-locks";
 import { syncTaskAfterChat } from "@/server/lib/task-execution/helpers";
 import {
   createTaskChatAdapter,
@@ -19,6 +25,8 @@ import {
   opencodePortForTask,
 } from "@/server/lib/task-harness";
 import { readThreadMetadata } from "@/server/lib/thread-metadata";
+
+export const taskChatLocks = new InMemoryLockStore();
 
 function controllerFor(signal: AbortSignal): AbortController {
   const controller = new AbortController();
@@ -37,21 +45,40 @@ export function durabilityForRunId(runId: string) {
   return taskChatDurability(new Request(url));
 }
 
-export async function* driveTaskChatRun(input: {
+export function shouldResumeTaskChat(request: Request): boolean {
+  const durability = taskChatDurability(request);
+  const url = new URL(request.url);
+  const runId = url.searchParams.get("runId");
+  const offset = url.searchParams.get("offset");
+  return durability.resumeFrom() !== null || (runId !== null && offset !== null);
+}
+
+export async function readTaskWorkspacePath(taskId: string): Promise<string | null> {
+  const db = await getDb();
+  const task = await db.query.tasks.findFirst({
+    where: eq(schema.tasks.id, taskId),
+    columns: { workspacePath: true },
+  });
+  const workspacePath = task?.workspacePath?.trim() ?? "";
+  return workspacePath.length > 0 ? workspacePath : null;
+}
+
+type TaskChatRequestParams = Awaited<ReturnType<typeof chatParamsFromRequest>>;
+
+async function* createTaskChatStream(input: {
   runId: string;
   threadId: string;
-  signal: AbortSignal;
   workspacePath: string;
   durability: StreamDurability;
+  messages: TaskChatRequestParams["messages"];
+  resume?: TaskChatRequestParams["resume"];
   attach?: boolean;
-  forwardedProps?: Record<string, unknown>;
+  forwardedProps?: TaskChatRequestParams["forwardedProps"];
+  signal?: AbortSignal;
 }): AsyncGenerator<StreamChunk> {
   const db = await getDb();
   const threadMetadata = await readThreadMetadata(db, input.threadId);
   const { model, provider } = readTaskChatModel(input.forwardedProps ?? {});
-  const storedMessages = input.attach
-    ? await taskChatPersistence.stores.messages.loadThread(input.threadId)
-    : [];
 
   const stream = chat({
     adapter: createTaskChatAdapter({
@@ -59,10 +86,11 @@ export async function* driveTaskChatRun(input: {
       modelRef: toOpencodeModelRef(provider, model),
       port: opencodePortForTask(input.threadId),
     }),
-    messages: storedMessages,
+    messages: input.messages,
     threadId: input.threadId,
     runId: input.runId,
-    abortController: controllerFor(input.signal),
+    ...(input.resume === undefined ? {} : { resume: input.resume }),
+    ...(input.signal ? { abortController: controllerFor(input.signal) } : {}),
     modelOptions: threadMetadata.runnerSessionId
       ? { sessionId: threadMetadata.runnerSessionId }
       : {},
@@ -90,6 +118,21 @@ export async function* driveTaskChatRun(input: {
   });
 }
 
+export async function* driveTaskChatRun(input: {
+  runId: string;
+  threadId: string;
+  signal: AbortSignal;
+  workspacePath: string;
+  durability: StreamDurability;
+}): AsyncGenerator<StreamChunk> {
+  const messages = await taskChatPersistence.stores.messages.loadThread(input.threadId);
+  yield* createTaskChatStream({
+    ...input,
+    messages,
+    attach: true,
+  });
+}
+
 export function createTaskChatTakeoverDriver(args: {
   request: Request;
   taskId: string;
@@ -107,12 +150,52 @@ export function createTaskChatTakeoverDriver(args: {
         signal,
         workspacePath: args.workspacePath,
         durability: durabilityForRunId(runId),
-        attach: true,
       }),
   });
 }
 
-export async function* withTaskChatCompletionSync(
+export async function runTaskChat(args: { request: Request; taskId: string }): Promise<Response> {
+  const db = await getDb();
+  const task = await db.query.tasks.findFirst({
+    where: eq(schema.tasks.id, args.taskId),
+  });
+
+  if (!task) {
+    return Response.json({ error: "Task not found" }, { status: 404 });
+  }
+
+  const workspacePath = task.workspacePath?.trim() ?? "";
+  if (workspacePath.length === 0) {
+    return Response.json({ error: "Task workspace is not ready" }, { status: 409 });
+  }
+
+  const params = await chatParamsFromRequest(args.request);
+  const durability = taskChatDurability(args.request);
+
+  if (durability.resumeFrom() === null) {
+    await taskChatPersistence.stores.runs.createOrResume({
+      runId: params.runId,
+      threadId: args.taskId,
+      startedAt: Date.now(),
+    });
+  }
+
+  const stream = createTaskChatStream({
+    runId: params.runId,
+    threadId: args.taskId,
+    workspacePath,
+    durability,
+    messages: params.messages,
+    resume: params.resume,
+    forwardedProps: params.forwardedProps,
+  });
+
+  return toServerSentEventsResponse(stream, {
+    durability: { adapter: durability },
+  });
+}
+
+async function* withTaskChatCompletionSync(
   stream: AsyncIterable<StreamChunk>,
   args: {
     taskId: string;

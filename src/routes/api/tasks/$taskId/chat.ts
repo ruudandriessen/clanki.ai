@@ -5,20 +5,13 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { taskChatPersistence } from "@/server/lib/ai-persistence";
-import { runTaskChat } from "@/server/lib/run-task-chat";
-import { createTaskChatTakeoverDriver } from "@/server/lib/task-chat-drive";
+import {
+  createTaskChatTakeoverDriver,
+  readTaskWorkspacePath,
+  runTaskChat,
+  shouldResumeTaskChat,
+} from "@/server/lib/task-chat";
 import { taskChatDurability } from "@/server/lib/task-chat-durability";
-import { shouldResumeTaskChat } from "@/server/lib/task-chat-resume";
-
-async function readTaskWorkspacePath(taskId: string): Promise<string | null> {
-  const db = await getDb();
-  const task = await db.query.tasks.findFirst({
-    where: eq(schema.tasks.id, taskId),
-    columns: { workspacePath: true },
-  });
-  const workspacePath = task?.workspacePath?.trim() ?? "";
-  return workspacePath.length > 0 ? workspacePath : null;
-}
 
 export const Route = createFileRoute("/api/tasks/$taskId/chat")({
   server: {
