@@ -80,8 +80,10 @@ export function NewTaskButton({
             data: {
               taskId,
               runnerType: response.runnerType,
-              runnerSessionId: response.sessionId,
               workspacePath: response.workspaceDirectory,
+              ...(response.sessionId.trim().length > 0
+                ? { runnerSessionId: response.sessionId }
+                : {}),
             },
           });
         } catch (err) {

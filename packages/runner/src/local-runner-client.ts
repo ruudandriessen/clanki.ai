@@ -3,18 +3,12 @@ import type {
   CreateAssistantSessionResponse,
   DeleteWorkspaceRequest,
   DeleteWorkspaceResponse,
-  EnsureAssistantSessionRequest,
-  EnsureAssistantSessionResponse,
   GetAssistantSessionDiffRequest,
   GetAssistantSessionDiffResponse,
-  ListAssistantSessionsRequest,
-  ListAssistantSessionsResponse,
   ListOpencodeModelsRequest,
   ListOpencodeModelsResponse,
   LocalRunnerHealthResponse,
   LocalRunnerInfoResponse,
-  PromptAssistantSessionRequest,
-  PromptAssistantSessionResponse,
 } from "./local-runner-protocol";
 
 export function createLocalRunnerClient(baseUrl: string) {
@@ -29,21 +23,19 @@ export function createLocalRunnerClient(baseUrl: string) {
     async deleteWorkspace(body: DeleteWorkspaceRequest): Promise<DeleteWorkspaceResponse> {
       return await postJson(`${normalizedBaseUrl}/workspace/delete`, body);
     },
-    async ensureAssistantSession(
-      body: EnsureAssistantSessionRequest,
-    ): Promise<EnsureAssistantSessionResponse> {
-      return await postJson(`${normalizedBaseUrl}/assistant/session/ensure`, body);
-    },
     async getAssistantSessionDiff(
       params: GetAssistantSessionDiffRequest,
     ): Promise<GetAssistantSessionDiffResponse> {
       const searchParams = new URLSearchParams({
         directory: params.directory,
-        sessionId: params.sessionId,
       });
 
       if (params.messageId) {
         searchParams.set("messageId", params.messageId);
+      }
+
+      if (params.sessionId) {
+        searchParams.set("sessionId", params.sessionId);
       }
 
       return await getJson(
@@ -56,15 +48,6 @@ export function createLocalRunnerClient(baseUrl: string) {
     async info(): Promise<LocalRunnerInfoResponse> {
       return await getJson(`${normalizedBaseUrl}/runner/info`);
     },
-    async listAssistantSessions(
-      params: ListAssistantSessionsRequest,
-    ): Promise<ListAssistantSessionsResponse> {
-      return await getJson(
-        `${normalizedBaseUrl}/assistant/sessions?${new URLSearchParams({
-          directory: params.directory,
-        }).toString()}`,
-      );
-    },
     async listOpencodeModels(
       params: ListOpencodeModelsRequest,
     ): Promise<ListOpencodeModelsResponse> {
@@ -73,11 +56,6 @@ export function createLocalRunnerClient(baseUrl: string) {
           directory: params.directory,
         }).toString()}`,
       );
-    },
-    async promptAssistantSession(
-      body: PromptAssistantSessionRequest,
-    ): Promise<PromptAssistantSessionResponse> {
-      return await postJson(`${normalizedBaseUrl}/assistant/session/prompt`, body);
     },
   };
 }

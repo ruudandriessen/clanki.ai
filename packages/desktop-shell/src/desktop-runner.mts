@@ -10,8 +10,6 @@ import {
   waitForPort,
 } from "./node-utils.mjs";
 
-const DEFAULT_OPENCODE_MODEL = "gpt-5.3-codex";
-const DEFAULT_OPENCODE_PROVIDER = "openai";
 const execFileAsync = promisify(execFile);
 const DESKTOP_EDITOR_APPS = {
   cursor: "Cursor",
@@ -51,17 +49,6 @@ type ListRunnerModelsResponse = {
   providers: RunnerModelProvider[];
 };
 
-type PromptRunnerTaskArgs = {
-  backendBaseUrl: string;
-  callbackToken: string;
-  directory: string;
-  executionId: string;
-  model?: string;
-  prompt: string;
-  provider?: string;
-  sessionId: string;
-};
-
 type DeleteRunnerWorkspaceArgs = {
   workspaceDirectory: string;
 };
@@ -83,20 +70,15 @@ type AppRunnerController = {
     workspaceDirectory: string;
   }>;
   deleteRunnerWorkspace: (args: DeleteRunnerWorkspaceArgs) => Promise<void>;
-  getRunnerDiff: (args: { directory: string; sessionId: string }) => Promise<RunnerDiff[]>;
+  getRunnerDiff: (args: { directory: string }) => Promise<RunnerDiff[]>;
   listRunnerModels: (args: { directory: string }) => Promise<ListRunnerModelsResponse>;
   openWorkspaceInEditor: (args: OpenWorkspaceInEditorArgs) => Promise<void>;
-  promptRunnerTask: (args: PromptRunnerTaskArgs) => Promise<void>;
   stop: () => Promise<void>;
 };
 
 type CreateAssistantSessionResponse = {
   sessionId: string;
   workspaceDirectory: string;
-};
-
-type PromptTaskAssistantSessionResponse = {
-  ok: boolean;
 };
 
 type DeleteWorkspaceResponse = {
@@ -128,8 +110,6 @@ export function createDesktopRunnerController({
     const payload = await postRunnerJson<CreateAssistantSessionResponse>(
       `${runner.baseUrl}/assistant/session/create`,
       {
-        model: DEFAULT_OPENCODE_MODEL,
-        provider: DEFAULT_OPENCODE_PROVIDER,
         repoUrl,
         taskTitle: trimmedTitle,
       },
@@ -151,34 +131,8 @@ export function createDesktopRunnerController({
     );
   }
 
-  async function getRunnerDiff(args: {
-    directory: string;
-    sessionId: string;
-  }): Promise<RunnerDiff[]> {
+  async function getRunnerDiff(args: { directory: string }): Promise<RunnerDiff[]> {
     return await requestRunnerDiff(args);
-  }
-
-  async function promptRunnerTask(args: PromptRunnerTaskArgs): Promise<void> {
-    const runner = await ensureRunner();
-    const payload = await postRunnerJson<PromptTaskAssistantSessionResponse>(
-      `${runner.baseUrl}/assistant/session/task-prompt`,
-      {
-        directory: args.directory,
-        model: args.model,
-        prompt: args.prompt,
-        provider: args.provider,
-        sessionId: args.sessionId,
-        taskRun: {
-          backendBaseUrl: args.backendBaseUrl,
-          callbackToken: args.callbackToken,
-          executionId: args.executionId,
-        },
-      },
-    );
-
-    if (!payload.ok) {
-      throw new Error("Local runner task prompt did not complete successfully");
-    }
   }
 
   async function openWorkspaceInEditor({
@@ -284,15 +238,11 @@ export function createDesktopRunnerController({
     return nextRunnerProcess;
   }
 
-  async function requestRunnerDiff(args: {
-    directory: string;
-    sessionId: string;
-  }): Promise<RunnerDiff[]> {
+  async function requestRunnerDiff(args: { directory: string }): Promise<RunnerDiff[]> {
     const runner = await ensureRunner();
     const payload = await getRunnerJson<GetRunnerDiffResponse>(
       `${runner.baseUrl}/assistant/session/diff?${new URLSearchParams({
         directory: args.directory,
-        sessionId: args.sessionId,
       }).toString()}`,
     );
 
@@ -305,7 +255,6 @@ export function createDesktopRunnerController({
     getRunnerDiff,
     listRunnerModels,
     openWorkspaceInEditor,
-    promptRunnerTask,
     stop,
   };
 }

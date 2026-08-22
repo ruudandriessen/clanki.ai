@@ -5,7 +5,7 @@ import { MarkdownContent } from "@/components/markdown-content";
 import { AnimatedStreamItem } from "@/components/animated-stream-item";
 import { CollapsedActivityGroup } from "@/components/collapsed-activity-group";
 import { formatDuration } from "@/lib/format-duration";
-import type { TimelineEntry } from "@/lib/task-timeline";
+import type { TimelineEntry } from "@/lib/chat-timeline";
 
 interface TaskPageMessageListProps {
   messageListRef: RefObject<HTMLDivElement | null>;
@@ -66,16 +66,6 @@ export function TaskPageMessageList({
               return (
                 <AnimatedStreamItem key={entry.id}>
                   <CollapsedActivityGroup items={entry.items} />
-                </AnimatedStreamItem>
-              );
-            }
-
-            if (entry.type === "assistant-draft") {
-              return (
-                <AnimatedStreamItem key={entry.id}>
-                  <div className="max-w-3xl rounded-[var(--radius-md)] border border-border/70 bg-card/80 p-4">
-                    <MarkdownContent content={entry.content} className="text-foreground" />
-                  </div>
                 </AnimatedStreamItem>
               );
             }

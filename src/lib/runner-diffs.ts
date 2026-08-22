@@ -7,28 +7,19 @@ type UseRunnerDiffArgs = {
   directory: string | null;
   enabled?: boolean;
   refetchIntervalMs?: number;
-  sessionId: string | null;
 };
 
-export function useRunnerDiff({
-  directory,
-  enabled = true,
-  refetchIntervalMs,
-  sessionId,
-}: UseRunnerDiffArgs) {
+export function useRunnerDiff({ directory, enabled = true, refetchIntervalMs }: UseRunnerDiffArgs) {
   const desktopApp = isDesktopApp();
   const normalizedDirectory = directory?.trim() ?? "";
-  const normalizedSessionId = sessionId?.trim() ?? "";
 
   return useQuery<DesktopRunnerDiff[]>({
-    queryKey: ["runner-diff", normalizedDirectory, normalizedSessionId],
+    queryKey: ["runner-diff", normalizedDirectory],
     queryFn: async () =>
       await getDesktopRunnerDiff({
         directory: normalizedDirectory,
-        sessionId: normalizedSessionId,
       }),
-    enabled:
-      enabled && desktopApp && normalizedDirectory.length > 0 && normalizedSessionId.length > 0,
+    enabled: enabled && desktopApp && normalizedDirectory.length > 0,
     gcTime: Number.POSITIVE_INFINITY,
     refetchInterval: refetchIntervalMs,
     refetchOnWindowFocus: false,
