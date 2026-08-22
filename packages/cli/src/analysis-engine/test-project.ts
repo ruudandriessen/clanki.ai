@@ -29,38 +29,18 @@ export function createSimpleTestProject(): {
 
   writeFileSync(
     path.join(srcDirectory, "models.ts"),
-    `/** A user model. */
-export interface User {
+    `export interface User {
   id: string;
-}
-
-export class Order {
-  public amount: number;
-
-  constructor(amount: number) {
-    this.amount = amount;
-  }
-}
-
-export type UserOrOrder = User | Order;
-
-export enum Status {
-  Open = "open",
-}
-
-interface _InternalOnly {
-  hidden: string;
 }
 `,
   );
 
   writeFileSync(
     path.join(srcDirectory, "consumer.ts"),
-    `import type { Order, User } from "./models";
+    `import type { User } from "./models";
 
 export interface Account {
   owner: User;
-  latestOrder: Order;
 }
 `,
   );
@@ -72,10 +52,8 @@ export interface Account {
   );
 
   writeFileSync(
-    path.join(srcDirectory, "default-export.ts"),
-    `export default interface DefaultModel {
-  value: string;
-}
+    path.join(srcDirectory, "orphan.ts"),
+    `export const ready = true;
 `,
   );
 

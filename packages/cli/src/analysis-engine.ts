@@ -1,35 +1,18 @@
-import { collectDiagnostics } from "./analysis-engine/diagnostic-extractor";
 import { collectSourceFileDependencies } from "./analysis-engine/dependency-extractor";
-import { buildAnalysisGraph } from "./analysis-engine/graph-builder";
-import { collectModels } from "./analysis-engine/model-extractor";
-import { buildProjectSummary } from "./analysis-engine/project-summary-builder";
 import { loadTypeScriptProgram } from "./analysis-engine/program-loader";
+import { collectProjectSourceFiles } from "./analysis-engine/source-files";
+import type { DependencyGraph } from "./analysis-engine/types";
 
-import type { ProjectAnalysisResult } from "./analysis-engine/types";
-export type { ProjectAnalysisResult };
+export type { DependencyGraph, SourceFileDependency } from "./analysis-engine/types";
 
-export function analyzeProject(projectPath: string): ProjectAnalysisResult {
+export function analyzeProject(projectPath: string): DependencyGraph {
   const { resolvedTsconfigPath, projectDirectory, parsedConfig, program } =
     loadTypeScriptProgram(projectPath);
 
-  const models = collectModels(program, projectDirectory);
-  const project = buildProjectSummary(
-    resolvedTsconfigPath,
-    projectDirectory,
-    parsedConfig.fileNames,
-    parsedConfig.options,
-  );
-  const sourceFileDependencies = collectSourceFileDependencies(
-    program,
-    projectDirectory,
-    parsedConfig.options,
-  );
-
   return {
-    project,
-    diagnostics: collectDiagnostics(program, parsedConfig.errors, projectDirectory),
-    models,
-    sourceFileDependencies,
-    graph: buildAnalysisGraph(project.sourceFiles, models, sourceFileDependencies),
+    tsconfigPath: resolvedTsconfigPath,
+    projectDirectory,
+    files: collectProjectSourceFiles(program, projectDirectory),
+    edges: collectSourceFileDependencies(program, projectDirectory, parsedConfig.options),
   };
 }

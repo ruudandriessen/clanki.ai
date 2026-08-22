@@ -1,39 +1,19 @@
 {
   "name": "@clanki/cli",
   "version": "0.0.0",
-  "private": false,
+  "private": true,
   "bin": {
-    "clanki": "./dist/bin.js"
+    "clanki": "./bin.ts"
   },
-  "files": [
-    "dist"
-  ],
   "type": "module",
-  "main": "./dist/index.js",
   "exports": {
-    ".": "./dist/index.js"
-  },
-  "publishConfig": {
-    "access": "public"
+    ".": "./index.ts"
   },
   "scripts": {
-    "build": "vite build && bun run ./scripts/embed-web-assets.ts",
-    "typecheck": "tsc --noEmit",
-    "analyze": "bun run bin.ts",
-    "check": "bun run bin.ts check",
-    "run": "bun run bin.ts run"
+    "analyze": "bun run bin.ts"
   },
   "dependencies": {
-    "@trpc/server": "^11.14.1",
     "commander": "^14.0.3",
-    "minimatch": "^10.1.1",
-    "typescript": "^5.9.3",
-    "zod": "^4.3.6"
-  },
-  "devDependencies": {
-    "vite": "^8.0.1"
-  },
-  "engines": {
-    "node": ">=20"
+    "typescript": "^5.9.3"
   }
 }

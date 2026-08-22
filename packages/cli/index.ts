@@ -1,4 +1,7 @@
-export { analyze, type AnalyzeOptions, type AnalyzeResult } from "./src/functions/analyze";
-export { check, type CheckOptions, type CheckResult } from "./src/functions/check";
-export { run, type RunOptions } from "./src/functions/run";
+export { analyze, type AnalyzeOptions, type AnalyzeResult } from "./src/analyze";
+export {
+  analyzeProject,
+  type DependencyGraph,
+  type SourceFileDependency,
+} from "./src/analysis-engine";
 export { runCli } from "./src/index";
