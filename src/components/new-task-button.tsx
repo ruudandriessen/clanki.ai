@@ -81,6 +81,7 @@ export function NewTaskButton({
               taskId,
               runnerType: response.runnerType,
               workspacePath: response.workspaceDirectory,
+              workspaceError: null,
               ...(response.sessionId.trim().length > 0
                 ? { runnerSessionId: response.sessionId }
                 : {}),
@@ -90,7 +91,7 @@ export function NewTaskButton({
           await updateTask({
             data: {
               taskId,
-              error: err instanceof Error ? err.message : "Failed to create workspace",
+              workspaceError: err instanceof Error ? err.message : "Failed to create workspace",
             },
           });
         }

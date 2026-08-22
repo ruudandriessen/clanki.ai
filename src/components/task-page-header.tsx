@@ -37,6 +37,7 @@ interface TaskPageHeaderProps {
   workspacePath: string | null;
   sending: boolean;
   isRunning: boolean;
+  onStop: () => void;
   onError: (error: string | null) => void;
   onCreatePr: () => void;
 }
@@ -54,6 +55,7 @@ export function TaskPageHeader({
   workspacePath,
   sending,
   isRunning,
+  onStop,
   onError,
   onCreatePr,
 }: TaskPageHeaderProps) {
@@ -100,6 +102,11 @@ export function TaskPageHeader({
           </div>
         </div>
         <div className="shrink-0 flex items-center gap-2">
+          {isRunning ? (
+            <Button type="button" variant="outline" size="xs" onClick={onStop}>
+              Stop
+            </Button>
+          ) : null}
           <TaskPageViewToggle
             showArchitectureMode={showArchitectureModeToggle}
             viewMode={viewMode}

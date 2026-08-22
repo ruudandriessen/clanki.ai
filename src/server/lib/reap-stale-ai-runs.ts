@@ -1,6 +1,11 @@
 import { eq } from "drizzle-orm";
 import type { RunRecord } from "@tanstack/ai";
-import { reapDetachedRuns, type RunExitProbe } from "@tanstack/ai-sandbox";
+import {
+  probeRunExit,
+  reapDetachedRuns,
+  sandboxReclaimer,
+  type RunExitProbe,
+} from "@tanstack/ai-sandbox";
 import type { AppDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { taskChatPersistence } from "@/server/lib/ai-persistence";
@@ -10,6 +15,7 @@ import {
   readTaskWorkspacePath,
   taskChatLocks,
 } from "@/server/lib/task-chat";
+import { taskSandboxInstances, taskSandboxProvider } from "@/server/lib/task-sandbox";
 
 const RESTART_INTERRUPT_MESSAGE = "Run interrupted by app restart";
 const DETACHED_RUN_TTL_MS = 30 * 60 * 1000;
@@ -51,8 +57,26 @@ export async function terminalizeOrphanedRunsOnStartup(db: AppDb): Promise<numbe
   return runningRuns.length;
 }
 
-async function hasFinished(_record: RunRecord): Promise<RunExitProbe> {
-  return { state: "unknown" };
+async function hasFinished(record: RunRecord): Promise<RunExitProbe> {
+  if (record.sandboxKey === undefined) {
+    return { state: "unknown" };
+  }
+
+  try {
+    const instance = await taskSandboxInstances.get(record.sandboxKey);
+    if (instance === null) {
+      return { state: "unknown" };
+    }
+
+    const handle = await taskSandboxProvider.resume({ id: instance.providerSandboxId });
+    if (handle === null) {
+      return { state: "unknown" };
+    }
+
+    return await probeRunExit({ handle, runId: record.runId });
+  } catch (error) {
+    return { state: "unknown", error };
+  }
 }
 
 async function sweepDetachedTaskChatRuns(): Promise<void> {
@@ -77,6 +101,10 @@ async function sweepDetachedTaskChatRuns(): Promise<void> {
     },
     now: Date.now(),
     detachedRunTtlMs: DETACHED_RUN_TTL_MS,
+    reclaim: sandboxReclaimer({
+      provider: taskSandboxProvider,
+      instances: taskSandboxInstances,
+    }),
   });
 }
 

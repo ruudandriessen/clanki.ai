@@ -5,6 +5,7 @@ import * as schema from "@/server/db/schema";
 export type ThreadMetadata = {
   branch: string | null;
   runnerSessionId: string | null;
+  workspaceError: string | null;
 };
 
 function threadScope(threadId: string): string {
@@ -47,20 +48,13 @@ async function writeMetadataValue(
 }
 
 export async function readThreadMetadata(db: AppDb, threadId: string): Promise<ThreadMetadata> {
-  const task = await db.query.tasks.findFirst({
-    where: eq(schema.tasks.id, threadId),
-    columns: { branch: true, runnerSessionId: true },
-  });
-
-  const [branch, runnerSessionId] = await Promise.all([
+  const [branch, runnerSessionId, workspaceError] = await Promise.all([
     readMetadataValue(db, threadId, "branch"),
     readMetadataValue(db, threadId, "runnerSessionId"),
+    readMetadataValue(db, threadId, "workspaceError"),
   ]);
 
-  return {
-    branch: branch ?? task?.branch ?? null,
-    runnerSessionId: runnerSessionId ?? task?.runnerSessionId ?? null,
-  };
+  return { branch, runnerSessionId, workspaceError };
 }
 
 export async function writeThreadMetadata(
@@ -73,6 +67,9 @@ export async function writeThreadMetadata(
   }
   if ("runnerSessionId" in patch) {
     await writeMetadataValue(db, threadId, "runnerSessionId", patch.runnerSessionId ?? null);
+  }
+  if ("workspaceError" in patch) {
+    await writeMetadataValue(db, threadId, "workspaceError", patch.workspaceError ?? null);
   }
 }
 

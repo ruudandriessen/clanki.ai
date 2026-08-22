@@ -1,6 +1,8 @@
 import {
   chat,
   chatParamsFromRequest,
+  requestRunCancel,
+  RUN_CANCEL_REASON,
   toServerSentEventsResponse,
   type StreamChunk,
 } from "@tanstack/ai";
@@ -18,6 +20,7 @@ import { readOpencodeSessionId } from "@/server/lib/opencode-session-id";
 import { readWorkspaceBranch } from "@/server/lib/read-workspace-branch";
 import { readTaskChatModel } from "@/server/lib/task-chat-model";
 import { taskChatDurability } from "@/server/lib/task-chat-durability";
+import { taskSandboxInstances } from "@/server/lib/task-sandbox";
 import { syncTaskAfterChat } from "@/server/lib/task-execution/helpers";
 import {
   createTaskChatAdapter,
@@ -28,6 +31,8 @@ import { readThreadMetadata } from "@/server/lib/thread-metadata";
 
 export const taskChatLocks = new InMemoryLockStore();
 
+const taskChatDriving = new Map<string, AbortController>();
+
 function controllerFor(signal: AbortSignal): AbortController {
   const controller = new AbortController();
   const abort = (): void => controller.abort(signal.reason);
@@ -37,6 +42,19 @@ function controllerFor(signal: AbortSignal): AbortController {
     signal.addEventListener("abort", abort, { once: true });
   }
   return controller;
+}
+
+function trackDrivingController(runId: string, controller: AbortController): void {
+  taskChatDriving.set(runId, controller);
+  controller.signal.addEventListener(
+    "abort",
+    () => {
+      if (taskChatDriving.get(runId) === controller) {
+        taskChatDriving.delete(runId);
+      }
+    },
+    { once: true },
+  );
 }
 
 export function durabilityForRunId(runId: string) {
@@ -63,6 +81,18 @@ export async function readTaskWorkspacePath(taskId: string): Promise<string | nu
   return workspacePath.length > 0 ? workspacePath : null;
 }
 
+export async function cancelTaskChatRun(taskId: string): Promise<Response> {
+  const runs = taskChatPersistence.stores.runs;
+  const active = await runs.findActiveRun(taskId);
+  if (!active) {
+    return new Response(null, { status: 204 });
+  }
+
+  await requestRunCancel(runs, active.runId);
+  taskChatDriving.get(active.runId)?.abort(RUN_CANCEL_REASON);
+  return new Response(null, { status: 204 });
+}
+
 type TaskChatRequestParams = Awaited<ReturnType<typeof chatParamsFromRequest>>;
 
 async function* createTaskChatStream(input: {
@@ -74,11 +104,20 @@ async function* createTaskChatStream(input: {
   resume?: TaskChatRequestParams["resume"];
   attach?: boolean;
   forwardedProps?: TaskChatRequestParams["forwardedProps"];
+  driveAbort?: AbortController;
   signal?: AbortSignal;
 }): AsyncGenerator<StreamChunk> {
   const db = await getDb();
   const threadMetadata = await readThreadMetadata(db, input.threadId);
   const { model, provider } = readTaskChatModel(input.forwardedProps ?? {});
+
+  let abortController: AbortController | undefined;
+  if (input.driveAbort) {
+    abortController = input.driveAbort;
+  } else if (input.signal) {
+    abortController = controllerFor(input.signal);
+    trackDrivingController(input.runId, abortController);
+  }
 
   const stream = chat({
     adapter: createTaskChatAdapter({
@@ -90,7 +129,7 @@ async function* createTaskChatStream(input: {
     threadId: input.threadId,
     runId: input.runId,
     ...(input.resume === undefined ? {} : { resume: input.resume }),
-    ...(input.signal ? { abortController: controllerFor(input.signal) } : {}),
+    ...(abortController ? { abortController } : {}),
     modelOptions: threadMetadata.runnerSessionId
       ? { sessionId: threadMetadata.runnerSessionId }
       : {},
@@ -102,6 +141,7 @@ async function* createTaskChatStream(input: {
         createTaskSandbox({ taskId: input.threadId, workspacePath: input.workspacePath }),
         {
           runs: taskChatPersistence.stores.runs,
+          instances: taskSandboxInstances,
           durability: {
             adapter: input.durability,
             attach: input.attach ?? false,
@@ -180,6 +220,9 @@ export async function runTaskChat(args: { request: Request; taskId: string }): P
     });
   }
 
+  const driveAbort = new AbortController();
+  trackDrivingController(params.runId, driveAbort);
+
   const stream = createTaskChatStream({
     runId: params.runId,
     threadId: args.taskId,
@@ -188,10 +231,12 @@ export async function runTaskChat(args: { request: Request; taskId: string }): P
     messages: params.messages,
     resume: params.resume,
     forwardedProps: params.forwardedProps,
+    driveAbort,
   });
 
   return toServerSentEventsResponse(stream, {
     durability: { adapter: durability },
+    abortController: driveAbort,
   });
 }
 

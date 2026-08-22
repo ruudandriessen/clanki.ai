@@ -5,7 +5,7 @@ import type { AppDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { withTransaction } from "@/server/db/transaction";
 import { toTask, loadTaskThreadSnapshots } from "@/server/lib/to-task";
-import { loadThreadMetadataByTaskIds } from "@/server/lib/thread-metadata";
+import { loadThreadMetadataByTaskIds, writeThreadMetadata } from "@/server/lib/thread-metadata";
 import { dbMiddleware } from "../middleware";
 import { badRequest, notFound, parseOptionalId, parseOptionalTimestamp } from "./common";
 
@@ -36,7 +36,6 @@ export const createTask = createServerFn({ method: "POST" })
       id: z.string().optional(),
       title: z.string(),
       projectId: z.string(),
-      runnerSessionId: z.string().optional(),
       runnerType: z.string().optional(),
       status: z.string().optional(),
       workspacePath: z.string().optional(),
@@ -70,7 +69,6 @@ export const createTask = createServerFn({ method: "POST" })
       projectId: input.projectId,
       title: input.title.trim(),
       status,
-      runnerSessionId: parseOptionalId(input.runnerSessionId) ?? null,
       runnerType:
         typeof input.runnerType === "string" && input.runnerType.trim().length > 0
           ? input.runnerType.trim()
@@ -84,7 +82,7 @@ export const createTask = createServerFn({ method: "POST" })
     };
 
     await context.db.insert(schema.tasks).values(task);
-    return toTask({ ...task, branch: null, error: null });
+    return toTask(task);
   });
 
 export const updateTask = createServerFn({ method: "POST" })
@@ -96,7 +94,7 @@ export const updateTask = createServerFn({ method: "POST" })
       runnerSessionId: z.string().nullable().optional(),
       runnerType: z.string().nullable().optional(),
       workspacePath: z.string().nullable().optional(),
-      error: z.string().nullable().optional(),
+      workspaceError: z.string().nullable().optional(),
     }),
   )
   .handler(async ({ data: input, context }) => {
@@ -105,21 +103,37 @@ export const updateTask = createServerFn({ method: "POST" })
       notFound("Task not found");
     }
 
-    const { taskId: _, ...fields } = input;
-    const updates = Object.fromEntries(
-      Object.entries(fields).filter(([, v]) => v !== undefined),
-    ) as Partial<typeof schema.tasks.$inferInsert>;
+    const taskUpdates: Partial<typeof schema.tasks.$inferInsert> = {};
+    if (input.title !== undefined) {
+      taskUpdates.title = input.title;
+    }
+    if (input.runnerType !== undefined) {
+      taskUpdates.runnerType = input.runnerType;
+    }
+    if (input.workspacePath !== undefined) {
+      taskUpdates.workspacePath = input.workspacePath;
+    }
 
-    if (Object.keys(updates).length === 0) {
+    const metadataPatch: Parameters<typeof writeThreadMetadata>[2] = {};
+    if (input.runnerSessionId !== undefined) {
+      metadataPatch.runnerSessionId = input.runnerSessionId;
+    }
+    if (input.workspaceError !== undefined) {
+      metadataPatch.workspaceError = input.workspaceError;
+    }
+
+    if (Object.keys(taskUpdates).length === 0 && Object.keys(metadataPatch).length === 0) {
       badRequest("No task fields to update");
     }
 
     const updated = await withTransaction(context.db, async (tx) => {
       const updatedAt = Date.now();
-      await tx
-        .update(schema.tasks)
-        .set({ ...updates, updatedAt })
-        .where(eq(schema.tasks.id, input.taskId));
+      if (Object.keys(taskUpdates).length > 0) {
+        await tx
+          .update(schema.tasks)
+          .set({ ...taskUpdates, updatedAt })
+          .where(eq(schema.tasks.id, input.taskId));
+      }
 
       return tx.query.tasks.findFirst({
         where: eq(schema.tasks.id, input.taskId),
@@ -128,6 +142,10 @@ export const updateTask = createServerFn({ method: "POST" })
 
     if (!updated) {
       notFound("Task not found");
+    }
+
+    if (Object.keys(metadataPatch).length > 0) {
+      await writeThreadMetadata(context.db, input.taskId, metadataPatch);
     }
 
     const threadSnapshots = await loadTaskThreadSnapshots(context.db, [updated.id]);

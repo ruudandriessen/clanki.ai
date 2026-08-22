@@ -36,6 +36,13 @@
       "when": 1787397000000,
       "tag": "0004_drop_ai_stream_run_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1787398000000,
+      "tag": "0005_drop_legacy_task_columns",
+      "breakpoints": true
     }
   ]
 }
