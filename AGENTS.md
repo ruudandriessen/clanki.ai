@@ -2,21 +2,29 @@
 
 ## Project
 
-Local desktop app: TanStack Start + SQLite control plane, a local OpenCode runner, and an Electron shell.
+Bun workspace monorepo managed with [Vite+](https://viteplus.dev). Local desktop app: TanStack Start + SQLite control plane, a local OpenCode runner, and an Electron shell. The root package hosts the web app; sibling packages live under `packages/`.
 
 ## Commands
 
-- `bun install` — install dependencies
-- `bun run build` — build all packages
-- `bun run dev` — start the TanStack Start app in dev mode
-- `bun run electron:dev` — start the desktop app with the local runner
-- `bun run format` — format code with oxfmt
-- `bun run lint:fix` — lint and auto-fix with oxlint
-- `bun run knip` — detect unused files, exports, and dependencies
+Use the `vp` CLI (Vite+) for day-to-day work:
+
+- `vp install` — install dependencies
+- `vp dev` — start the TanStack Start app in dev mode
+- `vp run build` — build web, runner, desktop shell, and typecheck
+- `vp run electron:dev` — start the desktop app with the local runner
+- `vp check` — format, lint, and type-check
+- `vp run knip` — detect unused files, exports, and dependencies
+- `vp run test` — run tests
+
+Package-specific commands:
+
+- `vp -C packages/runner run dev` — local runner
+
+Tooling config lives in the root `vite.config.ts` (`lint`, `fmt`, `run`, `staged` blocks).
 
 ## Pre-commit
 
-Always run `bun run format`, `bun run lint:fix`, and `bun run knip` before committing.
+Always run `vp check --fix` and `vp run knip` before committing.
 
 ## Commits
 

@@ -11,62 +11,52 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: voidzero-dev/setup-vp@v1
         with:
-          bun-version: latest
+          run-install: true
 
-      - run: bun install --frozen-lockfile
+      - run: vp exec commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
 
-      - run: bunx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
-
-  format:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: voidzero-dev/setup-vp@v1
         with:
-          bun-version: latest
+          run-install: true
 
-      - run: bun install --frozen-lockfile
-
-      - run: bun run format:check
+      - run: vp check
 
   knip:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: voidzero-dev/setup-vp@v1
         with:
-          bun-version: latest
+          run-install: true
 
-      - run: bun install --frozen-lockfile
-
-      - run: bun run knip
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - run: bun install --frozen-lockfile
-
-      - run: bunx oxlint --deny-warnings
+      - run: vp run knip
 
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: voidzero-dev/setup-vp@v1
         with:
-          bun-version: latest
+          run-install: true
 
-      - run: bun install --frozen-lockfile
+      - run: vp run build
 
-      - run: bun run build
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          run-install: true
+
+      - run: vp run test

@@ -12,6 +12,6 @@ copy_file() {
   cp "$src" "$dest"
 }
 
-bun install
+vp install
 mkdir -p dist
 copy_file "$ROOT_PATH/.env" ".env"

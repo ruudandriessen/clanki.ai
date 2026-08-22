@@ -21,5 +21,11 @@
       "project": ["src/**/*.{astro,ts}"]
     }
   },
-  "ignoreDependencies": ["tailwindcss", "shadcn", "tw-animate-css"]
+  "ignoreDependencies": [
+    "tailwindcss",
+    "shadcn",
+    "tw-animate-css",
+    "babel-plugin-react-compiler",
+    "@commitlint/cli"
+  ]
 }
