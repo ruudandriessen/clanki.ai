@@ -4,9 +4,9 @@ import { drizzle } from "drizzle-orm/libsql";
 import { migrate } from "drizzle-orm/libsql/migrator";
 import { describe, expect, test } from "bun:test";
 import type { ModelMessage } from "@tanstack/ai";
-import { getMigrationsFolder } from "@/server/db/migrations-folder";
-import * as schema from "@/server/db/schema";
-import { createTaskChatPersistence } from "@/server/lib/ai-persistence";
+import { getMigrationsFolder } from "../db/migrations-folder";
+import * as schema from "../db/schema";
+import { createTaskChatPersistence } from "./ai-persistence";
 
 async function createTestDb() {
   const client = createClient({ url: ":memory:" });
