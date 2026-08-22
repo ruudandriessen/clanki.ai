@@ -23,9 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: voidzero-dev/setup-vp@v1
         with:
-          bun-version: latest
+          run-install: true
 
       - name: Validate semver tag
         shell: bash
@@ -37,14 +37,11 @@ jobs:
 
           echo "APP_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
       - name: Sync package version for this release build
         run: bun --eval "const fs = require('node:fs'); const packageJsonPath = 'package.json'; const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8')); packageJson.version = process.env.APP_VERSION; fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');"
 
       - name: Build and publish release artifacts
-        run: bun run release:desktop
+        run: vp run release:desktop
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
