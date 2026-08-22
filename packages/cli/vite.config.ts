@@ -20,7 +20,7 @@ export default defineConfig({
       output: {
         format: "es",
         entryFileNames: "[name].js",
-        banner: (chunkInfo) => (chunkInfo.name === "bin" ? "#!/usr/bin/env node" : undefined),
+        banner: (chunkInfo) => (chunkInfo.name === "bin" ? "#!/usr/bin/env node" : ""),
       },
     },
   },

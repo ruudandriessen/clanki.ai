@@ -2,26 +2,24 @@ import { z } from "zod";
 
 const nonEmptyStringSchema = z.string().min(1);
 
-export const forbiddenDependencyRuleSchema = z.object({
+const forbiddenDependencyRuleSchema = z.object({
   type: z.literal("forbidden-dependency"),
   from: nonEmptyStringSchema,
   to: nonEmptyStringSchema,
 });
 
-export type ForbiddenDependencyRule = z.infer<typeof forbiddenDependencyRuleSchema>;
+type ForbiddenDependencyRule = z.infer<typeof forbiddenDependencyRuleSchema>;
 
 export type Rule = ForbiddenDependencyRule;
 
-export const diagramEdgeSchema = z
+const diagramEdgeSchema = z
   .object({
     from: nonEmptyStringSchema,
     to: nonEmptyStringSchema,
   })
   .strict();
 
-export type DiagramEdge = z.infer<typeof diagramEdgeSchema>;
-
-export const typeReferenceSchema = z.object({
+const typeReferenceSchema = z.object({
   id: nonEmptyStringSchema,
   name: nonEmptyStringSchema,
   file: nonEmptyStringSchema.optional(),
@@ -30,18 +28,14 @@ export const typeReferenceSchema = z.object({
 /** Type reference with explicit ID and user-facing name, optionally disambiguated by file path. */
 export type TypeReference = z.infer<typeof typeReferenceSchema>;
 
-export type NamedTypeReference = TypeReference;
-
-export const groupPositionSchema = z
+const groupPositionSchema = z
   .object({
     x: z.number(),
     y: z.number(),
   })
   .strict();
 
-export type GroupPosition = z.infer<typeof groupPositionSchema>;
-
-export const moduleGroupSchema = z.object({
+const moduleGroupSchema = z.object({
   id: nonEmptyStringSchema,
   /** User-facing group name shown in reports and UI. */
   name: nonEmptyStringSchema,
@@ -60,7 +54,7 @@ export const moduleGroupSchema = z.object({
 
 export type ModuleGroup = z.infer<typeof moduleGroupSchema>;
 
-export const dataStructureGroupSchema = z.object({
+const dataStructureGroupSchema = z.object({
   id: nonEmptyStringSchema,
   /** User-facing group name shown in reports and UI. */
   name: nonEmptyStringSchema,
@@ -75,10 +69,7 @@ export const dataStructureGroupSchema = z.object({
 
 export type DataStructureGroup = z.infer<typeof dataStructureGroupSchema>;
 
-export const groupSchema = z.discriminatedUnion("type", [
-  moduleGroupSchema,
-  dataStructureGroupSchema,
-]);
+const groupSchema = z.discriminatedUnion("type", [moduleGroupSchema, dataStructureGroupSchema]);
 
 export type Group = z.infer<typeof groupSchema>;
 

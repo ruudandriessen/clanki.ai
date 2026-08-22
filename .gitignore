@@ -10,4 +10,5 @@ release/
 .output
 .vercel
 .env*.local
+.DS_Store
 packages/desktop-shell/dist/

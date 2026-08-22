@@ -34,7 +34,3 @@ export async function handleTrpcRequest(
     },
   });
 }
-
-export function isTrpcPath(pathname: string): boolean {
-  return pathname === TRPC_ENDPOINT || pathname.startsWith(`${TRPC_ENDPOINT}/`);
-}

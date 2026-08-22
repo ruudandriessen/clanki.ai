@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { ZodError } from "zod";
 
-import { validateConfig } from "./loadConfig.ts";
+import { validateConfig } from "./loadConfig";
 
 describe("validateConfig id and name support", () => {
   test("accepts id + name on groups and data-model references", () => {

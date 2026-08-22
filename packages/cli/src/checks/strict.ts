@@ -14,7 +14,7 @@ export interface StrictCoverageResult {
   summary: AnalysisSummary;
 }
 
-export interface StrictUnmatchedGroupMember {
+interface StrictUnmatchedGroupMember {
   group: string;
   groupType: GroupSummary["type"];
   kind: UnmatchedGroupMemberSummary["kind"];

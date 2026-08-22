@@ -8,5 +8,3 @@ export const runAppRouter = t.router({
   edges: edgesRouter,
   report: reportRouter,
 });
-
-export type RunAppRouter = typeof runAppRouter;
