@@ -8,7 +8,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { themeOptions } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { CliStatusSection } from "@/components/cli-status-section";
 import { AddProjectDialog } from "../components/add-project-dialog";
+import { useCliStatus } from "@/lib/use-cli-status";
 import { PROJECTS_QUERY_KEY, useProjects } from "@/lib/use-projects";
 import { updateProjectRunCommand, updateProjectSetupCommand } from "@/server/functions/projects";
 
@@ -22,6 +24,7 @@ export function SettingsPage() {
   const { addProject } = useSearch({ from: "/_layout/settings" });
   const { theme, setTheme } = useTheme();
   const { data: projects = [], isLoading } = useProjects();
+  const { data: cliStatus, isLoading: isCliStatusLoading } = useCliStatus();
 
   const [manualDialogOpen, setManualDialogOpen] = useState(false);
   const [projectSetupEdits, setProjectSetupEdits] = useState<Record<string, string>>({});
@@ -201,6 +204,12 @@ export function SettingsPage() {
             })}
           </div>
         </section>
+
+        <CliStatusSection
+          gh={cliStatus?.gh}
+          isLoading={isCliStatusLoading}
+          opencode={cliStatus?.opencode}
+        />
 
         <section>
           <div className="mb-4 flex items-center justify-between">

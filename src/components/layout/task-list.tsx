@@ -1,15 +1,8 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useRouterState } from "@tanstack/react-router";
-import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/react";
-import {
-  CheckCheck,
-  CircleAlert,
-  GitPullRequest,
-  Loader2,
-  MessageSquare,
-  Trash2,
-} from "lucide-react";
+import { useRouterState } from "@tanstack/react-router";
+import { AnimatePresence, LayoutGroup, useReducedMotion } from "motion/react";
+import { ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NewTaskButton } from "@/components/new-task-button";
 import {
@@ -26,28 +19,60 @@ import { useProjectPullRequests } from "@/lib/use-project-pull-requests";
 import { useProjects } from "@/lib/use-projects";
 import { TASKS_QUERY_KEY, useTasks } from "@/lib/use-tasks";
 import { deleteTask } from "@/server/functions/tasks";
+import { TaskListItem } from "@/components/layout/task-list-item";
 import {
-  buildTaskSidebarGroups,
-  TASK_SIDEBAR_GROUPS,
-  type TaskSidebarGroup,
+  buildOrderedSidebarTasks,
+  partitionSidebarTasks,
+  type OrderedSidebarTask,
 } from "@/lib/task-sidebar";
 
-const SIDEBAR_LAYOUT_EASE = [0.2, 0.8, 0.2, 1] as const;
-const SIDEBAR_ENTER_EASE = [0.16, 1, 0.3, 1] as const;
+function getActiveTaskId(pathname: string): string | null {
+  const taskRoutePrefix = "/tasks/";
 
-function renderGroupIcon(group: TaskSidebarGroup) {
-  switch (group) {
-    case "merged":
-      return <CheckCheck className="w-3 h-3" />;
-    case "needsAction":
-      return <CircleAlert className="w-3 h-3 text-destructive" />;
-    case "openNoPr":
-      return <MessageSquare className="w-3 h-3" />;
-    case "awaitingReview":
-      return <GitPullRequest className="w-3 h-3" />;
-    case "running":
-      return <Loader2 className="w-3 h-3 animate-spin" />;
+  if (!pathname.startsWith(taskRoutePrefix)) {
+    return null;
   }
+
+  const taskId = pathname.slice(taskRoutePrefix.length);
+  return taskId.length > 0 ? taskId : null;
+}
+
+function renderTaskEntries({
+  deletingTask,
+  entries,
+  onDeleteClick,
+  pathname,
+  projectsById,
+  shouldReduceMotion,
+}: {
+  deletingTask: boolean;
+  entries: OrderedSidebarTask[];
+  onDeleteClick: (task: { id: string; title: string }, skipConfirmation: boolean) => void;
+  pathname: string;
+  projectsById: Map<string, { name: string }>;
+  shouldReduceMotion: boolean | null;
+}) {
+  return entries.map(({ task, groupKey }) => {
+    const isActive = pathname === `/tasks/${task.id}`;
+    const projectName = task.project_id ? projectsById.get(task.project_id)?.name : null;
+    const taskLabel = task.branch ?? task.title;
+
+    return (
+      <TaskListItem
+        key={task.id}
+        taskId={task.id}
+        taskLabel={taskLabel}
+        groupKey={groupKey}
+        secondaryLabel={projectName ?? null}
+        isActive={isActive}
+        deletingTask={deletingTask}
+        shouldReduceMotion={shouldReduceMotion}
+        onDeleteClick={() =>
+          onDeleteClick({ id: task.id, title: taskLabel }, groupKey === "merged")
+        }
+      />
+    );
+  });
 }
 
 export function TaskList() {
@@ -61,13 +86,23 @@ export function TaskList() {
   const [deletingTask, setDeletingTask] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [snoozedExpanded, setSnoozedExpanded] = useState(false);
   const isSidebarLoading = isTasksLoading || isPullRequestsLoading;
 
   const projectsById = new Map(projects.map((project) => [project.id, project]));
-  const groupedTasks = buildTaskSidebarGroups({ tasks, projects, pullRequests });
-  const visibleGroups = isSidebarLoading
-    ? TASK_SIDEBAR_GROUPS
-    : TASK_SIDEBAR_GROUPS.filter((group) => groupedTasks[group.key].length > 0);
+  const orderedTasks = buildOrderedSidebarTasks({ tasks, projects, pullRequests });
+  const activeTaskId = getActiveTaskId(pathname);
+  const { visibleTasks, snoozedTasks } = partitionSidebarTasks(orderedTasks, activeTaskId);
+
+  function handleDeleteClick(task: { id: string; title: string }, skipConfirmation: boolean) {
+    if (skipConfirmation) {
+      void handleDeleteTask(task);
+      return;
+    }
+
+    setTaskToDelete(task);
+    setDeleteError(null);
+  }
 
   function handleDeleteDialogOpenChange(open: boolean) {
     if (deletingTask) {
@@ -109,6 +144,14 @@ export function TaskList() {
     }
   }
 
+  const taskRowProps = {
+    deletingTask,
+    onDeleteClick: handleDeleteClick,
+    pathname,
+    projectsById,
+    shouldReduceMotion,
+  };
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex items-center justify-between px-3 py-3">
@@ -125,130 +168,51 @@ export function TaskList() {
       </div>
 
       <LayoutGroup>
-        <nav className="neo-scroll flex-1 space-y-3 overflow-x-hidden overflow-y-auto px-2 pb-24 md:pb-2">
-          <AnimatePresence initial={false} mode="popLayout">
-            {visibleGroups.map((group) => {
-              const tasksInGroup = groupedTasks[group.key];
+        <nav className="neo-scroll flex-1 space-y-0.5 overflow-x-hidden overflow-y-auto px-2 pb-24 md:pb-2">
+          {isSidebarLoading ? (
+            Array.from({ length: 6 }).map((_, index) => (
+              <div
+                key={`task-skeleton-${index}`}
+                className="mx-0.5 flex items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-2"
+              >
+                <div className="h-3 w-3 shrink-0 animate-pulse rounded-sm bg-muted" />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="h-3 w-3/4 animate-pulse rounded-sm bg-muted" />
+                  <div className="h-2.5 w-1/2 animate-pulse rounded-sm bg-muted/80" />
+                </div>
+              </div>
+            ))
+          ) : (
+            <>
+              <AnimatePresence initial={false} mode="popLayout">
+                {renderTaskEntries({ ...taskRowProps, entries: visibleTasks })}
+              </AnimatePresence>
 
-              return (
-                <motion.div
-                  key={group.key}
-                  layout
-                  className="space-y-1"
-                  initial={shouldReduceMotion ? false : { opacity: 0, x: -14, y: 10 }}
-                  animate={shouldReduceMotion ? undefined : { opacity: 1, x: 0, y: 0 }}
-                  exit={shouldReduceMotion ? undefined : { opacity: 0, x: -10, y: -8 }}
-                  transition={{
-                    layout: { duration: 0.24, ease: SIDEBAR_LAYOUT_EASE },
-                    duration: 0.26,
-                    ease: SIDEBAR_ENTER_EASE,
-                  }}
-                >
-                  <motion.p
-                    layout="position"
-                    className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold text-muted-foreground/90 uppercase tracking-[0.08em]"
-                    transition={{ layout: { duration: 0.22, ease: SIDEBAR_LAYOUT_EASE } }}
+              {snoozedTasks.length > 0 ? (
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setSnoozedExpanded((expanded) => !expanded)}
+                    className="flex w-full items-center gap-1.5 rounded-[var(--radius-sm)] px-2.5 py-1.5 text-[10px] font-bold text-muted-foreground/90 uppercase tracking-[0.08em] transition-colors hover:bg-card/70 hover:text-foreground"
                   >
-                    {renderGroupIcon(group.key)}
-                    <span>{group.label}</span>
-                  </motion.p>
-                  {isSidebarLoading ? (
-                    Array.from({ length: 2 }).map((_, index) => (
-                      <div
-                        key={`${group.key}-skeleton-${index}`}
-                        className="mx-2.5 flex items-center gap-2 rounded-[var(--radius-sm)] px-2 py-2"
-                      >
-                        <div className="h-3.5 w-3.5 shrink-0 animate-pulse rounded-sm bg-muted" />
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <div className="h-3 w-3/4 animate-pulse rounded-sm bg-muted" />
-                          <div className="h-2.5 w-1/2 animate-pulse rounded-sm bg-muted/80" />
-                        </div>
-                      </div>
-                    ))
-                  ) : (
+                    <ChevronRight
+                      className={cn(
+                        "h-3 w-3 shrink-0 transition-transform",
+                        snoozedExpanded && "rotate-90",
+                      )}
+                    />
+                    <span>Snoozed</span>
+                    <span className="text-muted-foreground/70">({snoozedTasks.length})</span>
+                  </button>
+                  {snoozedExpanded ? (
                     <AnimatePresence initial={false} mode="popLayout">
-                      {tasksInGroup.map((task) => {
-                        const isActive = pathname === `/tasks/${task.id}`;
-                        const projectName = task.project_id
-                          ? projectsById.get(task.project_id)?.name
-                          : null;
-                        const taskLabel = task.branch ?? task.title;
-                        const secondaryLabel = projectName ?? null;
-
-                        const shouldSkipDeleteConfirmation = group.key === "merged";
-
-                        return (
-                          <motion.div
-                            key={task.id}
-                            layout
-                            layoutId={task.id}
-                            className={cn(
-                              "group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1 rounded-[var(--radius-sm)] pr-1 transition-colors",
-                              isActive
-                                ? "bg-accent/70 text-accent-foreground"
-                                : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
-                            )}
-                            initial={shouldReduceMotion ? false : { opacity: 0, x: -12, y: 8 }}
-                            animate={shouldReduceMotion ? undefined : { opacity: 1, x: 0, y: 0 }}
-                            exit={shouldReduceMotion ? undefined : { opacity: 0, x: 12, y: -6 }}
-                            transition={{
-                              layout: { duration: 0.24, ease: SIDEBAR_LAYOUT_EASE },
-                              duration: 0.22,
-                              ease: SIDEBAR_ENTER_EASE,
-                            }}
-                          >
-                            <Link
-                              to="/tasks/$taskId"
-                              params={{ taskId: task.id }}
-                              className="min-w-0 px-2.5 py-2 text-sm"
-                            >
-                              <div className="min-w-0">
-                                <p className="truncate">{taskLabel}</p>
-                                {secondaryLabel ? (
-                                  <p
-                                    className={cn(
-                                      "truncate text-[11px]",
-                                      isActive
-                                        ? "text-accent-foreground/80"
-                                        : "text-muted-foreground",
-                                    )}
-                                  >
-                                    {secondaryLabel}
-                                  </p>
-                                ) : null}
-                              </div>
-                            </Link>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-xs"
-                              className={cn(
-                                "shrink-0 text-muted-foreground shadow-none hover:border-transparent hover:text-destructive hover:shadow-none",
-                                isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-                              )}
-                              onClick={() => {
-                                if (shouldSkipDeleteConfirmation) {
-                                  void handleDeleteTask({ id: task.id });
-                                  return;
-                                }
-
-                                setTaskToDelete({ id: task.id, title: taskLabel });
-                                setDeleteError(null);
-                              }}
-                              title={`Delete ${taskLabel}`}
-                              disabled={deletingTask}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </motion.div>
-                        );
-                      })}
+                      {renderTaskEntries({ ...taskRowProps, entries: snoozedTasks })}
                     </AnimatePresence>
-                  )}
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+                  ) : null}
+                </div>
+              ) : null}
+            </>
+          )}
           {!isSidebarLoading && tasks.length === 0 ? (
             <div className="px-2 py-3 text-center">
               <p className="text-xs text-muted-foreground">No tasks yet</p>

@@ -3,18 +3,12 @@ import type {
   CreateAssistantSessionResponse,
   DeleteWorkspaceRequest,
   DeleteWorkspaceResponse,
-  EnsureAssistantSessionRequest,
-  EnsureAssistantSessionResponse,
-  GetAssistantSessionDiffRequest,
-  GetAssistantSessionDiffResponse,
-  ListAssistantSessionsRequest,
-  ListAssistantSessionsResponse,
+  GetAssistantSessionArchitectureDiffRequest,
+  GetAssistantSessionArchitectureDiffResponse,
   ListOpencodeModelsRequest,
   ListOpencodeModelsResponse,
   LocalRunnerHealthResponse,
   LocalRunnerInfoResponse,
-  PromptAssistantSessionRequest,
-  PromptAssistantSessionResponse,
 } from "./local-runner-protocol";
 
 export function createLocalRunnerClient(baseUrl: string) {
@@ -29,25 +23,13 @@ export function createLocalRunnerClient(baseUrl: string) {
     async deleteWorkspace(body: DeleteWorkspaceRequest): Promise<DeleteWorkspaceResponse> {
       return await postJson(`${normalizedBaseUrl}/workspace/delete`, body);
     },
-    async ensureAssistantSession(
-      body: EnsureAssistantSessionRequest,
-    ): Promise<EnsureAssistantSessionResponse> {
-      return await postJson(`${normalizedBaseUrl}/assistant/session/ensure`, body);
-    },
-    async getAssistantSessionDiff(
-      params: GetAssistantSessionDiffRequest,
-    ): Promise<GetAssistantSessionDiffResponse> {
-      const searchParams = new URLSearchParams({
-        directory: params.directory,
-        sessionId: params.sessionId,
-      });
-
-      if (params.messageId) {
-        searchParams.set("messageId", params.messageId);
-      }
-
+    async getAssistantSessionArchitectureDiff(
+      params: GetAssistantSessionArchitectureDiffRequest,
+    ): Promise<GetAssistantSessionArchitectureDiffResponse> {
       return await getJson(
-        `${normalizedBaseUrl}/assistant/session/diff?${searchParams.toString()}`,
+        `${normalizedBaseUrl}/assistant/session/architecture-diff?${new URLSearchParams({
+          directory: params.directory,
+        }).toString()}`,
       );
     },
     async health(): Promise<LocalRunnerHealthResponse> {
@@ -55,15 +37,6 @@ export function createLocalRunnerClient(baseUrl: string) {
     },
     async info(): Promise<LocalRunnerInfoResponse> {
       return await getJson(`${normalizedBaseUrl}/runner/info`);
-    },
-    async listAssistantSessions(
-      params: ListAssistantSessionsRequest,
-    ): Promise<ListAssistantSessionsResponse> {
-      return await getJson(
-        `${normalizedBaseUrl}/assistant/sessions?${new URLSearchParams({
-          directory: params.directory,
-        }).toString()}`,
-      );
     },
     async listOpencodeModels(
       params: ListOpencodeModelsRequest,
@@ -73,11 +46,6 @@ export function createLocalRunnerClient(baseUrl: string) {
           directory: params.directory,
         }).toString()}`,
       );
-    },
-    async promptAssistantSession(
-      body: PromptAssistantSessionRequest,
-    ): Promise<PromptAssistantSessionResponse> {
-      return await postJson(`${normalizedBaseUrl}/assistant/session/prompt`, body);
     },
   };
 }

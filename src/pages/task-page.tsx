@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { fetchServerSentEvents, useChat } from "@tanstack/ai-react";
 import { AlertCircle, Loader2 } from "lucide-react";
-import { TaskPageCodeView } from "@/components/task-page-code-view";
+import { TaskPageArchitectureView } from "@/components/task-page-architecture-view";
 import { TaskPageHeader } from "@/components/task-page-header";
 import { TaskPageMessageList } from "@/components/task-page-message-list";
 import { TaskPageInput } from "@/components/task-page-input";
-import { promptDesktopRunnerTask } from "@/lib/desktop-runner";
-import { failTaskRun } from "@/lib/fail-task-run";
+import { buildChatTimeline, getLatestUserMessageCreatedAt } from "@/lib/chat-timeline";
 import { isDesktopApp } from "@/lib/is-desktop-app";
 import {
   localStorageKeys,
@@ -14,25 +14,14 @@ import {
   useLocalStorageState,
   useSessionState,
 } from "@/lib/session-state";
-import { useRunnerDiff } from "@/lib/runner-diffs";
+import { useRunnerArchitectureDiff } from "@/lib/runner-architecture-diff";
 import {
   getDefaultRunnerModelSelection,
   getRunnerModelOptions,
   isRunnerModelSelectionAvailable,
   useRunnerModels,
 } from "@/lib/runner-models";
-import {
-  buildChronologicalTimeline,
-  buildTaskStreamActivityItems,
-  getLatestAssistantMessage,
-  getLatestStreamAssistantPreview,
-  getLatestUserMessageCreatedAt,
-} from "@/lib/task-timeline";
-import { taskMessagesQueryKey, useTaskMessages } from "@/lib/use-task-messages";
 import { TASKS_QUERY_KEY } from "@/lib/use-tasks";
-import { useTaskEventStream } from "@/lib/use-task-event-stream";
-import { createTaskMessage } from "@/server/functions/tasks";
-import { startTaskRun } from "@/server/functions/task-runs";
 
 const CREATE_PR_MESSAGE = "Create a PR for me";
 
@@ -66,7 +55,6 @@ export function TaskPage({
   pullRequest,
   error,
   isRunning,
-  runnerSessionId,
   runnerType,
   workspacePath,
 }: TaskPageProps) {
@@ -83,32 +71,14 @@ export function TaskPage({
   );
   const queryClient = useQueryClient();
   const [localError, setLocalError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
-  const runEvents = useTaskEventStream(taskId, isRunning);
   const [now, setNow] = useState(() => Date.now());
   const messageListRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const shouldStickToBottomRef = useRef(true);
 
-  const { data: messages = [] } = useTaskMessages(taskId);
-
-  const persistedAssistantMessage = getLatestAssistantMessage(messages);
-  const streamAssistantPreview = getLatestStreamAssistantPreview(runEvents);
-  const streamActivityItems = buildTaskStreamActivityItems(runEvents);
-  const timelineEntries = buildChronologicalTimeline({
-    messages,
-    activityItems: streamActivityItems,
-    streamAssistantPreview,
-    persistedAssistantMessage,
-  });
-  const showEmptyState = timelineEntries.length === 0;
-  const runStartedAt = getLatestUserMessageCreatedAt(messages);
-  const runningDurationMs =
-    isRunning && runStartedAt !== null ? Math.max(0, now - runStartedAt) : null;
   const desktopApp = isDesktopApp();
-  const isRunnerBackedTask =
-    runnerType === "local-worktree" && !!runnerSessionId && !!workspacePath;
+  const isRunnerBackedTask = runnerType === "local-worktree" && !!workspacePath;
   const willBeRunnerBacked = desktopApp && (!runnerType || isRunnerBackedTask);
   const preparingWorkspace = willBeRunnerBacked && !isRunnerBackedTask;
   const isReadOnlyRemoteTask = isRunnerBackedTask && !desktopApp;
@@ -128,19 +98,50 @@ export function TaskPage({
         : (selectedModel ?? lastUsedModel ?? defaultModelSelection);
   const runnerModelErrorMessage =
     runnerModelsError instanceof Error ? runnerModelsError.message : null;
-  const showCodeModeToggle = willBeRunnerBacked;
+  const showArchitectureModeToggle = willBeRunnerBacked;
   const {
-    data: diffs,
-    error: runnerDiffError,
-    isLoading: isDiffLoading,
-  } = useRunnerDiff({
+    data: architectureDiff,
+    error: runnerArchitectureDiffError,
+    isLoading: isArchitectureDiffLoading,
+  } = useRunnerArchitectureDiff({
     directory: isRunnerBackedTask ? workspacePath : null,
-    enabled: viewMode === "code",
+    enabled: viewMode === "architecture",
     refetchIntervalMs: isRunning ? 3_000 : undefined,
-    sessionId: isRunnerBackedTask ? runnerSessionId : null,
   });
-  const runnerDiffErrorMessage = runnerDiffError instanceof Error ? runnerDiffError.message : null;
-  const displayError = localError ?? error;
+  const runnerArchitectureDiffErrorMessage =
+    runnerArchitectureDiffError instanceof Error ? runnerArchitectureDiffError.message : null;
+
+  const {
+    messages,
+    sendMessage,
+    isLoading: isChatLoading,
+    error: chatError,
+  } = useChat({
+    connection: fetchServerSentEvents(`/api/tasks/${taskId}/chat`),
+    threadId: taskId,
+    persistence: true,
+    forwardedProps: {
+      model: activeModelSelection?.model,
+      provider: activeModelSelection?.provider,
+    },
+    onFinish: () => {
+      void queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+    },
+    onError: (sendError) => {
+      setLocalError(sendError.message);
+    },
+  });
+
+  const timelineEntries = buildChatTimeline({
+    messages,
+    isLoading: isChatLoading,
+  });
+  const showEmptyState = timelineEntries.length === 0;
+  const runStartedAt = getLatestUserMessageCreatedAt(messages);
+  const isBusy = isChatLoading || isRunning;
+  const runningDurationMs =
+    isBusy && runStartedAt !== null ? Math.max(0, now - runStartedAt) : null;
+  const displayError = localError ?? chatError?.message ?? error;
 
   useEffect(() => {
     if (!shouldStickToBottomRef.current) {
@@ -148,17 +149,17 @@ export function TaskPage({
     }
 
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, runEvents]);
+  }, [messages, isChatLoading]);
 
   useEffect(() => {
     shouldStickToBottomRef.current = true;
   }, [taskId]);
 
   useEffect(() => {
-    if (!showCodeModeToggle && viewMode !== "chat") {
+    if (!showArchitectureModeToggle && viewMode !== "chat") {
       setViewMode("chat");
     }
-  }, [setViewMode, showCodeModeToggle, viewMode]);
+  }, [setViewMode, showArchitectureModeToggle, viewMode]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -169,7 +170,7 @@ export function TaskPage({
   }, [taskId, messages.length]);
 
   useEffect(() => {
-    if (!isRunning) {
+    if (!isBusy) {
       return;
     }
 
@@ -180,18 +181,21 @@ export function TaskPage({
     return () => {
       globalThis.clearInterval(timerId);
     };
-  }, [isRunning]);
+  }, [isBusy]);
 
   async function handleSend(contentOverride?: string) {
     const content = (contentOverride ?? input).trim();
-    if (!content || sending || isRunning || !taskId) return;
+    if (!content || isBusy || !taskId) return;
     if (isReadOnlyRemoteTask) {
       setLocalError("This task is attached to a local runner session and is read-only here.");
       return;
     }
+    if (!isRunnerBackedTask) {
+      setLocalError("Wait for the workspace to finish setting up before sending a message.");
+      return;
+    }
 
     shouldStickToBottomRef.current = true;
-    setSending(true);
     setLocalError(null);
     setSelectedModel(activeModelSelection);
     setLastUsedModel(activeModelSelection);
@@ -199,55 +203,12 @@ export function TaskPage({
       setInput("");
     }
 
-    let taskRun: Awaited<ReturnType<typeof startTaskRun>> | null = null;
-
     try {
-      await createTaskMessage({
-        data: {
-          taskId,
-          message: {
-            role: "user",
-            content,
-          },
-        },
-      });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY }),
-        queryClient.invalidateQueries({ queryKey: taskMessagesQueryKey(taskId) }),
-      ]);
-
-      if (isRunnerBackedTask && runnerSessionId && workspacePath) {
-        taskRun = await startTaskRun({
-          data: {
-            taskId,
-          },
-        });
-
-        await promptDesktopRunnerTask({
-          backendBaseUrl: globalThis.location.origin,
-          callbackToken: taskRun.callbackToken,
-          directory: workspacePath,
-          executionId: taskRun.executionId,
-          model: activeModelSelection?.model,
-          prompt: content,
-          provider: activeModelSelection?.provider,
-          sessionId: runnerSessionId,
-        });
-      }
+      await sendMessage(content);
+      await queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
     } catch (sendError) {
       setLocalError(sendError instanceof Error ? sendError.message : "Failed to send message");
-
-      if (taskRun) {
-        await failTaskRun({
-          backendBaseUrl: globalThis.location.origin,
-          callbackToken: taskRun.callbackToken,
-          errorMessage:
-            sendError instanceof Error ? sendError.message : "Failed to send message to runner",
-          executionId: taskRun.executionId,
-        }).catch(() => undefined);
-      }
     } finally {
-      setSending(false);
       inputRef.current?.focus();
     }
   }
@@ -280,12 +241,12 @@ export function TaskPage({
         pullRequest={pullRequest}
         desktopApp={desktopApp}
         isRunnerBackedTask={isRunnerBackedTask}
-        showCodeModeToggle={showCodeModeToggle}
+        showArchitectureModeToggle={showArchitectureModeToggle}
         onViewModeChange={setViewMode}
         viewMode={viewMode}
         workspacePath={workspacePath}
-        sending={sending}
-        isRunning={isRunning}
+        sending={isChatLoading}
+        isRunning={isBusy}
         onError={setLocalError}
         onCreatePr={() => void handleSend(CREATE_PR_MESSAGE)}
       />
@@ -299,11 +260,11 @@ export function TaskPage({
         </div>
       ) : null}
 
-      {viewMode === "code" ? (
-        <TaskPageCodeView
-          diffs={diffs}
-          diffErrorMessage={runnerDiffErrorMessage}
-          isDiffLoading={isDiffLoading}
+      {viewMode === "architecture" ? (
+        <TaskPageArchitectureView
+          diff={architectureDiff}
+          diffErrorMessage={runnerArchitectureDiffErrorMessage}
+          isDiffLoading={isArchitectureDiffLoading}
           isRunnerBackedTask={isRunnerBackedTask}
           preparingWorkspace={preparingWorkspace}
         />
@@ -315,7 +276,7 @@ export function TaskPage({
           showEmptyState={showEmptyState}
           preparingWorkspace={preparingWorkspace}
           timelineEntries={timelineEntries}
-          isRunning={isRunning}
+          isRunning={isBusy}
           runningDurationMs={runningDurationMs}
         />
       )}
@@ -325,9 +286,9 @@ export function TaskPage({
         input={input}
         onInputChange={setInput}
         onSend={() => void handleSend()}
-        isRunning={isRunning}
+        isRunning={isBusy}
         isReadOnlyRemoteTask={isReadOnlyRemoteTask}
-        sending={sending}
+        sending={isChatLoading}
         preparingWorkspace={preparingWorkspace}
         isRunnerBackedTask={isRunnerBackedTask}
         willBeRunnerBacked={willBeRunnerBacked}

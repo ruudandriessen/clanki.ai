@@ -133,8 +133,8 @@ export const sessionStateKeys = {
       `task-model:${taskId}`,
     ),
   taskView: (taskId: string) =>
-    createStorageStateKey<"chat" | "code">("session", `task-view:${taskId}`, {
-      parse: (value) => (value === "code" ? "code" : "chat"),
+    createStorageStateKey<"chat" | "architecture">("session", `task-view:${taskId}`, {
+      parse: (value) => (value === "code" || value === "architecture" ? "architecture" : "chat"),
       serialize: (value) => value,
     }),
 };

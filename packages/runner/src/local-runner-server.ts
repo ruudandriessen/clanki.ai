@@ -1,22 +1,15 @@
 import type { Server } from "node:http";
 import { createAdaptorServer } from "@hono/node-server";
 import { Hono, type Context } from "hono";
-import { getAssistantSessionDiff } from "./assistant-session-diff";
-import { ensureAssistantSession, promptAssistantSession } from "./assistant-session";
-import { listAssistantSessions } from "./list-assistant-sessions";
+import { getAssistantSessionArchitectureDiff } from "./assistant-session-architecture-diff";
 import {
   LOCAL_RUNNER_PROTOCOL_VERSION,
   type CreateAssistantSessionRequest,
   type DeleteWorkspaceRequest,
-  type EnsureAssistantSessionRequest,
-  type GetAssistantSessionDiffRequest,
-  type ListAssistantSessionsRequest,
+  type GetAssistantSessionArchitectureDiffRequest,
   type ListOpencodeModelsRequest,
-  type PromptAssistantSessionRequest,
-  type PromptTaskAssistantSessionRequest,
 } from "./local-runner-protocol";
 import { listOpencodeModels } from "./opencode-models";
-import { promptTaskAssistantSession } from "./task-assistant-session";
 import { createWorkspace, deleteWorkspace } from "./workspace";
 
 export type LocalRunnerServerOptions = {
@@ -51,7 +44,7 @@ export function createLocalRunnerApp(): Hono {
   app.get("/runner/info", (c) =>
     c.json({
       capabilities: {
-        assistantSessions: true,
+        workspaces: true,
       },
       protocolVersion: LOCAL_RUNNER_PROTOCOL_VERSION,
       runnerType: "local-worktree",
@@ -68,28 +61,14 @@ export function createLocalRunnerApp(): Hono {
     );
   });
 
-  app.get("/assistant/sessions", async (c) => {
+  app.get("/assistant/session/architecture-diff", async (c) => {
     const directory = readDirectoryQuery(c);
 
-    return c.json({
-      sessions: await listAssistantSessions({
+    return c.json(
+      getAssistantSessionArchitectureDiff({
         directory,
-      } satisfies ListAssistantSessionsRequest),
-    });
-  });
-
-  app.get("/assistant/session/diff", async (c) => {
-    const directory = readDirectoryQuery(c);
-    const sessionId = readRequiredQuery(c, "sessionId");
-    const messageId = readOptionalQuery(c, "messageId");
-
-    return c.json({
-      diffs: await getAssistantSessionDiff({
-        directory,
-        messageId,
-        sessionId,
-      } satisfies GetAssistantSessionDiffRequest),
-    });
+      } satisfies GetAssistantSessionArchitectureDiffRequest),
+    );
   });
 
   app.post("/assistant/session/create", async (c) => {
@@ -99,59 +78,16 @@ export function createLocalRunnerApp(): Hono {
       title: body.taskTitle,
     });
 
-    try {
-      const session = await ensureAssistantSession({
-        directory: workspaceDirectory,
-        existingSessionId: null,
-        model: body.model,
-        provider: body.provider,
-        taskTitle: body.taskTitle,
-      });
-
-      return c.json({
-        sessionId: session.sessionId,
-        workspaceDirectory,
-      });
-    } catch (error) {
-      deleteWorkspace(workspaceDirectory);
-      throw error;
-    }
-  });
-
-  app.post("/assistant/session/ensure", async (c) => {
-    const body = await readJson<EnsureAssistantSessionRequest>(c);
-
-    return c.json(
-      await ensureAssistantSession({
-        directory: body.directory,
-        existingSessionId: body.sessionId,
-        model: body.model,
-        provider: body.provider,
-        taskTitle: body.taskTitle,
-      }),
-    );
+    return c.json({
+      sessionId: "",
+      workspaceDirectory,
+    });
   });
 
   app.post("/workspace/delete", async (c) => {
     const body = await readJson<DeleteWorkspaceRequest>(c);
 
     deleteWorkspace(body.workspaceDirectory);
-
-    return c.json({ ok: true });
-  });
-
-  app.post("/assistant/session/prompt", async (c) => {
-    const body = await readJson<PromptAssistantSessionRequest>(c);
-
-    await promptAssistantSession(body);
-
-    return c.json({ ok: true });
-  });
-
-  app.post("/assistant/session/task-prompt", async (c) => {
-    const body = await readJson<PromptTaskAssistantSessionRequest>(c);
-
-    await promptTaskAssistantSession(body);
 
     return c.json({ ok: true });
   });

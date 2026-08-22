@@ -31,9 +31,9 @@ interface TaskPageHeaderProps {
   } | null;
   desktopApp: boolean;
   isRunnerBackedTask: boolean;
-  showCodeModeToggle: boolean;
-  onViewModeChange: (mode: "chat" | "code") => void;
-  viewMode: "chat" | "code";
+  showArchitectureModeToggle: boolean;
+  onViewModeChange: (mode: "chat" | "architecture") => void;
+  viewMode: "chat" | "architecture";
   workspacePath: string | null;
   sending: boolean;
   isRunning: boolean;
@@ -48,7 +48,7 @@ export function TaskPageHeader({
   pullRequest,
   desktopApp,
   isRunnerBackedTask,
-  showCodeModeToggle,
+  showArchitectureModeToggle,
   onViewModeChange,
   viewMode,
   workspacePath,
@@ -101,7 +101,7 @@ export function TaskPageHeader({
         </div>
         <div className="shrink-0 flex items-center gap-2">
           <TaskPageViewToggle
-            showCodeMode={showCodeModeToggle}
+            showArchitectureMode={showArchitectureModeToggle}
             viewMode={viewMode}
             onViewModeChange={onViewModeChange}
           />

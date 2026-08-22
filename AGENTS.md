@@ -2,13 +2,14 @@
 
 ## Project
 
-Bun app with a TanStack Start backend deployed on Vercel and a React + Vite frontend.
+Local desktop app: TanStack Start + SQLite control plane, a local OpenCode runner, and an Electron shell.
 
 ## Commands
 
 - `bun install` — install dependencies
 - `bun run build` — build all packages
-- `bun run dev` — start both worker and frontend in dev mode
+- `bun run dev` — start the TanStack Start app in dev mode
+- `bun run electron:dev` — start the desktop app with the local runner
 - `bun run format` — format code with oxfmt
 - `bun run lint:fix` — lint and auto-fix with oxlint
 - `bun run knip` — detect unused files, exports, and dependencies
@@ -28,8 +29,8 @@ Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `buil
 Examples:
 
 - `feat: add user login flow`
-- `fix(worker): handle empty request body`
-- `docs: update README with deploy steps`
+- `fix(runner): handle empty request body`
+- `docs: update README with setup steps`
 
 ## Code Style
 
@@ -64,7 +65,7 @@ Do not introduce `useEffect` for routine derivations, event handling, or state s
 
 ### Use shadcn components where applicable
 
-For new UI work, prefer existing shadcn primitives from `frontend/src/components/ui` (for example `Button`, `Input`, `Textarea`, `Dialog`, `DropdownMenu`, `Card`, `Avatar`) instead of custom base controls.
+For new UI work, prefer existing shadcn primitives from `src/components/ui` (for example `Button`, `Input`, `Textarea`, `Dialog`, `DropdownMenu`, `Card`, `Avatar`) instead of custom base controls.
 
 Only create custom component wrappers when there is no suitable shadcn primitive or when product-specific behavior requires it.
 
@@ -78,7 +79,7 @@ Apply this style with restraint:
 - Prefer flat or lightly elevated surfaces for dense UI areas (sidebar, chat timeline, tool summaries).
 - Avoid stacked boxed treatments in repeated lists (for example tool activity rows).
 - Preserve readability first: generous spacing, clear contrast, and calm message surfaces.
-- Keep the login page and top-level marketing-like surfaces visually expressive; keep operational areas cleaner.
+- Keep top-level marketing-like surfaces visually expressive; keep operational areas cleaner.
 
 ### Prefer `??` over `||` for default values
 
@@ -106,7 +107,7 @@ Do not add speculative fallbacks, extra guards, or `throw` statements for cases 
 
 ### Type-safe route and search params (TanStack Router)
 
-The router is registered in `frontend/src/router.tsx` via `declare module "@tanstack/react-router"`. This gives TanStack Router full type information about every route's path params and search params. Always use this — never bypass it with `strict: false` or type assertions.
+The router is registered in `src/router.tsx` via `declare module "@tanstack/react-router"`. This gives TanStack Router full type information about every route's path params and search params. Always use this — never bypass it with `strict: false` or type assertions.
 
 **Route params** — use `from` so the types are inferred from the route tree. The `from` value is the **route ID**, which includes ID-route parents (e.g. the `layout` ID route makes the task route ID `/layout/tasks/$taskId`, even though the URL is `/tasks/$taskId`):
 
@@ -155,11 +156,12 @@ navigate({ to: "/tasks/$taskId", params: { taskId: id } });
 
 ### System components
 
-The system is split into three main components:
+The product app is local. The public marketing site is separate.
 
-1. **Vercel backend** — the API layer deployed on Vercel. Handles syncing with external systems (e.g. GitHub), stores PR data, projects, and other persisted domain state. This is the control plane.
-2. **Runner** — a self-hosted runner that (for now) runs on the client's device. Manages sessions, runs code in git worktrees, and performs the real execution operations. Requires `opencode` to be available as a CLI tool on the host machine (manual prerequisite). This is the execution plane.
-3. **Desktop app** — an Electron shell wrapping the Vercel-hosted frontend. This is the primary way users interact with the system. Hosts the local runner and provides native OS integration.
+1. **Control plane** — TanStack Start with SQLite on the user's machine. Stores projects, tasks, and messages. Talks to GitHub through the `gh` CLI.
+2. **Runner** — a local process that manages sessions and runs work in git worktrees. Requires `opencode` on the host machine. This is the execution plane.
+3. **Desktop app** — an Electron shell that starts the local TanStack Start server and the runner, and provides native OS integration.
+4. **Marketing site** — the Astro site in `packages/marketing`. It is hosted separately and is not part of the desktop control plane.
 
 ### Remote-ready constraints
 
@@ -171,4 +173,3 @@ The system is split into three main components:
 
 - Do not introduce broad new configuration surfaces unless a concrete product need requires it.
 - Prefer direct defaults for local execution over adding feature flags for every behavior.
-- When migrating legacy sandbox code, prioritize runner-first replacements and only keep compatibility shims when they unblock an immediate user-facing requirement.

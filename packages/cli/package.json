@@ -1,0 +1,19 @@
+{
+  "name": "@clanki/cli",
+  "version": "0.0.0",
+  "private": true,
+  "bin": {
+    "clanki": "./bin.ts"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "analyze": "bun run bin.ts"
+  },
+  "dependencies": {
+    "commander": "^14.0.3",
+    "typescript": "^5.9.3"
+  }
+}

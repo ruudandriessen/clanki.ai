@@ -1,4 +1,4 @@
-import type { FileDiff, ProviderListResponse } from "@opencode-ai/sdk";
+import type { ProviderListResponse } from "@opencode-ai/sdk";
 
 export const LOCAL_RUNNER_PROTOCOL_VERSION = "v1alpha1";
 
@@ -8,7 +8,7 @@ export type LocalRunnerHealthResponse = {
 
 export type LocalRunnerInfoResponse = {
   capabilities: {
-    assistantSessions: true;
+    workspaces: true;
   };
   protocolVersion: typeof LOCAL_RUNNER_PROTOCOL_VERSION;
   runnerType: "local-worktree";
@@ -27,8 +27,6 @@ export type ListOpencodeModelsResponse = {
 };
 
 export type CreateAssistantSessionRequest = {
-  model: string;
-  provider: string;
   repoUrl: string;
   taskTitle: string;
 };
@@ -38,73 +36,35 @@ export type CreateAssistantSessionResponse = {
   workspaceDirectory: string;
 };
 
-export type EnsureAssistantSessionRequest = {
+export type ArchitectureDiffFileStatus = "added" | "removed" | "modified" | "unchanged";
+
+export type ArchitectureDiffEdgeStatus = "added" | "removed" | "unchanged";
+
+export type ArchitectureDiffFile = {
+  file: string;
+  status: ArchitectureDiffFileStatus;
+};
+
+export type ArchitectureDiffEdge = {
+  fromFile: string;
+  toFile: string;
+  status: ArchitectureDiffEdgeStatus;
+};
+
+export type ArchitectureDiff = {
+  addedEdgeCount: number;
+  addedFileCount: number;
+  edges: ArchitectureDiffEdge[];
+  files: ArchitectureDiffFile[];
+  removedEdgeCount: number;
+  removedFileCount: number;
+};
+
+export type GetAssistantSessionArchitectureDiffRequest = {
   directory: string;
-  model?: string;
-  provider?: string;
-  sessionId?: string | null;
-  taskTitle: string;
 };
 
-export type EnsureAssistantSessionResponse = {
-  isNewSession: boolean;
-  sessionId: string;
-};
-
-export type AssistantSessionSummary = {
-  createdAt: number;
-  directory: string;
-  id: string;
-  title: string;
-  updatedAt: number;
-};
-
-export type ListAssistantSessionsRequest = {
-  directory: string;
-};
-
-export type ListAssistantSessionsResponse = {
-  sessions: AssistantSessionSummary[];
-};
-
-export type GetAssistantSessionDiffRequest = {
-  directory: string;
-  messageId?: string;
-  sessionId: string;
-};
-
-export type GetAssistantSessionDiffResponse = {
-  diffs: FileDiff[];
-};
-
-export type PromptAssistantSessionRequest = {
-  directory: string;
-  model?: string;
-  provider?: string;
-  prompt: string;
-  sessionId: string;
-};
-
-export type PromptAssistantSessionResponse = {
-  ok: true;
-};
-
-export type PromptTaskAssistantSessionRequest = {
-  directory: string;
-  model?: string;
-  provider?: string;
-  prompt: string;
-  sessionId: string;
-  taskRun: {
-    backendBaseUrl: string;
-    callbackToken: string;
-    executionId: string;
-  };
-};
-
-export type PromptTaskAssistantSessionResponse = {
-  ok: true;
-};
+export type GetAssistantSessionArchitectureDiffResponse = ArchitectureDiff;
 
 export type DeleteWorkspaceRequest = {
   workspaceDirectory: string;

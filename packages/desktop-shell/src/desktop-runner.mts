@@ -10,8 +10,6 @@ import {
   waitForPort,
 } from "./node-utils.mjs";
 
-const DEFAULT_OPENCODE_MODEL = "gpt-5.3-codex";
-const DEFAULT_OPENCODE_PROVIDER = "openai";
 const execFileAsync = promisify(execFile);
 const DESKTOP_EDITOR_APPS = {
   cursor: "Cursor",
@@ -37,29 +35,26 @@ type RunnerModelProvider = {
   name: string;
 };
 
-type RunnerDiff = {
-  additions: number;
-  after: string;
-  before: string;
-  deletions: number;
-  file: string;
+type ArchitectureDiff = {
+  addedEdgeCount: number;
+  addedFileCount: number;
+  edges: Array<{
+    fromFile: string;
+    status: "added" | "removed" | "unchanged";
+    toFile: string;
+  }>;
+  files: Array<{
+    file: string;
+    status: "added" | "removed" | "modified" | "unchanged";
+  }>;
+  removedEdgeCount: number;
+  removedFileCount: number;
 };
 
 type ListRunnerModelsResponse = {
   connected: string[];
   default: Record<string, string>;
   providers: RunnerModelProvider[];
-};
-
-type PromptRunnerTaskArgs = {
-  backendBaseUrl: string;
-  callbackToken: string;
-  directory: string;
-  executionId: string;
-  model?: string;
-  prompt: string;
-  provider?: string;
-  sessionId: string;
 };
 
 type DeleteRunnerWorkspaceArgs = {
@@ -83,10 +78,9 @@ type AppRunnerController = {
     workspaceDirectory: string;
   }>;
   deleteRunnerWorkspace: (args: DeleteRunnerWorkspaceArgs) => Promise<void>;
-  getRunnerDiff: (args: { directory: string; sessionId: string }) => Promise<RunnerDiff[]>;
+  getRunnerArchitectureDiff: (args: { directory: string }) => Promise<ArchitectureDiff>;
   listRunnerModels: (args: { directory: string }) => Promise<ListRunnerModelsResponse>;
   openWorkspaceInEditor: (args: OpenWorkspaceInEditorArgs) => Promise<void>;
-  promptRunnerTask: (args: PromptRunnerTaskArgs) => Promise<void>;
   stop: () => Promise<void>;
 };
 
@@ -95,17 +89,11 @@ type CreateAssistantSessionResponse = {
   workspaceDirectory: string;
 };
 
-type PromptTaskAssistantSessionResponse = {
-  ok: boolean;
-};
-
 type DeleteWorkspaceResponse = {
   ok: boolean;
 };
 
-type GetRunnerDiffResponse = {
-  diffs: RunnerDiff[];
-};
+type GetRunnerArchitectureDiffResponse = ArchitectureDiff;
 
 export function createDesktopRunnerController({
   workspaceRoot,
@@ -128,8 +116,6 @@ export function createDesktopRunnerController({
     const payload = await postRunnerJson<CreateAssistantSessionResponse>(
       `${runner.baseUrl}/assistant/session/create`,
       {
-        model: DEFAULT_OPENCODE_MODEL,
-        provider: DEFAULT_OPENCODE_PROVIDER,
         repoUrl,
         taskTitle: trimmedTitle,
       },
@@ -151,34 +137,8 @@ export function createDesktopRunnerController({
     );
   }
 
-  async function getRunnerDiff(args: {
-    directory: string;
-    sessionId: string;
-  }): Promise<RunnerDiff[]> {
-    return await requestRunnerDiff(args);
-  }
-
-  async function promptRunnerTask(args: PromptRunnerTaskArgs): Promise<void> {
-    const runner = await ensureRunner();
-    const payload = await postRunnerJson<PromptTaskAssistantSessionResponse>(
-      `${runner.baseUrl}/assistant/session/task-prompt`,
-      {
-        directory: args.directory,
-        model: args.model,
-        prompt: args.prompt,
-        provider: args.provider,
-        sessionId: args.sessionId,
-        taskRun: {
-          backendBaseUrl: args.backendBaseUrl,
-          callbackToken: args.callbackToken,
-          executionId: args.executionId,
-        },
-      },
-    );
-
-    if (!payload.ok) {
-      throw new Error("Local runner task prompt did not complete successfully");
-    }
+  async function getRunnerArchitectureDiff(args: { directory: string }): Promise<ArchitectureDiff> {
+    return await requestRunnerArchitectureDiff(args);
   }
 
   async function openWorkspaceInEditor({
@@ -241,10 +201,7 @@ export function createDesktopRunnerController({
   }
 
   async function startRunner(): Promise<RunnerProcess> {
-    const runnerEntry = path.join(workspaceRoot, "packages/runner/dist/cli.mjs");
-    if (!fs.existsSync(runnerEntry)) {
-      throw new Error(`Runner entry not found at ${runnerEntry}`);
-    }
+    const runnerEntry = resolveRunnerEntry(workspaceRoot);
 
     const port = await reserveLocalPort();
     const child = spawn(
@@ -284,30 +241,39 @@ export function createDesktopRunnerController({
     return nextRunnerProcess;
   }
 
-  async function requestRunnerDiff(args: {
+  async function requestRunnerArchitectureDiff(args: {
     directory: string;
-    sessionId: string;
-  }): Promise<RunnerDiff[]> {
+  }): Promise<ArchitectureDiff> {
     const runner = await ensureRunner();
-    const payload = await getRunnerJson<GetRunnerDiffResponse>(
-      `${runner.baseUrl}/assistant/session/diff?${new URLSearchParams({
+    return await getRunnerJson<GetRunnerArchitectureDiffResponse>(
+      `${runner.baseUrl}/assistant/session/architecture-diff?${new URLSearchParams({
         directory: args.directory,
-        sessionId: args.sessionId,
       }).toString()}`,
     );
-
-    return payload.diffs;
   }
 
   return {
     createRunnerSession,
     deleteRunnerWorkspace,
-    getRunnerDiff,
+    getRunnerArchitectureDiff,
     listRunnerModels,
     openWorkspaceInEditor,
-    promptRunnerTask,
     stop,
   };
+}
+
+function resolveRunnerEntry(workspaceRoot: string): string {
+  const sourceEntry = path.join(workspaceRoot, "packages/runner/src/cli.ts");
+  if (fs.existsSync(sourceEntry)) {
+    return sourceEntry;
+  }
+
+  const distEntry = path.join(workspaceRoot, "packages/runner/dist/cli.mjs");
+  if (fs.existsSync(distEntry)) {
+    return distEntry;
+  }
+
+  throw new Error(`Runner entry not found at ${sourceEntry} or ${distEntry}`);
 }
 
 async function isRunnerHealthy(baseUrl: string): Promise<boolean> {

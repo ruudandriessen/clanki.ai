@@ -1,3 +1,5 @@
+import type { ArchitectureDiff } from "@/lib/architecture-diff";
+
 type CreateDesktopRunnerSessionResponse = {
   runnerType: string;
   sessionId: string;
@@ -17,14 +19,6 @@ export type DesktopRunnerModelProvider = {
   name: string;
 };
 
-export type DesktopRunnerDiff = {
-  additions: number;
-  after: string;
-  before: string;
-  deletions: number;
-  file: string;
-};
-
 export type ListDesktopRunnerModelsResponse = {
   connected: string[];
   default: Record<string, string>;
@@ -37,21 +31,11 @@ type DesktopRunnerBridge = {
     repoUrl: string,
   ) => Promise<CreateDesktopRunnerSessionResponse>;
   deleteRunnerWorkspace: (workspaceDirectory: string) => Promise<void>;
-  getRunnerDiff: (args: { directory: string; sessionId: string }) => Promise<DesktopRunnerDiff[]>;
+  getRunnerArchitectureDiff: (args: { directory: string }) => Promise<ArchitectureDiff>;
   listRunnerModels: (args: { directory: string }) => Promise<ListDesktopRunnerModelsResponse>;
   openWorkspaceInEditor: (args: {
     editor: DesktopWorkspaceEditor;
     workspaceDirectory: string;
-  }) => Promise<void>;
-  promptRunnerTask: (args: {
-    backendBaseUrl: string;
-    callbackToken: string;
-    directory: string;
-    executionId: string;
-    model?: string;
-    prompt: string;
-    provider?: string;
-    sessionId: string;
   }) => Promise<void>;
 };
 
@@ -80,11 +64,10 @@ export async function deleteDesktopRunnerWorkspace(workspaceDirectory: string): 
   await getDesktopRunnerBridge().deleteRunnerWorkspace(workspaceDirectory);
 }
 
-export async function getDesktopRunnerDiff(args: {
+export async function getDesktopRunnerArchitectureDiff(args: {
   directory: string;
-  sessionId: string;
-}): Promise<DesktopRunnerDiff[]> {
-  return await getDesktopRunnerBridge().getRunnerDiff(args);
+}): Promise<ArchitectureDiff> {
+  return await getDesktopRunnerBridge().getRunnerArchitectureDiff(args);
 }
 
 export async function listDesktopRunnerModels(args: {
@@ -98,17 +81,4 @@ export async function openDesktopWorkspaceInEditor(args: {
   workspaceDirectory: string;
 }): Promise<void> {
   await getDesktopRunnerBridge().openWorkspaceInEditor(args);
-}
-
-export async function promptDesktopRunnerTask(args: {
-  backendBaseUrl: string;
-  callbackToken: string;
-  directory: string;
-  executionId: string;
-  model?: string;
-  prompt: string;
-  provider?: string;
-  sessionId: string;
-}): Promise<void> {
-  await getDesktopRunnerBridge().promptRunnerTask(args);
 }

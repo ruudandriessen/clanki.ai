@@ -1,19 +1,19 @@
-import { Code2, MessagesSquare } from "lucide-react";
+import { MessagesSquare, Waypoints } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface TaskPageViewToggleProps {
-  onViewModeChange: (mode: "chat" | "code") => void;
-  showCodeMode: boolean;
-  viewMode: "chat" | "code";
+  onViewModeChange: (mode: "chat" | "architecture") => void;
+  showArchitectureMode: boolean;
+  viewMode: "chat" | "architecture";
 }
 
 export function TaskPageViewToggle({
   onViewModeChange,
-  showCodeMode,
+  showArchitectureMode,
   viewMode,
 }: TaskPageViewToggleProps) {
-  if (!showCodeMode) {
+  if (!showArchitectureMode) {
     return null;
   }
 
@@ -35,17 +35,17 @@ export function TaskPageViewToggle({
       </Button>
       <Button
         type="button"
-        variant={viewMode === "code" ? "secondary" : "ghost"}
+        variant={viewMode === "architecture" ? "secondary" : "ghost"}
         size="xs"
         className={cn(
           "h-7 rounded-[calc(var(--radius-sm)-2px)] px-2.5 shadow-none",
-          viewMode !== "code" &&
+          viewMode !== "architecture" &&
             "border-transparent hover:border-transparent hover:bg-background/70",
         )}
-        onClick={() => onViewModeChange("code")}
+        onClick={() => onViewModeChange("architecture")}
       >
-        <Code2 className="h-3 w-3" />
-        Code
+        <Waypoints className="h-3 w-3" />
+        Architecture
       </Button>
     </div>
   );
