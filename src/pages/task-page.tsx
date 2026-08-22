@@ -84,14 +84,14 @@ export function TaskPage({
   const queryClient = useQueryClient();
   const [localError, setLocalError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const runEvents = useTaskEventStream(taskId);
+  const runEvents = useTaskEventStream(taskId, isRunning);
   const [now, setNow] = useState(() => Date.now());
   const messageListRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const shouldStickToBottomRef = useRef(true);
 
-  const { data: messages = [] } = useTaskMessages(taskId, isRunning ? 2_000 : undefined);
+  const { data: messages = [] } = useTaskMessages(taskId);
 
   const persistedAssistantMessage = getLatestAssistantMessage(messages);
   const streamAssistantPreview = getLatestStreamAssistantPreview(runEvents);

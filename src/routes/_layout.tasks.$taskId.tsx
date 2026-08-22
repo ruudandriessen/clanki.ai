@@ -8,7 +8,7 @@ import { useTasks } from "@/lib/use-tasks";
 export const Route = createFileRoute("/_layout/tasks/$taskId")({
   component: () => {
     const { taskId } = Route.useParams();
-    const { data: tasks = [], isLoading: isTasksLoading } = useTasks(3_000);
+    const { data: tasks = [], isLoading: isTasksLoading } = useTasks();
     const { data: projects = [] } = useProjects();
     const { data: pullRequests = [] } = useProjectPullRequests();
     const task = tasks.find((candidate) => candidate.id === taskId);
