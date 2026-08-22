@@ -13,13 +13,7 @@ import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout.index'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout.settings'
 import { Route as LayoutTasksTaskIdRouteImport } from './routes/_layout.tasks.$taskId'
-import { Route as ApiTasksTaskIdStreamRouteImport } from './routes/api/tasks/$taskId/stream'
-import { Route as ApiInternalTaskRunsExecutionIdMessageRouteImport } from './routes/api/internal/task-runs/$executionId/message'
-import { Route as ApiInternalTaskRunsExecutionIdHeartbeatRouteImport } from './routes/api/internal/task-runs/$executionId/heartbeat'
-import { Route as ApiInternalTaskRunsExecutionIdFailRouteImport } from './routes/api/internal/task-runs/$executionId/fail'
-import { Route as ApiInternalTaskRunsExecutionIdEventRouteImport } from './routes/api/internal/task-runs/$executionId/event'
-import { Route as ApiInternalTaskRunsExecutionIdCompleteRouteImport } from './routes/api/internal/task-runs/$executionId/complete'
-import { Route as ApiInternalTaskRunsExecutionIdBranchRouteImport } from './routes/api/internal/task-runs/$executionId/branch'
+import { Route as ApiTasksTaskIdChatRouteImport } from './routes/api/tasks/$taskId/chat'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -40,71 +34,23 @@ const LayoutTasksTaskIdRoute = LayoutTasksTaskIdRouteImport.update({
   path: '/tasks/$taskId',
   getParentRoute: () => LayoutRoute,
 } as any)
-const ApiTasksTaskIdStreamRoute = ApiTasksTaskIdStreamRouteImport.update({
-  id: '/api/tasks/$taskId/stream',
-  path: '/api/tasks/$taskId/stream',
+const ApiTasksTaskIdChatRoute = ApiTasksTaskIdChatRouteImport.update({
+  id: '/api/tasks/$taskId/chat',
+  path: '/api/tasks/$taskId/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiInternalTaskRunsExecutionIdMessageRoute =
-  ApiInternalTaskRunsExecutionIdMessageRouteImport.update({
-    id: '/api/internal/task-runs/$executionId/message',
-    path: '/api/internal/task-runs/$executionId/message',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiInternalTaskRunsExecutionIdHeartbeatRoute =
-  ApiInternalTaskRunsExecutionIdHeartbeatRouteImport.update({
-    id: '/api/internal/task-runs/$executionId/heartbeat',
-    path: '/api/internal/task-runs/$executionId/heartbeat',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiInternalTaskRunsExecutionIdFailRoute =
-  ApiInternalTaskRunsExecutionIdFailRouteImport.update({
-    id: '/api/internal/task-runs/$executionId/fail',
-    path: '/api/internal/task-runs/$executionId/fail',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiInternalTaskRunsExecutionIdEventRoute =
-  ApiInternalTaskRunsExecutionIdEventRouteImport.update({
-    id: '/api/internal/task-runs/$executionId/event',
-    path: '/api/internal/task-runs/$executionId/event',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiInternalTaskRunsExecutionIdCompleteRoute =
-  ApiInternalTaskRunsExecutionIdCompleteRouteImport.update({
-    id: '/api/internal/task-runs/$executionId/complete',
-    path: '/api/internal/task-runs/$executionId/complete',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiInternalTaskRunsExecutionIdBranchRoute =
-  ApiInternalTaskRunsExecutionIdBranchRouteImport.update({
-    id: '/api/internal/task-runs/$executionId/branch',
-    path: '/api/internal/task-runs/$executionId/branch',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
   '/settings': typeof LayoutSettingsRoute
   '/tasks/$taskId': typeof LayoutTasksTaskIdRoute
-  '/api/tasks/$taskId/stream': typeof ApiTasksTaskIdStreamRoute
-  '/api/internal/task-runs/$executionId/branch': typeof ApiInternalTaskRunsExecutionIdBranchRoute
-  '/api/internal/task-runs/$executionId/complete': typeof ApiInternalTaskRunsExecutionIdCompleteRoute
-  '/api/internal/task-runs/$executionId/event': typeof ApiInternalTaskRunsExecutionIdEventRoute
-  '/api/internal/task-runs/$executionId/fail': typeof ApiInternalTaskRunsExecutionIdFailRoute
-  '/api/internal/task-runs/$executionId/heartbeat': typeof ApiInternalTaskRunsExecutionIdHeartbeatRoute
-  '/api/internal/task-runs/$executionId/message': typeof ApiInternalTaskRunsExecutionIdMessageRoute
+  '/api/tasks/$taskId/chat': typeof ApiTasksTaskIdChatRoute
 }
 export interface FileRoutesByTo {
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
   '/tasks/$taskId': typeof LayoutTasksTaskIdRoute
-  '/api/tasks/$taskId/stream': typeof ApiTasksTaskIdStreamRoute
-  '/api/internal/task-runs/$executionId/branch': typeof ApiInternalTaskRunsExecutionIdBranchRoute
-  '/api/internal/task-runs/$executionId/complete': typeof ApiInternalTaskRunsExecutionIdCompleteRoute
-  '/api/internal/task-runs/$executionId/event': typeof ApiInternalTaskRunsExecutionIdEventRoute
-  '/api/internal/task-runs/$executionId/fail': typeof ApiInternalTaskRunsExecutionIdFailRoute
-  '/api/internal/task-runs/$executionId/heartbeat': typeof ApiInternalTaskRunsExecutionIdHeartbeatRoute
-  '/api/internal/task-runs/$executionId/message': typeof ApiInternalTaskRunsExecutionIdMessageRoute
+  '/api/tasks/$taskId/chat': typeof ApiTasksTaskIdChatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -112,63 +58,25 @@ export interface FileRoutesById {
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/tasks/$taskId': typeof LayoutTasksTaskIdRoute
-  '/api/tasks/$taskId/stream': typeof ApiTasksTaskIdStreamRoute
-  '/api/internal/task-runs/$executionId/branch': typeof ApiInternalTaskRunsExecutionIdBranchRoute
-  '/api/internal/task-runs/$executionId/complete': typeof ApiInternalTaskRunsExecutionIdCompleteRoute
-  '/api/internal/task-runs/$executionId/event': typeof ApiInternalTaskRunsExecutionIdEventRoute
-  '/api/internal/task-runs/$executionId/fail': typeof ApiInternalTaskRunsExecutionIdFailRoute
-  '/api/internal/task-runs/$executionId/heartbeat': typeof ApiInternalTaskRunsExecutionIdHeartbeatRoute
-  '/api/internal/task-runs/$executionId/message': typeof ApiInternalTaskRunsExecutionIdMessageRoute
+  '/api/tasks/$taskId/chat': typeof ApiTasksTaskIdChatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/settings'
-    | '/tasks/$taskId'
-    | '/api/tasks/$taskId/stream'
-    | '/api/internal/task-runs/$executionId/branch'
-    | '/api/internal/task-runs/$executionId/complete'
-    | '/api/internal/task-runs/$executionId/event'
-    | '/api/internal/task-runs/$executionId/fail'
-    | '/api/internal/task-runs/$executionId/heartbeat'
-    | '/api/internal/task-runs/$executionId/message'
+  fullPaths: '/' | '/settings' | '/tasks/$taskId' | '/api/tasks/$taskId/chat'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/settings'
-    | '/'
-    | '/tasks/$taskId'
-    | '/api/tasks/$taskId/stream'
-    | '/api/internal/task-runs/$executionId/branch'
-    | '/api/internal/task-runs/$executionId/complete'
-    | '/api/internal/task-runs/$executionId/event'
-    | '/api/internal/task-runs/$executionId/fail'
-    | '/api/internal/task-runs/$executionId/heartbeat'
-    | '/api/internal/task-runs/$executionId/message'
+  to: '/settings' | '/' | '/tasks/$taskId' | '/api/tasks/$taskId/chat'
   id:
     | '__root__'
     | '/_layout'
     | '/_layout/settings'
     | '/_layout/'
     | '/_layout/tasks/$taskId'
-    | '/api/tasks/$taskId/stream'
-    | '/api/internal/task-runs/$executionId/branch'
-    | '/api/internal/task-runs/$executionId/complete'
-    | '/api/internal/task-runs/$executionId/event'
-    | '/api/internal/task-runs/$executionId/fail'
-    | '/api/internal/task-runs/$executionId/heartbeat'
-    | '/api/internal/task-runs/$executionId/message'
+    | '/api/tasks/$taskId/chat'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
-  ApiTasksTaskIdStreamRoute: typeof ApiTasksTaskIdStreamRoute
-  ApiInternalTaskRunsExecutionIdBranchRoute: typeof ApiInternalTaskRunsExecutionIdBranchRoute
-  ApiInternalTaskRunsExecutionIdCompleteRoute: typeof ApiInternalTaskRunsExecutionIdCompleteRoute
-  ApiInternalTaskRunsExecutionIdEventRoute: typeof ApiInternalTaskRunsExecutionIdEventRoute
-  ApiInternalTaskRunsExecutionIdFailRoute: typeof ApiInternalTaskRunsExecutionIdFailRoute
-  ApiInternalTaskRunsExecutionIdHeartbeatRoute: typeof ApiInternalTaskRunsExecutionIdHeartbeatRoute
-  ApiInternalTaskRunsExecutionIdMessageRoute: typeof ApiInternalTaskRunsExecutionIdMessageRoute
+  ApiTasksTaskIdChatRoute: typeof ApiTasksTaskIdChatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -201,53 +109,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutTasksTaskIdRouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/api/tasks/$taskId/stream': {
-      id: '/api/tasks/$taskId/stream'
-      path: '/api/tasks/$taskId/stream'
-      fullPath: '/api/tasks/$taskId/stream'
-      preLoaderRoute: typeof ApiTasksTaskIdStreamRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/task-runs/$executionId/message': {
-      id: '/api/internal/task-runs/$executionId/message'
-      path: '/api/internal/task-runs/$executionId/message'
-      fullPath: '/api/internal/task-runs/$executionId/message'
-      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdMessageRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/task-runs/$executionId/heartbeat': {
-      id: '/api/internal/task-runs/$executionId/heartbeat'
-      path: '/api/internal/task-runs/$executionId/heartbeat'
-      fullPath: '/api/internal/task-runs/$executionId/heartbeat'
-      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdHeartbeatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/task-runs/$executionId/fail': {
-      id: '/api/internal/task-runs/$executionId/fail'
-      path: '/api/internal/task-runs/$executionId/fail'
-      fullPath: '/api/internal/task-runs/$executionId/fail'
-      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdFailRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/task-runs/$executionId/event': {
-      id: '/api/internal/task-runs/$executionId/event'
-      path: '/api/internal/task-runs/$executionId/event'
-      fullPath: '/api/internal/task-runs/$executionId/event'
-      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdEventRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/task-runs/$executionId/complete': {
-      id: '/api/internal/task-runs/$executionId/complete'
-      path: '/api/internal/task-runs/$executionId/complete'
-      fullPath: '/api/internal/task-runs/$executionId/complete'
-      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdCompleteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/task-runs/$executionId/branch': {
-      id: '/api/internal/task-runs/$executionId/branch'
-      path: '/api/internal/task-runs/$executionId/branch'
-      fullPath: '/api/internal/task-runs/$executionId/branch'
-      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdBranchRouteImport
+    '/api/tasks/$taskId/chat': {
+      id: '/api/tasks/$taskId/chat'
+      path: '/api/tasks/$taskId/chat'
+      fullPath: '/api/tasks/$taskId/chat'
+      preLoaderRoute: typeof ApiTasksTaskIdChatRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -265,24 +131,11 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutTasksTaskIdRoute: LayoutTasksTaskIdRoute,
 }
 
-const LayoutRouteWithChildren =
-  LayoutRoute._addFileChildren(LayoutRouteChildren)
+const LayoutRouteWithChildren = LayoutRoute._addFileChildren(LayoutRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
-  ApiTasksTaskIdStreamRoute: ApiTasksTaskIdStreamRoute,
-  ApiInternalTaskRunsExecutionIdBranchRoute:
-    ApiInternalTaskRunsExecutionIdBranchRoute,
-  ApiInternalTaskRunsExecutionIdCompleteRoute:
-    ApiInternalTaskRunsExecutionIdCompleteRoute,
-  ApiInternalTaskRunsExecutionIdEventRoute:
-    ApiInternalTaskRunsExecutionIdEventRoute,
-  ApiInternalTaskRunsExecutionIdFailRoute:
-    ApiInternalTaskRunsExecutionIdFailRoute,
-  ApiInternalTaskRunsExecutionIdHeartbeatRoute:
-    ApiInternalTaskRunsExecutionIdHeartbeatRoute,
-  ApiInternalTaskRunsExecutionIdMessageRoute:
-    ApiInternalTaskRunsExecutionIdMessageRoute,
+  ApiTasksTaskIdChatRoute: ApiTasksTaskIdChatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,11 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { desc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import type { AppDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { withTransaction } from "@/server/db/transaction";
 import { toTask } from "@/server/lib/to-task";
-import { toTaskMessage } from "@/server/lib/to-task-message";
 import { dbMiddleware } from "../middleware";
 import { badRequest, notFound, parseOptionalId, parseOptionalTimestamp } from "./common";
 
@@ -13,16 +12,6 @@ async function getTaskRow(db: AppDb, taskId: string) {
   return db.query.tasks.findFirst({
     where: eq(schema.tasks.id, taskId),
   });
-}
-
-async function getLatestTaskMessageTimestamp(db: AppDb, taskId: string): Promise<number | null> {
-  const latest = await db.query.taskMessages.findFirst({
-    where: eq(schema.taskMessages.taskId, taskId),
-    columns: { createdAt: true },
-    orderBy: desc(schema.taskMessages.createdAt),
-  });
-
-  return latest?.createdAt ?? null;
 }
 
 export const listTasks = createServerFn({ method: "GET" })
@@ -149,83 +138,4 @@ export const deleteTask = createServerFn({ method: "POST" })
 
     await context.db.delete(schema.tasks).where(eq(schema.tasks.id, input.taskId));
     return { ok: true };
-  });
-
-export const listTaskMessages = createServerFn({ method: "GET" })
-  .middleware([dbMiddleware])
-  .inputValidator(z.object({ taskId: z.string() }))
-  .handler(async ({ data: input, context }) => {
-    const existing = await getTaskRow(context.db, input.taskId);
-    if (!existing) {
-      notFound("Task not found");
-    }
-
-    const rows = await context.db.query.taskMessages.findMany({
-      where: eq(schema.taskMessages.taskId, input.taskId),
-      orderBy: (messages, { asc }) => [asc(messages.createdAt)],
-    });
-    return rows.map(toTaskMessage);
-  });
-
-export const createTaskMessage = createServerFn({ method: "POST" })
-  .middleware([dbMiddleware])
-  .inputValidator(
-    z.object({
-      taskId: z.string(),
-      message: z.object({
-        id: z.string().optional(),
-        role: z.string(),
-        content: z.string(),
-        createdAt: z.number().optional(),
-      }),
-    }),
-  )
-  .handler(async ({ data: input, context }) => {
-    const existing = await getTaskRow(context.db, input.taskId);
-    if (!existing) {
-      notFound("Task not found");
-    }
-
-    const content = input.message.content.trim();
-    if (content.length === 0) {
-      badRequest("content is required");
-    }
-
-    if (!["user", "assistant"].includes(input.message.role)) {
-      badRequest("role must be 'user' or 'assistant'");
-    }
-
-    const message = await withTransaction(context.db, async (tx) => {
-      const requestedCreatedAt = parseOptionalTimestamp(input.message.createdAt) ?? Date.now();
-      const latestCreatedAt = await getLatestTaskMessageTimestamp(
-        tx as unknown as AppDb,
-        input.taskId,
-      );
-      const createdAt =
-        latestCreatedAt !== null && latestCreatedAt >= requestedCreatedAt
-          ? latestCreatedAt + 1
-          : requestedCreatedAt;
-
-      const row = {
-        id: parseOptionalId(input.message.id) ?? crypto.randomUUID(),
-        taskId: input.taskId,
-        role: input.message.role,
-        content,
-        createdAt,
-      };
-
-      await tx.insert(schema.taskMessages).values(row);
-      await tx
-        .update(schema.tasks)
-        .set(
-          input.message.role === "user"
-            ? { status: "open", error: null, updatedAt: createdAt }
-            : { updatedAt: createdAt },
-        )
-        .where(eq(schema.tasks.id, input.taskId));
-
-      return row;
-    });
-
-    return toTaskMessage(message);
   });

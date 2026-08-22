@@ -6,7 +6,7 @@ import type { FileDiff } from "@opencode-ai/sdk";
 export async function getAssistantSessionDiff(args: {
   directory: string;
   messageId?: string;
-  sessionId: string;
+  sessionId?: string;
 }): Promise<FileDiff[]> {
   void args.messageId;
   void args.sessionId;

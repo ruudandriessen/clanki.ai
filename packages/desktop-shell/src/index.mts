@@ -60,10 +60,6 @@ function registerIpcHandlers(): void {
   ipcMain.handle("desktop-runner:open-workspace-in-editor", async (_event, args) => {
     return await getDesktopRunnerController().openWorkspaceInEditor(args);
   });
-
-  ipcMain.handle("desktop-runner:prompt-task", async (_event, args) => {
-    return await getDesktopRunnerController().promptRunnerTask(args);
-  });
 }
 
 function isExternalUrl(targetUrl: string, appUrl: string): boolean {

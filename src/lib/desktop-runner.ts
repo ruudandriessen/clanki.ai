@@ -37,21 +37,11 @@ type DesktopRunnerBridge = {
     repoUrl: string,
   ) => Promise<CreateDesktopRunnerSessionResponse>;
   deleteRunnerWorkspace: (workspaceDirectory: string) => Promise<void>;
-  getRunnerDiff: (args: { directory: string; sessionId: string }) => Promise<DesktopRunnerDiff[]>;
+  getRunnerDiff: (args: { directory: string }) => Promise<DesktopRunnerDiff[]>;
   listRunnerModels: (args: { directory: string }) => Promise<ListDesktopRunnerModelsResponse>;
   openWorkspaceInEditor: (args: {
     editor: DesktopWorkspaceEditor;
     workspaceDirectory: string;
-  }) => Promise<void>;
-  promptRunnerTask: (args: {
-    backendBaseUrl: string;
-    callbackToken: string;
-    directory: string;
-    executionId: string;
-    model?: string;
-    prompt: string;
-    provider?: string;
-    sessionId: string;
   }) => Promise<void>;
 };
 
@@ -82,7 +72,6 @@ export async function deleteDesktopRunnerWorkspace(workspaceDirectory: string): 
 
 export async function getDesktopRunnerDiff(args: {
   directory: string;
-  sessionId: string;
 }): Promise<DesktopRunnerDiff[]> {
   return await getDesktopRunnerBridge().getRunnerDiff(args);
 }
@@ -98,17 +87,4 @@ export async function openDesktopWorkspaceInEditor(args: {
   workspaceDirectory: string;
 }): Promise<void> {
   await getDesktopRunnerBridge().openWorkspaceInEditor(args);
-}
-
-export async function promptDesktopRunnerTask(args: {
-  backendBaseUrl: string;
-  callbackToken: string;
-  directory: string;
-  executionId: string;
-  model?: string;
-  prompt: string;
-  provider?: string;
-  sessionId: string;
-}): Promise<void> {
-  await getDesktopRunnerBridge().promptRunnerTask(args);
 }
