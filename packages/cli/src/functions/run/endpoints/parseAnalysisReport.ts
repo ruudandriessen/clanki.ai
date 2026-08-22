@@ -1,6 +1,5 @@
-import type z from "zod";
+import type { ZodType } from "zod";
 import {
-  groupSummariesSchema,
   ANALYSIS_REPORT_SCHEMA_VERSION,
   type GroupSummary,
   type AnalysisReport,
@@ -18,11 +17,7 @@ export function parseAnalysisReport(raw: unknown): AnalysisReport {
   return migrateAnalysisReport(raw);
 }
 
-export function parseGroupSummaries(raw: unknown): GroupSummary[] {
-  return parseWithSchema(groupSummariesSchema, raw, "Group summaries must match schema");
-}
-
-export function migrateAnalysisReport(raw: unknown): AnalysisReport {
+function migrateAnalysisReport(raw: unknown): AnalysisReport {
   const report = parseWithSchema(
     analysisReportMigrationSchema,
     raw,
@@ -209,7 +204,7 @@ function buildCoverageSummary(covered: number, total: number): CoverageSummary {
   };
 }
 
-function parseWithSchema<T>(schema: z.ZodType<T>, raw: unknown, errorPrefix: string): T {
+function parseWithSchema<T>(schema: ZodType<T>, raw: unknown, errorPrefix: string): T {
   const parsed = schema.safeParse(raw);
   if (parsed.success) {
     return parsed.data;

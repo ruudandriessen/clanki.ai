@@ -6,19 +6,24 @@ const webDistDirectory = path.resolve(cliDirectory, "../web/dist");
 const bundledWebDistDirectory = path.resolve(cliDirectory, "dist/web-dist");
 
 async function main(): Promise<void> {
-  await ensureWebDistExists(webDistDirectory);
+  if (!(await hasWebDist(webDistDirectory))) {
+    process.stderr.write(
+      "Skipping web asset embed: packages/web/dist is not built yet. `clanki run` can still use --web-dist or CLANKI_WEB_DIST.\n",
+    );
+    return;
+  }
+
   await mkdir(path.resolve(cliDirectory, "dist"), { recursive: true });
   await rm(bundledWebDistDirectory, { recursive: true, force: true });
   await cp(webDistDirectory, bundledWebDistDirectory, { recursive: true });
 }
 
-async function ensureWebDistExists(distDirectory: string): Promise<void> {
+async function hasWebDist(distDirectory: string): Promise<boolean> {
   try {
     await access(path.resolve(distDirectory, "index.html"));
+    return true;
   } catch {
-    throw new Error(
-      "Missing packages/web/dist. Build web assets first (for example: `bun run --cwd packages/web build`).",
-    );
+    return false;
   }
 }
 

@@ -67,7 +67,7 @@ const groupPositionSummarySchema = z
   })
   .strict();
 
-export const groupEdgeSchema = z
+const groupEdgeSchema = z
   .object({
     from: z.string().trim().min(1),
     to: z.string().trim().min(1),
@@ -352,12 +352,7 @@ export const reportRebuildResultSchema = z
 
 export type AnalysisReport = z.infer<typeof analysisReportSchema>;
 export type ProjectSummary = z.infer<typeof projectSummarySchema>;
-export type CompilerOptionsSummary = z.infer<typeof compilerOptionsSummarySchema>;
 export type DiagnosticSummary = z.infer<typeof diagnosticSummarySchema>;
-export type EntrypointSummary = z.infer<typeof entrypointSummarySchema>;
-export type AnalysisGraphSummary = z.infer<typeof analysisGraphSummarySchema>;
-export type AnalysisGraphNodeSummary = z.infer<typeof analysisGraphNodeSummarySchema>;
-export type AnalysisGraphEdgeSummary = z.infer<typeof analysisGraphEdgeSummarySchema>;
 export type SourceLocation = z.infer<typeof sourceLocationSchema>;
 export type ModelMemberSummary = z.infer<typeof modelMemberSummarySchema>;
 export type ModelSummary = z.infer<typeof modelSummarySchema>;
@@ -367,16 +362,9 @@ export type UngroupedModelSummary = z.infer<typeof ungroupedModelSummarySchema>;
 export type AnalysisSummary = z.infer<typeof analysisSummarySchema>;
 export type CoverageSummary = z.infer<typeof coverageSummarySchema>;
 export type CheckResultsSummary = z.infer<typeof checkResultsSummarySchema>;
-export type StrictCheckSummary = z.infer<typeof strictCheckSummarySchema>;
-export type RulesCheckSummary = z.infer<typeof rulesCheckSummarySchema>;
-export type GroupPositionSummary = z.infer<typeof groupPositionSummarySchema>;
-export type GroupEdge = z.infer<typeof groupEdgeSchema>;
-export type AddGroupEdgeInput = z.infer<typeof addGroupEdgeInputSchema>;
 export type GroupSummary = z.infer<typeof groupSummarySchema>;
-export type UpdateGroupInput = z.infer<typeof updateGroupInputSchema>;
 export type ModuleGroupSummary = z.infer<typeof moduleGroupSummarySchema>;
 export type DataStructureGroupSummary = z.infer<typeof dataStructureGroupSummarySchema>;
-export type CreateGroupInput = z.infer<typeof createGroupInputSchema>;
 export type SourceFileGroupMemberSummary = z.infer<typeof sourceFileGroupMemberSummarySchema>;
 export type ModelGroupMemberSummary = z.infer<typeof modelGroupMemberSummarySchema>;
 export type UnmatchedGroupMemberSummary = z.infer<typeof unmatchedGroupMemberSummarySchema>;

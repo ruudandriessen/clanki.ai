@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { readFileSync } from "node:fs";
 import { type ClankiConfig, clankiConfigSchema } from "./model/config";
 
 export function loadConfig(configPath: string): ClankiConfig {

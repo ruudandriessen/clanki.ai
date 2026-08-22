@@ -10,6 +10,10 @@
       "entry": ["src/preload.mts"],
       "project": ["src/**/*.mts"]
     },
+    "packages/cli": {
+      "entry": ["bin.ts", "index.ts", "scripts/**/*.ts"],
+      "project": ["**/*.ts"]
+    },
     "packages/runner": {
       "project": ["src/**/*.ts"]
     },

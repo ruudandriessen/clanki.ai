@@ -5,13 +5,8 @@ import { collectModels } from "./analysis-engine/model-extractor";
 import { buildProjectSummary } from "./analysis-engine/project-summary-builder";
 import { loadTypeScriptProgram } from "./analysis-engine/program-loader";
 
-export type {
-  ProjectAnalysisGraph,
-  ProjectAnalysisGraphEdge,
-  ProjectAnalysisGraphNode,
-  ProjectAnalysisResult,
-} from "./analysis-engine/types";
 import type { ProjectAnalysisResult } from "./analysis-engine/types";
+export type { ProjectAnalysisResult };
 
 export function analyzeProject(projectPath: string): ProjectAnalysisResult {
   const { resolvedTsconfigPath, projectDirectory, parsedConfig, program } =
