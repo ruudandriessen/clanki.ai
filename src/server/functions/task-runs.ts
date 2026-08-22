@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import * as schema from "@/server/db/schema";
-import { DEFAULT_OPENCODE_PROVIDER } from "@/server/lib/opencode";
 import { createTaskRunCallbackToken } from "@/server/lib/task-run-callback-token";
 import { dbMiddleware } from "../middleware";
 import { badRequest, notFound } from "./common";
@@ -49,7 +48,6 @@ export const startTaskRun = createServerFn({ method: "POST" })
       callbackToken: createTaskRunCallbackToken({
         executionId,
         taskId: task.id,
-        provider: DEFAULT_OPENCODE_PROVIDER,
         issuedAt,
       }),
       executionId,

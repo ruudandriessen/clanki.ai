@@ -2,10 +2,14 @@ groups:
   - name: "UI"
     description: "React frontend components and pages"
   - name: "API"
-    description: "HTTP API handlers and worker middleware"
+    description: "HTTP API handlers and server functions"
 
 overrides:
-  - pattern: "frontend/**"
+  - pattern: "src/components/**"
     group: "UI"
-  - pattern: "worker/**"
+  - pattern: "src/pages/**"
+    group: "UI"
+  - pattern: "src/routes/**"
+    group: "API"
+  - pattern: "src/server/**"
     group: "API"

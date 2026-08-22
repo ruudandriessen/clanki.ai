@@ -4,7 +4,6 @@ import { getTaskRunnerCallbackSecret } from "./callback-secret";
 export type TaskRunCallbackClaims = {
   executionId: string;
   taskId: string;
-  provider: string;
   issuedAt: number;
 };
 
@@ -67,8 +66,6 @@ function isTaskRunCallbackClaims(value: unknown): value is TaskRunCallbackClaims
     claims.executionId.trim().length > 0 &&
     typeof claims.taskId === "string" &&
     claims.taskId.trim().length > 0 &&
-    typeof claims.provider === "string" &&
-    claims.provider.trim().length > 0 &&
     typeof claims.issuedAt === "number" &&
     Number.isFinite(claims.issuedAt)
   );
