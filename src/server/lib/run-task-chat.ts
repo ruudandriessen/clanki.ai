@@ -16,7 +16,7 @@ import { omitReplayedUserText } from "@/server/lib/omit-replayed-user-text";
 import { readOpencodeSessionId } from "@/server/lib/opencode-session-id";
 import { readWorkspaceBranch } from "@/server/lib/read-workspace-branch";
 import { readTaskChatModel } from "@/server/lib/task-chat-model";
-import { completeTask, markTaskFailed, markTaskRunning } from "@/server/lib/task-execution/helpers";
+import { syncTaskAfterChat } from "@/server/lib/task-execution/helpers";
 import {
   createTaskChatAdapter,
   createTaskSandbox,
@@ -42,8 +42,6 @@ export async function runTaskChat(args: { request: Request; taskId: string }): P
   const { model, provider } = readTaskChatModel(params.forwardedProps);
   const abortController = new AbortController();
   args.request.signal.addEventListener("abort", () => abortController.abort(), { once: true });
-
-  await markTaskRunning({ db, taskId: args.taskId });
 
   const stream = chat({
     adapter: createTaskChatAdapter({
@@ -87,6 +85,7 @@ async function* finalizeTaskChatStream(
 ): AsyncGenerator<StreamChunk> {
   let runnerSessionId = args.runnerSessionId;
   let errorMessage: string | null = null;
+  let streamCompleted = false;
 
   try {
     for await (const chunk of stream) {
@@ -101,16 +100,15 @@ async function* finalizeTaskChatStream(
 
       yield chunk;
     }
+    streamCompleted = true;
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Task run failed";
     throw error;
   } finally {
-    const db = await getDb();
-    if (errorMessage) {
-      await markTaskFailed({ db, taskId: args.taskId, message: errorMessage });
-    } else {
+    if (streamCompleted && !errorMessage) {
+      const db = await getDb();
       const branch = readWorkspaceBranch(args.workspacePath);
-      await completeTask({
+      await syncTaskAfterChat({
         db,
         taskId: args.taskId,
         ...(runnerSessionId ? { runnerSessionId } : {}),
