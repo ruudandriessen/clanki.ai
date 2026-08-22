@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { memoryStream, resumeServerSentEventsResponse } from "@tanstack/ai";
 import { reconstructChat } from "@tanstack/ai-persistence";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
@@ -21,6 +22,15 @@ export const Route = createFileRoute("/api/tasks/$taskId/chat")({
         }
 
         const url = new URL(request.url);
+        const runId = url.searchParams.get("runId");
+        const offset = url.searchParams.get("offset");
+
+        if (runId && offset !== null) {
+          return resumeServerSentEventsResponse({
+            adapter: memoryStream(request),
+          });
+        }
+
         url.searchParams.set("threadId", params.taskId);
         return reconstructChat(taskChatPersistence, new Request(url, request));
       },
