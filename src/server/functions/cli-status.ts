@@ -1,13 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getGhCliStatus } from "@/server/lib/gh-cli-status";
-import { getOpencodeCliStatus } from "@/server/lib/opencode-cli-status";
-import type { CliStatus } from "@/shared/cli-status";
+import { getGhCliStatus } from "@/lib/external-clis/gh";
+import { getOpencodeCliStatus } from "@/lib/external-clis/opencode";
 
-export const getCliStatus = createServerFn({ method: "GET" }).handler(
-  async (): Promise<CliStatus> => {
-    return {
-      gh: getGhCliStatus(),
-      opencode: getOpencodeCliStatus(),
-    };
-  },
-);
+export const getCliStatus = createServerFn({ method: "GET" }).handler(async () => {
+  return {
+    gh: getGhCliStatus(),
+    opencode: getOpencodeCliStatus(),
+  };
+});

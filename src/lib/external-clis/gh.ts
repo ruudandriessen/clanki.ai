@@ -1,6 +1,10 @@
-import type { GhCliStatus } from "@/shared/cli-status";
 import { parseCliVersion } from "./parse-cli-version";
 import { isCliNotInstalled, runCliCommand } from "./run-cli-command";
+
+export type GhCliStatus =
+  | { status: "not-setup" }
+  | { status: "setup"; version: string }
+  | { status: "setup-no-auth"; version: string };
 
 export function getGhCliStatus(): GhCliStatus {
   const versionResult = runCliCommand("gh", ["--version"]);
