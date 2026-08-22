@@ -136,12 +136,6 @@ export const deleteTask = createServerFn({ method: "POST" })
       notFound("Task not found");
     }
 
-    await withTransaction(context.db, async (tx) => {
-      const threadId = input.taskId;
-      await tx.delete(schema.aiInterrupts).where(eq(schema.aiInterrupts.threadId, threadId));
-      await tx.delete(schema.aiRuns).where(eq(schema.aiRuns.threadId, threadId));
-      await tx.delete(schema.aiMessages).where(eq(schema.aiMessages.threadId, threadId));
-      await tx.delete(schema.tasks).where(eq(schema.tasks.id, input.taskId));
-    });
+    await context.db.delete(schema.tasks).where(eq(schema.tasks.id, input.taskId));
     return { ok: true };
   });

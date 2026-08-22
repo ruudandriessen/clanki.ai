@@ -15,6 +15,13 @@
       "when": 1787383200000,
       "tag": "0001_tanstack_ai",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787390502579,
+      "tag": "0002_ai_thread_task_fk",
+      "breakpoints": true
     }
   ]
 }
