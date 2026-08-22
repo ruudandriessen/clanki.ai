@@ -29,6 +29,13 @@
       "when": 1787396000000,
       "tag": "0003_ai_stream_durability",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1787397000000,
+      "tag": "0004_drop_ai_stream_run_fk",
+      "breakpoints": true
     }
   ]
 }
