@@ -37,8 +37,8 @@ describe("taskChatPersistence", () => {
         { role: "assistant", content: "Hi there" },
       ];
 
-      await persistence.stores.messages!.saveThread(threadId, messages);
-      const loaded = await persistence.stores.messages!.loadThread(threadId);
+      await persistence.stores.messages.saveThread(threadId, messages);
+      const loaded = await persistence.stores.messages.loadThread(threadId);
 
       expect(loaded).toEqual(messages);
     } finally {
