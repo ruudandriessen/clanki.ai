@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { memoryStream, resumeServerSentEventsResponse } from "@tanstack/ai";
+import { resumeServerSentEventsResponse } from "@tanstack/ai";
 import { reconstructChat } from "@tanstack/ai-persistence";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { taskChatPersistence } from "@/server/lib/ai-persistence";
 import { runTaskChat } from "@/server/lib/run-task-chat";
+import { taskChatDurability } from "@/server/lib/task-chat-durability";
 
 export const Route = createFileRoute("/api/tasks/$taskId/chat")({
   server: {
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/api/tasks/$taskId/chat")({
 
         if (runId && offset !== null) {
           return resumeServerSentEventsResponse({
-            adapter: memoryStream(request),
+            adapter: taskChatDurability(request),
           });
         }
 

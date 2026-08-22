@@ -92,3 +92,26 @@ export const aiMetadata = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.scope, t.key] })],
 );
+
+export const aiStreamLogs = sqliteTable("ai_stream_logs", {
+  runId: text("run_id")
+    .primaryKey()
+    .references(() => aiRuns.runId, { onDelete: "cascade" }),
+  complete: integer("complete", { mode: "number" }).notNull().default(0),
+  completedAt: msTimestamp("completed_at"),
+});
+
+export const aiStreamChunks = sqliteTable(
+  "ai_stream_chunks",
+  {
+    runId: text("run_id")
+      .notNull()
+      .references(() => aiStreamLogs.runId, { onDelete: "cascade" }),
+    seq: integer("seq").notNull(),
+    chunkJson: text("chunk_json").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.runId, t.seq] }),
+    index("ai_stream_chunk_run").on(t.runId, t.seq),
+  ],
+);

@@ -1,7 +1,6 @@
 import {
   chat,
   chatParamsFromRequest,
-  memoryStream,
   toServerSentEventsResponse,
   type StreamChunk,
 } from "@tanstack/ai";
@@ -16,7 +15,9 @@ import { omitReplayedUserText } from "@/server/lib/omit-replayed-user-text";
 import { readOpencodeSessionId } from "@/server/lib/opencode-session-id";
 import { readWorkspaceBranch } from "@/server/lib/read-workspace-branch";
 import { readTaskChatModel } from "@/server/lib/task-chat-model";
+import { taskChatDurability } from "@/server/lib/task-chat-durability";
 import { syncTaskAfterChat } from "@/server/lib/task-execution/helpers";
+import { readThreadMetadata } from "@/server/lib/thread-metadata";
 import {
   createTaskChatAdapter,
   createTaskSandbox,
@@ -42,6 +43,7 @@ export async function runTaskChat(args: { request: Request; taskId: string }): P
   const { model, provider } = readTaskChatModel(params.forwardedProps);
   const abortController = new AbortController();
   args.request.signal.addEventListener("abort", () => abortController.abort(), { once: true });
+  const threadMetadata = await readThreadMetadata(db, args.taskId);
 
   const stream = chat({
     adapter: createTaskChatAdapter({
@@ -54,7 +56,9 @@ export async function runTaskChat(args: { request: Request; taskId: string }): P
     runId: params.runId,
     resume: params.resume,
     abortController,
-    modelOptions: task.runnerSessionId ? { sessionId: task.runnerSessionId } : {},
+    modelOptions: threadMetadata.runnerSessionId
+      ? { sessionId: threadMetadata.runnerSessionId }
+      : {},
     middleware: [
       withPersistence(taskChatPersistence, { snapshotStreaming: true }),
       omitReplayedUserText(),
@@ -66,11 +70,11 @@ export async function runTaskChat(args: { request: Request; taskId: string }): P
     finalizeTaskChatStream(stream, {
       taskId: args.taskId,
       workspacePath,
-      runnerSessionId: task.runnerSessionId,
+      runnerSessionId: threadMetadata.runnerSessionId,
     }),
     {
       abortController,
-      durability: { adapter: memoryStream(args.request) },
+      durability: { adapter: taskChatDurability(args.request) },
     },
   );
 }
