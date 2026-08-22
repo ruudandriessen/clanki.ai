@@ -195,10 +195,7 @@ export function createDesktopRunnerController({
   }
 
   async function startRunner(): Promise<RunnerProcess> {
-    const runnerEntry = path.join(workspaceRoot, "packages/runner/dist/cli.mjs");
-    if (!fs.existsSync(runnerEntry)) {
-      throw new Error(`Runner entry not found at ${runnerEntry}`);
-    }
+    const runnerEntry = resolveRunnerEntry(workspaceRoot);
 
     const port = await reserveLocalPort();
     const child = spawn(
@@ -257,6 +254,20 @@ export function createDesktopRunnerController({
     openWorkspaceInEditor,
     stop,
   };
+}
+
+function resolveRunnerEntry(workspaceRoot: string): string {
+  const sourceEntry = path.join(workspaceRoot, "packages/runner/src/cli.ts");
+  if (fs.existsSync(sourceEntry)) {
+    return sourceEntry;
+  }
+
+  const distEntry = path.join(workspaceRoot, "packages/runner/dist/cli.mjs");
+  if (fs.existsSync(distEntry)) {
+    return distEntry;
+  }
+
+  throw new Error(`Runner entry not found at ${sourceEntry} or ${distEntry}`);
 }
 
 async function isRunnerHealthy(baseUrl: string): Promise<boolean> {

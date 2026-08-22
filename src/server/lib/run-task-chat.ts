@@ -57,7 +57,7 @@ export async function runTaskChat(args: { request: Request; taskId: string }): P
     resume: params.resume,
     abortController,
     systemPrompts: firstTaskSystemPrompts(storedMessages.length === 0),
-    modelOptions: (task.runnerSessionId ? { sessionId: task.runnerSessionId } : {}),
+    modelOptions: task.runnerSessionId ? { sessionId: task.runnerSessionId } : {},
     middleware: [
       withPersistence(taskChatPersistence, { snapshotStreaming: true }),
       withSandbox(createTaskSandbox({ taskId: args.taskId, workspacePath })),
