@@ -1,6 +1,6 @@
 import { useState, type ComponentProps } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useLiveQuery } from "@tanstack/react-db";
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { ChevronDown, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { projectsCollection, tasksCollection } from "@/lib/collections";
 import { createDesktopRunnerSession } from "@/lib/desktop-runner";
 import { hotkeys } from "@/lib/hotkeys";
+import { useProjects } from "@/lib/use-projects";
+import { TASKS_QUERY_KEY, useTasks } from "@/lib/use-tasks";
+import { createTask, updateTask } from "@/server/functions/tasks";
 
 type ButtonProps = ComponentProps<typeof Button>;
 
@@ -30,14 +32,11 @@ export function NewTaskButton({
   ...props
 }: NewTaskButtonProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const { data: projects } = useLiveQuery((query) =>
-    query.from({ p: projectsCollection }).orderBy(({ p }) => p.created_at, "asc"),
-  );
-  const { data: tasks } = useLiveQuery((query) =>
-    query.from({ t: tasksCollection }).orderBy(({ t }) => t.updated_at, "desc"),
-  );
+  const { data: projects = [] } = useProjects();
+  const { data: tasks = [] } = useTasks();
 
   const [defaultProject] = projects;
   const hasProjects = projects.length > 0;
@@ -61,39 +60,43 @@ export function NewTaskButton({
     setCreating(true);
 
     const taskTitle = "New task";
-    const now = Date.now();
     const taskId = crypto.randomUUID();
-    tasksCollection.insert({
-      id: taskId,
-      organization_id: project.organization_id,
-      project_id: project.id,
-      title: taskTitle,
-      status: "open",
-      stream_id: null,
-      branch: null,
-      runner_type: null,
-      runner_session_id: null,
-      workspace_path: null,
-      error: null,
-      created_at: BigInt(now),
-      updated_at: BigInt(now),
-    });
 
-    navigate({ to: "/tasks/$taskId", params: { taskId } });
-    setCreating(false);
+    void createTask({
+      data: {
+        id: taskId,
+        title: taskTitle,
+        projectId: project.id,
+      },
+    })
+      .then(async () => {
+        await queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+        navigate({ to: "/tasks/$taskId", params: { taskId } });
+        setCreating(false);
 
-    createDesktopRunnerSession(taskTitle, repoUrl)
-      .then((response) => {
-        tasksCollection.update(taskId, (draft) => {
-          draft.runner_type = response.runnerType;
-          draft.runner_session_id = response.sessionId;
-          draft.workspace_path = response.workspaceDirectory;
-        });
+        try {
+          const response = await createDesktopRunnerSession(taskTitle, repoUrl);
+          await updateTask({
+            data: {
+              taskId,
+              runnerType: response.runnerType,
+              runnerSessionId: response.sessionId,
+              workspacePath: response.workspaceDirectory,
+            },
+          });
+        } catch (err) {
+          await updateTask({
+            data: {
+              taskId,
+              error: err instanceof Error ? err.message : "Failed to create workspace",
+            },
+          });
+        }
+
+        await queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
       })
-      .catch((err) => {
-        tasksCollection.update(taskId, (draft) => {
-          draft.error = err instanceof Error ? err.message : "Failed to create workspace";
-        });
+      .catch(() => {
+        setCreating(false);
       });
   }
 

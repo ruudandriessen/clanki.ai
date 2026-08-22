@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useLiveQuery } from "@tanstack/react-db";
 import { BookMarked, Check, Loader2, Plus } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
@@ -9,22 +9,19 @@ import { Input } from "@/components/ui/input";
 import { themeOptions } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { AddProjectDialog } from "../components/add-project-dialog";
-import { useOrganization } from "../components/layout/use-organization";
-import { projectsCollection } from "../lib/collections";
+import { PROJECTS_QUERY_KEY, useProjects } from "@/lib/use-projects";
 import { updateProjectRunCommand, updateProjectSetupCommand } from "@/server/functions/projects";
 
-function formatMsTimestamp(msTimestamp: bigint): string {
-  return new Date(Number(msTimestamp)).toLocaleDateString();
+function formatMsTimestamp(msTimestamp: number): string {
+  return new Date(msTimestamp).toLocaleDateString();
 }
 
 export function SettingsPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { addProject } = useSearch({ from: "/_layout/settings" });
   const { theme, setTheme } = useTheme();
-  const { data: projects, isLoading } = useLiveQuery((q) =>
-    q.from({ p: projectsCollection }).orderBy(({ p }) => p.created_at, "asc"),
-  );
-  const activeOrganization = useOrganization();
+  const { data: projects = [], isLoading } = useProjects();
 
   const [manualDialogOpen, setManualDialogOpen] = useState(false);
   const [projectSetupEdits, setProjectSetupEdits] = useState<Record<string, string>>({});
@@ -54,6 +51,7 @@ export function SettingsPage() {
 
     try {
       await updateProjectSetupCommand({ data: { projectId, setupCommand } });
+      await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
       setProjectSetupEdits((previous) => {
         const next = { ...previous };
         delete next[projectId];
@@ -111,6 +109,7 @@ export function SettingsPage() {
 
     try {
       await updateProjectRunCommand({ data: { projectId, runCommand, runPort } });
+      await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
       setProjectRunEdits((previous) => {
         const next = { ...previous };
         delete next[projectId];
@@ -368,7 +367,6 @@ export function SettingsPage() {
             replace: true,
           });
         }}
-        organizationId={activeOrganization.data?.id ?? null}
         existingProjects={projects}
       />
     </div>

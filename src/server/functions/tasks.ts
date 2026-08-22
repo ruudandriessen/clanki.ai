@@ -1,23 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import type { AppDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { withTransaction } from "@/server/db/transaction";
-import { createStream } from "@/server/lib/durable-streams";
-import { authMiddleware } from "../middleware";
-import { badRequest, getOrgId, notFound, parseOptionalId, parseOptionalTimestamp } from "./common";
+import { toTask } from "@/server/lib/to-task";
+import { toTaskMessage } from "@/server/lib/to-task-message";
+import { dbMiddleware } from "../middleware";
+import { badRequest, notFound, parseOptionalId, parseOptionalTimestamp } from "./common";
 
-type TaskForOrg = { id: string; title: string; projectId: string | null };
-
-async function getTaskForOrg(
-  db: AppDb,
-  taskId: string,
-  orgId: string,
-): Promise<TaskForOrg | undefined> {
+async function getTaskRow(db: AppDb, taskId: string) {
   return db.query.tasks.findFirst({
-    where: and(eq(schema.tasks.id, taskId), eq(schema.tasks.organizationId, orgId)),
-    columns: { id: true, title: true, projectId: true },
+    where: eq(schema.tasks.id, taskId),
   });
 }
 
@@ -31,8 +25,17 @@ async function getLatestTaskMessageTimestamp(db: AppDb, taskId: string): Promise
   return latest?.createdAt ?? null;
 }
 
+export const listTasks = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .handler(async ({ context }) => {
+    const rows = await context.db.query.tasks.findMany({
+      orderBy: (tasks, { desc: orderDesc }) => [orderDesc(tasks.updatedAt)],
+    });
+    return rows.map(toTask);
+  });
+
 export const createTask = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([dbMiddleware])
   .inputValidator(
     z.object({
       id: z.string().optional(),
@@ -47,22 +50,12 @@ export const createTask = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data: input, context }) => {
-    const db = context.db;
-    const orgId = getOrgId(context);
-
-    if (!orgId) {
-      badRequest("No active organization");
-    }
-
     if (input.title.trim().length === 0) {
       badRequest("title is required");
     }
 
-    const project = await db.query.projects.findFirst({
-      where: and(
-        eq(schema.projects.id, input.projectId),
-        eq(schema.projects.organizationId, orgId),
-      ),
+    const project = await context.db.query.projects.findFirst({
+      where: eq(schema.projects.id, input.projectId),
       columns: { id: true },
     });
 
@@ -70,51 +63,37 @@ export const createTask = createServerFn({ method: "POST" })
       notFound("Project not found");
     }
 
-    const result = await withTransaction(db, async (tx, txid) => {
-      const now = Date.now();
-      const createdAt = parseOptionalTimestamp(input.createdAt) ?? now;
-      const updatedAt = parseOptionalTimestamp(input.updatedAt) ?? createdAt;
-      const status =
-        typeof input.status === "string" && input.status.trim().length > 0
-          ? input.status.trim()
-          : "open";
-      const taskId = parseOptionalId(input.id) ?? crypto.randomUUID();
+    const now = Date.now();
+    const createdAt = parseOptionalTimestamp(input.createdAt) ?? now;
+    const updatedAt = parseOptionalTimestamp(input.updatedAt) ?? createdAt;
+    const status =
+      typeof input.status === "string" && input.status.trim().length > 0
+        ? input.status.trim()
+        : "open";
+    const task = {
+      id: parseOptionalId(input.id) ?? crypto.randomUUID(),
+      projectId: input.projectId,
+      title: input.title.trim(),
+      status,
+      runnerSessionId: parseOptionalId(input.runnerSessionId) ?? null,
+      runnerType:
+        typeof input.runnerType === "string" && input.runnerType.trim().length > 0
+          ? input.runnerType.trim()
+          : null,
+      workspacePath:
+        typeof input.workspacePath === "string" && input.workspacePath.trim().length > 0
+          ? input.workspacePath.trim()
+          : null,
+      createdAt,
+      updatedAt,
+    };
 
-      const streamId = await createStream({
-        env: context.env,
-        organizationId: orgId,
-        taskId: taskId,
-      });
-
-      const task = {
-        id: taskId,
-        organizationId: orgId,
-        projectId: input.projectId,
-        title: input.title.trim(),
-        status,
-        runnerSessionId: parseOptionalId(input.runnerSessionId) ?? null,
-        runnerType:
-          typeof input.runnerType === "string" && input.runnerType.trim().length > 0
-            ? input.runnerType.trim()
-            : null,
-        streamId,
-        workspacePath:
-          typeof input.workspacePath === "string" && input.workspacePath.trim().length > 0
-            ? input.workspacePath.trim()
-            : null,
-        createdAt,
-        updatedAt,
-      };
-
-      await tx.insert(schema.tasks).values(task);
-      return { data: task, txid };
-    });
-
-    return result;
+    await context.db.insert(schema.tasks).values(task);
+    return toTask({ ...task, branch: null, error: null });
   });
 
 export const updateTask = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([dbMiddleware])
   .inputValidator(
     z.object({
       taskId: z.string(),
@@ -126,15 +105,8 @@ export const updateTask = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data: input, context }) => {
-    const db = context.db;
-    const orgId = getOrgId(context);
-
-    if (!orgId) {
-      badRequest("No active organization");
-    }
-
-    const task = await getTaskForOrg(db, input.taskId, orgId);
-    if (!task) {
+    const existing = await getTaskRow(context.db, input.taskId);
+    if (!existing) {
       notFound("Task not found");
     }
 
@@ -147,59 +119,56 @@ export const updateTask = createServerFn({ method: "POST" })
       badRequest("No task fields to update");
     }
 
-    const result = await withTransaction(db, async (tx, txid) => {
+    const updated = await withTransaction(context.db, async (tx) => {
       const updatedAt = Date.now();
       await tx
         .update(schema.tasks)
         .set({ ...updates, updatedAt })
-        .where(and(eq(schema.tasks.id, input.taskId), eq(schema.tasks.organizationId, orgId)));
+        .where(eq(schema.tasks.id, input.taskId));
 
-      const updatedTask = await tx.query.tasks.findFirst({
-        where: and(eq(schema.tasks.id, input.taskId), eq(schema.tasks.organizationId, orgId)),
+      return tx.query.tasks.findFirst({
+        where: eq(schema.tasks.id, input.taskId),
       });
-
-      if (!updatedTask) {
-        return { notFound: true as const };
-      }
-
-      return { data: updatedTask, txid };
     });
 
-    if ("notFound" in result) {
+    if (!updated) {
       notFound("Task not found");
     }
 
-    return result;
+    return toTask(updated);
   });
 
 export const deleteTask = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([dbMiddleware])
   .inputValidator(z.object({ taskId: z.string() }))
   .handler(async ({ data: input, context }) => {
-    const db = context.db;
-    const orgId = getOrgId(context);
-
-    if (!orgId) {
-      badRequest("No active organization");
-    }
-
-    const task = await getTaskForOrg(db, input.taskId, orgId);
-    if (!task) {
+    const existing = await getTaskRow(context.db, input.taskId);
+    if (!existing) {
       notFound("Task not found");
     }
 
-    const txid = await withTransaction(db, async (tx, currentTxid) => {
-      await tx
-        .delete(schema.tasks)
-        .where(and(eq(schema.tasks.id, input.taskId), eq(schema.tasks.organizationId, orgId)));
-      return currentTxid;
-    });
+    await context.db.delete(schema.tasks).where(eq(schema.tasks.id, input.taskId));
+    return { ok: true };
+  });
 
-    return { txid };
+export const listTaskMessages = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .inputValidator(z.object({ taskId: z.string() }))
+  .handler(async ({ data: input, context }) => {
+    const existing = await getTaskRow(context.db, input.taskId);
+    if (!existing) {
+      notFound("Task not found");
+    }
+
+    const rows = await context.db.query.taskMessages.findMany({
+      where: eq(schema.taskMessages.taskId, input.taskId),
+      orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+    });
+    return rows.map(toTaskMessage);
   });
 
 export const createTaskMessage = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([dbMiddleware])
   .inputValidator(
     z.object({
       taskId: z.string(),
@@ -212,15 +181,8 @@ export const createTaskMessage = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data: input, context }) => {
-    const db = context.db;
-    const orgId = getOrgId(context);
-
-    if (!orgId) {
-      badRequest("No active organization");
-    }
-
-    const task = await getTaskForOrg(db, input.taskId, orgId);
-    if (!task) {
+    const existing = await getTaskRow(context.db, input.taskId);
+    if (!existing) {
       notFound("Task not found");
     }
 
@@ -233,7 +195,7 @@ export const createTaskMessage = createServerFn({ method: "POST" })
       badRequest("role must be 'user' or 'assistant'");
     }
 
-    const result = await withTransaction(db, async (tx, txid) => {
+    const message = await withTransaction(context.db, async (tx) => {
       const requestedCreatedAt = parseOptionalTimestamp(input.message.createdAt) ?? Date.now();
       const latestCreatedAt = await getLatestTaskMessageTimestamp(
         tx as unknown as AppDb,
@@ -244,16 +206,15 @@ export const createTaskMessage = createServerFn({ method: "POST" })
           ? latestCreatedAt + 1
           : requestedCreatedAt;
 
-      const message = {
+      const row = {
         id: parseOptionalId(input.message.id) ?? crypto.randomUUID(),
-        organizationId: orgId,
         taskId: input.taskId,
         role: input.message.role,
         content,
         createdAt,
       };
 
-      await tx.insert(schema.taskMessages).values(message);
+      await tx.insert(schema.taskMessages).values(row);
       await tx
         .update(schema.tasks)
         .set(
@@ -263,8 +224,8 @@ export const createTaskMessage = createServerFn({ method: "POST" })
         )
         .where(eq(schema.tasks.id, input.taskId));
 
-      return { data: message, txid };
+      return row;
     });
 
-    return result;
+    return toTaskMessage(message);
   });

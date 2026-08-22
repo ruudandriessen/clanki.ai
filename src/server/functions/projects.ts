@@ -1,20 +1,23 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, eq, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import * as schema from "@/server/db/schema";
 import { withTransaction } from "@/server/db/transaction";
-import { authMiddleware } from "../middleware";
-import {
-  badRequest,
-  conflict,
-  getOrgId,
-  notFound,
-  parseOptionalId,
-  parseOptionalTimestamp,
-} from "./common";
+import { toProject } from "@/server/lib/to-project";
+import { dbMiddleware } from "../middleware";
+import { badRequest, conflict, notFound, parseOptionalId, parseOptionalTimestamp } from "./common";
+
+export const listProjects = createServerFn({ method: "GET" })
+  .middleware([dbMiddleware])
+  .handler(async ({ context }) => {
+    const rows = await context.db.query.projects.findMany({
+      orderBy: (projects, { asc }) => [asc(projects.createdAt)],
+    });
+    return rows.map(toProject);
+  });
 
 export const createProjects = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([dbMiddleware])
   .inputValidator(
     z.object({
       repos: z
@@ -23,7 +26,6 @@ export const createProjects = createServerFn({ method: "POST" })
             id: z.string().optional(),
             name: z.string(),
             repoUrl: z.string(),
-            installationId: z.number(),
             createdAt: z.number().optional(),
             updatedAt: z.number().optional(),
           }),
@@ -32,40 +34,27 @@ export const createProjects = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data: input, context }) => {
-    const db = context.db;
-    const orgId = getOrgId(context);
-
-    if (!orgId) {
-      badRequest("No active organization");
-    }
-
-    const result = await withTransaction(db, async (tx, txid) => {
+    const created = await withTransaction(context.db, async (tx) => {
       const repoUrls = input.repos.map((repo) => repo.repoUrl);
       const existing = await tx.query.projects.findMany({
-        where: and(
-          eq(schema.projects.organizationId, orgId),
-          inArray(schema.projects.repoUrl, repoUrls),
-        ),
+        where: inArray(schema.projects.repoUrl, repoUrls),
         columns: { repoUrl: true },
       });
       const existingUrls = new Set(existing.map((project) => project.repoUrl));
-
       const newRepos = input.repos.filter((repo) => !existingUrls.has(repo.repoUrl));
       if (newRepos.length === 0) {
         return { conflict: true as const };
       }
 
       const now = Date.now();
-      const created = newRepos.map((repo) => {
+      const rows = newRepos.map((repo) => {
         const createdAt = parseOptionalTimestamp(repo.createdAt) ?? now;
         const updatedAt = parseOptionalTimestamp(repo.updatedAt) ?? createdAt;
 
         return {
           id: parseOptionalId(repo.id) ?? crypto.randomUUID(),
-          organizationId: orgId,
           name: repo.name,
           repoUrl: repo.repoUrl,
-          installationId: repo.installationId,
           setupCommand: null,
           runCommand: null,
           runPort: null,
@@ -74,19 +63,19 @@ export const createProjects = createServerFn({ method: "POST" })
         };
       });
 
-      await tx.insert(schema.projects).values(created);
-      return { data: created, txid };
+      await tx.insert(schema.projects).values(rows);
+      return { rows };
     });
 
-    if ("conflict" in result) {
+    if ("conflict" in created) {
       conflict("All selected repos already have projects");
     }
 
-    return result;
+    return created.rows.map(toProject);
   });
 
 export const updateProjectSetupCommand = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([dbMiddleware])
   .inputValidator(
     z.object({
       projectId: z.string(),
@@ -94,24 +83,14 @@ export const updateProjectSetupCommand = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data: input, context }) => {
-    const db = context.db;
-    const orgId = getOrgId(context);
-
-    if (!orgId) {
-      badRequest("No active organization");
-    }
-
     const setupCommand =
       typeof input.setupCommand === "string" && input.setupCommand.trim().length > 0
         ? input.setupCommand.trim()
         : null;
 
-    const result = await withTransaction(db, async (tx, txid) => {
+    const updated = await withTransaction(context.db, async (tx) => {
       const existing = await tx.query.projects.findFirst({
-        where: and(
-          eq(schema.projects.id, input.projectId),
-          eq(schema.projects.organizationId, orgId),
-        ),
+        where: eq(schema.projects.id, input.projectId),
         columns: { id: true },
       });
 
@@ -123,33 +102,22 @@ export const updateProjectSetupCommand = createServerFn({ method: "POST" })
       await tx
         .update(schema.projects)
         .set({ setupCommand, updatedAt })
-        .where(
-          and(eq(schema.projects.id, input.projectId), eq(schema.projects.organizationId, orgId)),
-        );
+        .where(eq(schema.projects.id, input.projectId));
 
-      const updated = await tx.query.projects.findFirst({
-        where: and(
-          eq(schema.projects.id, input.projectId),
-          eq(schema.projects.organizationId, orgId),
-        ),
+      return tx.query.projects.findFirst({
+        where: eq(schema.projects.id, input.projectId),
       });
-
-      if (!updated) {
-        return { notFound: true as const };
-      }
-
-      return { data: updated, txid };
     });
 
-    if ("notFound" in result) {
+    if (!updated || "notFound" in updated) {
       notFound("Project not found");
     }
 
-    return result;
+    return toProject(updated);
   });
 
 export const updateProjectRunCommand = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([dbMiddleware])
   .inputValidator(
     z.object({
       projectId: z.string(),
@@ -158,13 +126,6 @@ export const updateProjectRunCommand = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data: input, context }) => {
-    const db = context.db;
-    const orgId = getOrgId(context);
-
-    if (!orgId) {
-      badRequest("No active organization");
-    }
-
     const runCommand =
       typeof input.runCommand === "string" && input.runCommand.trim().length > 0
         ? input.runCommand.trim()
@@ -175,12 +136,9 @@ export const updateProjectRunCommand = createServerFn({ method: "POST" })
       badRequest("Run command and run port must both be provided");
     }
 
-    const result = await withTransaction(db, async (tx, txid) => {
+    const updated = await withTransaction(context.db, async (tx) => {
       const existing = await tx.query.projects.findFirst({
-        where: and(
-          eq(schema.projects.id, input.projectId),
-          eq(schema.projects.organizationId, orgId),
-        ),
+        where: eq(schema.projects.id, input.projectId),
         columns: { id: true },
       });
 
@@ -192,27 +150,16 @@ export const updateProjectRunCommand = createServerFn({ method: "POST" })
       await tx
         .update(schema.projects)
         .set({ runCommand, runPort, updatedAt })
-        .where(
-          and(eq(schema.projects.id, input.projectId), eq(schema.projects.organizationId, orgId)),
-        );
+        .where(eq(schema.projects.id, input.projectId));
 
-      const updated = await tx.query.projects.findFirst({
-        where: and(
-          eq(schema.projects.id, input.projectId),
-          eq(schema.projects.organizationId, orgId),
-        ),
+      return tx.query.projects.findFirst({
+        where: eq(schema.projects.id, input.projectId),
       });
-
-      if (!updated) {
-        return { notFound: true as const };
-      }
-
-      return { data: updated, txid };
     });
 
-    if ("notFound" in result) {
+    if (!updated || "notFound" in updated) {
       notFound("Project not found");
     }
 
-    return result;
+    return toProject(updated);
   });

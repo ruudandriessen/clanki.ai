@@ -14,28 +14,23 @@ export async function markTaskFailed(args: {
   taskId: string;
   message: string;
 }): Promise<void> {
-  try {
-    await args.db
-      .update(schema.tasks)
-      .set({ status: "open", error: args.message, updatedAt: Date.now() })
-      .where(eq(schema.tasks.id, args.taskId));
-  } catch {}
+  await args.db
+    .update(schema.tasks)
+    .set({ status: "open", error: args.message, updatedAt: Date.now() })
+    .where(eq(schema.tasks.id, args.taskId));
 }
 
 export async function insertAssistantTaskMessage(args: {
   db: AppDb;
-  organizationId: string;
   taskId: string;
   content: string;
 }): Promise<string> {
-  const { db, organizationId, taskId, content } = args;
-
+  const { db, taskId, content } = args;
   const taskMessageId = crypto.randomUUID();
   const createdAt = await getNextTaskMessageTimestamp(db, taskId);
 
   await db.insert(schema.taskMessages).values({
     id: taskMessageId,
-    organizationId,
     taskId,
     role: "assistant",
     content,

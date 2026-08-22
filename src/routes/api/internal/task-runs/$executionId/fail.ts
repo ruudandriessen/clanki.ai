@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getDb } from "@/server/db/client";
-import { getEnv } from "@/server/env";
 import { verifyTaskRunCallback } from "@/server/lib/task-run-callback";
 import { markTaskFailed } from "@/server/lib/task-execution/helpers";
 
@@ -25,9 +24,11 @@ export const Route = createFileRoute("/api/internal/task-runs/$executionId/fail"
             ? body.error.trim()
             : "Task failed (reported by runner)";
 
-        const db = getDb(getEnv());
-        await markTaskFailed({ db, taskId: callback.taskId, message: errorMessage });
-
+        await markTaskFailed({
+          db: await getDb(),
+          taskId: callback.taskId,
+          message: errorMessage,
+        });
         return Response.json({ ok: true });
       },
     },

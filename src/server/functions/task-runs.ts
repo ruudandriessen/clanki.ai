@@ -1,28 +1,22 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import * as schema from "@/server/db/schema";
 import { DEFAULT_OPENCODE_PROVIDER } from "@/server/lib/opencode";
 import { createTaskRunCallbackToken } from "@/server/lib/task-run-callback-token";
-import { authMiddleware } from "../middleware";
-import { badRequest, getOrgId, notFound } from "./common";
+import { dbMiddleware } from "../middleware";
+import { badRequest, notFound } from "./common";
 
 export const startTaskRun = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([dbMiddleware])
   .inputValidator(
     z.object({
       taskId: z.string(),
     }),
   )
   .handler(async ({ data: input, context }) => {
-    const orgId = getOrgId(context);
-
-    if (!orgId) {
-      badRequest("No active organization");
-    }
-
     const task = await context.db.query.tasks.findFirst({
-      where: and(eq(schema.tasks.id, input.taskId), eq(schema.tasks.organizationId, orgId)),
+      where: eq(schema.tasks.id, input.taskId),
       columns: {
         id: true,
         runnerSessionId: true,
@@ -49,20 +43,15 @@ export const startTaskRun = createServerFn({ method: "POST" })
         status: "running",
         updatedAt: issuedAt,
       })
-      .where(and(eq(schema.tasks.id, input.taskId), eq(schema.tasks.organizationId, orgId)));
+      .where(eq(schema.tasks.id, input.taskId));
 
     return {
-      callbackToken: createTaskRunCallbackToken(
-        {
-          executionId,
-          taskId: task.id,
-          organizationId: orgId,
-          userId: context.session.user.id,
-          provider: DEFAULT_OPENCODE_PROVIDER,
-          issuedAt,
-        },
-        context.env,
-      ),
+      callbackToken: createTaskRunCallbackToken({
+        executionId,
+        taskId: task.id,
+        provider: DEFAULT_OPENCODE_PROVIDER,
+        issuedAt,
+      }),
       executionId,
       runnerSessionId: task.runnerSessionId,
       runnerType: task.runnerType,
