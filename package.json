@@ -25,7 +25,7 @@
     "package:desktop": "bun run build && electron-builder --publish never",
     "release:desktop": "bun run build && electron-builder --publish always",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
-    "db:push": "drizzle-kit push --config drizzle.config.ts",
+    "db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint",
@@ -97,6 +97,10 @@
       {
         "from": "packages/runner/dist",
         "to": "packages/runner/dist"
+      },
+      {
+        "from": "drizzle",
+        "to": "drizzle"
       }
     ],
     "mac": {

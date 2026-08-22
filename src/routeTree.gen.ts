@@ -8,284 +8,291 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root";
-import { Route as LayoutRouteImport } from "./routes/_layout";
-import { Route as LayoutIndexRouteImport } from "./routes/_layout.index";
-import { Route as LayoutSettingsRouteImport } from "./routes/_layout.settings";
-import { Route as LayoutTasksTaskIdRouteImport } from "./routes/_layout.tasks.$taskId";
-import { Route as ApiTasksTaskIdStreamRouteImport } from "./routes/api/tasks/$taskId/stream";
-import { Route as ApiInternalTaskRunsExecutionIdMessageRouteImport } from "./routes/api/internal/task-runs/$executionId/message";
-import { Route as ApiInternalTaskRunsExecutionIdHeartbeatRouteImport } from "./routes/api/internal/task-runs/$executionId/heartbeat";
-import { Route as ApiInternalTaskRunsExecutionIdFailRouteImport } from "./routes/api/internal/task-runs/$executionId/fail";
-import { Route as ApiInternalTaskRunsExecutionIdEventRouteImport } from "./routes/api/internal/task-runs/$executionId/event";
-import { Route as ApiInternalTaskRunsExecutionIdCompleteRouteImport } from "./routes/api/internal/task-runs/$executionId/complete";
-import { Route as ApiInternalTaskRunsExecutionIdBranchRouteImport } from "./routes/api/internal/task-runs/$executionId/branch";
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as LayoutIndexRouteImport } from './routes/_layout.index'
+import { Route as LayoutSettingsRouteImport } from './routes/_layout.settings'
+import { Route as LayoutTasksTaskIdRouteImport } from './routes/_layout.tasks.$taskId'
+import { Route as ApiTasksTaskIdStreamRouteImport } from './routes/api/tasks/$taskId/stream'
+import { Route as ApiInternalTaskRunsExecutionIdMessageRouteImport } from './routes/api/internal/task-runs/$executionId/message'
+import { Route as ApiInternalTaskRunsExecutionIdHeartbeatRouteImport } from './routes/api/internal/task-runs/$executionId/heartbeat'
+import { Route as ApiInternalTaskRunsExecutionIdFailRouteImport } from './routes/api/internal/task-runs/$executionId/fail'
+import { Route as ApiInternalTaskRunsExecutionIdEventRouteImport } from './routes/api/internal/task-runs/$executionId/event'
+import { Route as ApiInternalTaskRunsExecutionIdCompleteRouteImport } from './routes/api/internal/task-runs/$executionId/complete'
+import { Route as ApiInternalTaskRunsExecutionIdBranchRouteImport } from './routes/api/internal/task-runs/$executionId/branch'
 
 const LayoutRoute = LayoutRouteImport.update({
-  id: "/_layout",
+  id: '/_layout',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const LayoutIndexRoute = LayoutIndexRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => LayoutRoute,
-} as any);
+} as any)
 const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
-  id: "/settings",
-  path: "/settings",
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => LayoutRoute,
-} as any);
+} as any)
 const LayoutTasksTaskIdRoute = LayoutTasksTaskIdRouteImport.update({
-  id: "/tasks/$taskId",
-  path: "/tasks/$taskId",
+  id: '/tasks/$taskId',
+  path: '/tasks/$taskId',
   getParentRoute: () => LayoutRoute,
-} as any);
+} as any)
 const ApiTasksTaskIdStreamRoute = ApiTasksTaskIdStreamRouteImport.update({
-  id: "/api/tasks/$taskId/stream",
-  path: "/api/tasks/$taskId/stream",
+  id: '/api/tasks/$taskId/stream',
+  path: '/api/tasks/$taskId/stream',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiInternalTaskRunsExecutionIdMessageRoute =
   ApiInternalTaskRunsExecutionIdMessageRouteImport.update({
-    id: "/api/internal/task-runs/$executionId/message",
-    path: "/api/internal/task-runs/$executionId/message",
+    id: '/api/internal/task-runs/$executionId/message',
+    path: '/api/internal/task-runs/$executionId/message',
     getParentRoute: () => rootRouteImport,
-  } as any);
+  } as any)
 const ApiInternalTaskRunsExecutionIdHeartbeatRoute =
   ApiInternalTaskRunsExecutionIdHeartbeatRouteImport.update({
-    id: "/api/internal/task-runs/$executionId/heartbeat",
-    path: "/api/internal/task-runs/$executionId/heartbeat",
+    id: '/api/internal/task-runs/$executionId/heartbeat',
+    path: '/api/internal/task-runs/$executionId/heartbeat',
     getParentRoute: () => rootRouteImport,
-  } as any);
+  } as any)
 const ApiInternalTaskRunsExecutionIdFailRoute =
   ApiInternalTaskRunsExecutionIdFailRouteImport.update({
-    id: "/api/internal/task-runs/$executionId/fail",
-    path: "/api/internal/task-runs/$executionId/fail",
+    id: '/api/internal/task-runs/$executionId/fail',
+    path: '/api/internal/task-runs/$executionId/fail',
     getParentRoute: () => rootRouteImport,
-  } as any);
+  } as any)
 const ApiInternalTaskRunsExecutionIdEventRoute =
   ApiInternalTaskRunsExecutionIdEventRouteImport.update({
-    id: "/api/internal/task-runs/$executionId/event",
-    path: "/api/internal/task-runs/$executionId/event",
+    id: '/api/internal/task-runs/$executionId/event',
+    path: '/api/internal/task-runs/$executionId/event',
     getParentRoute: () => rootRouteImport,
-  } as any);
+  } as any)
 const ApiInternalTaskRunsExecutionIdCompleteRoute =
   ApiInternalTaskRunsExecutionIdCompleteRouteImport.update({
-    id: "/api/internal/task-runs/$executionId/complete",
-    path: "/api/internal/task-runs/$executionId/complete",
+    id: '/api/internal/task-runs/$executionId/complete',
+    path: '/api/internal/task-runs/$executionId/complete',
     getParentRoute: () => rootRouteImport,
-  } as any);
+  } as any)
 const ApiInternalTaskRunsExecutionIdBranchRoute =
   ApiInternalTaskRunsExecutionIdBranchRouteImport.update({
-    id: "/api/internal/task-runs/$executionId/branch",
-    path: "/api/internal/task-runs/$executionId/branch",
+    id: '/api/internal/task-runs/$executionId/branch',
+    path: '/api/internal/task-runs/$executionId/branch',
     getParentRoute: () => rootRouteImport,
-  } as any);
+  } as any)
 
 export interface FileRoutesByFullPath {
-  "/": typeof LayoutIndexRoute;
-  "/settings": typeof LayoutSettingsRoute;
-  "/tasks/$taskId": typeof LayoutTasksTaskIdRoute;
-  "/api/tasks/$taskId/stream": typeof ApiTasksTaskIdStreamRoute;
-  "/api/internal/task-runs/$executionId/branch": typeof ApiInternalTaskRunsExecutionIdBranchRoute;
-  "/api/internal/task-runs/$executionId/complete": typeof ApiInternalTaskRunsExecutionIdCompleteRoute;
-  "/api/internal/task-runs/$executionId/event": typeof ApiInternalTaskRunsExecutionIdEventRoute;
-  "/api/internal/task-runs/$executionId/fail": typeof ApiInternalTaskRunsExecutionIdFailRoute;
-  "/api/internal/task-runs/$executionId/heartbeat": typeof ApiInternalTaskRunsExecutionIdHeartbeatRoute;
-  "/api/internal/task-runs/$executionId/message": typeof ApiInternalTaskRunsExecutionIdMessageRoute;
+  '/': typeof LayoutIndexRoute
+  '/settings': typeof LayoutSettingsRoute
+  '/tasks/$taskId': typeof LayoutTasksTaskIdRoute
+  '/api/tasks/$taskId/stream': typeof ApiTasksTaskIdStreamRoute
+  '/api/internal/task-runs/$executionId/branch': typeof ApiInternalTaskRunsExecutionIdBranchRoute
+  '/api/internal/task-runs/$executionId/complete': typeof ApiInternalTaskRunsExecutionIdCompleteRoute
+  '/api/internal/task-runs/$executionId/event': typeof ApiInternalTaskRunsExecutionIdEventRoute
+  '/api/internal/task-runs/$executionId/fail': typeof ApiInternalTaskRunsExecutionIdFailRoute
+  '/api/internal/task-runs/$executionId/heartbeat': typeof ApiInternalTaskRunsExecutionIdHeartbeatRoute
+  '/api/internal/task-runs/$executionId/message': typeof ApiInternalTaskRunsExecutionIdMessageRoute
 }
 export interface FileRoutesByTo {
-  "/settings": typeof LayoutSettingsRoute;
-  "/": typeof LayoutIndexRoute;
-  "/tasks/$taskId": typeof LayoutTasksTaskIdRoute;
-  "/api/tasks/$taskId/stream": typeof ApiTasksTaskIdStreamRoute;
-  "/api/internal/task-runs/$executionId/branch": typeof ApiInternalTaskRunsExecutionIdBranchRoute;
-  "/api/internal/task-runs/$executionId/complete": typeof ApiInternalTaskRunsExecutionIdCompleteRoute;
-  "/api/internal/task-runs/$executionId/event": typeof ApiInternalTaskRunsExecutionIdEventRoute;
-  "/api/internal/task-runs/$executionId/fail": typeof ApiInternalTaskRunsExecutionIdFailRoute;
-  "/api/internal/task-runs/$executionId/heartbeat": typeof ApiInternalTaskRunsExecutionIdHeartbeatRoute;
-  "/api/internal/task-runs/$executionId/message": typeof ApiInternalTaskRunsExecutionIdMessageRoute;
+  '/settings': typeof LayoutSettingsRoute
+  '/': typeof LayoutIndexRoute
+  '/tasks/$taskId': typeof LayoutTasksTaskIdRoute
+  '/api/tasks/$taskId/stream': typeof ApiTasksTaskIdStreamRoute
+  '/api/internal/task-runs/$executionId/branch': typeof ApiInternalTaskRunsExecutionIdBranchRoute
+  '/api/internal/task-runs/$executionId/complete': typeof ApiInternalTaskRunsExecutionIdCompleteRoute
+  '/api/internal/task-runs/$executionId/event': typeof ApiInternalTaskRunsExecutionIdEventRoute
+  '/api/internal/task-runs/$executionId/fail': typeof ApiInternalTaskRunsExecutionIdFailRoute
+  '/api/internal/task-runs/$executionId/heartbeat': typeof ApiInternalTaskRunsExecutionIdHeartbeatRoute
+  '/api/internal/task-runs/$executionId/message': typeof ApiInternalTaskRunsExecutionIdMessageRoute
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport;
-  "/_layout": typeof LayoutRouteWithChildren;
-  "/_layout/settings": typeof LayoutSettingsRoute;
-  "/_layout/": typeof LayoutIndexRoute;
-  "/_layout/tasks/$taskId": typeof LayoutTasksTaskIdRoute;
-  "/api/tasks/$taskId/stream": typeof ApiTasksTaskIdStreamRoute;
-  "/api/internal/task-runs/$executionId/branch": typeof ApiInternalTaskRunsExecutionIdBranchRoute;
-  "/api/internal/task-runs/$executionId/complete": typeof ApiInternalTaskRunsExecutionIdCompleteRoute;
-  "/api/internal/task-runs/$executionId/event": typeof ApiInternalTaskRunsExecutionIdEventRoute;
-  "/api/internal/task-runs/$executionId/fail": typeof ApiInternalTaskRunsExecutionIdFailRoute;
-  "/api/internal/task-runs/$executionId/heartbeat": typeof ApiInternalTaskRunsExecutionIdHeartbeatRoute;
-  "/api/internal/task-runs/$executionId/message": typeof ApiInternalTaskRunsExecutionIdMessageRoute;
+  __root__: typeof rootRouteImport
+  '/_layout': typeof LayoutRouteWithChildren
+  '/_layout/settings': typeof LayoutSettingsRoute
+  '/_layout/': typeof LayoutIndexRoute
+  '/_layout/tasks/$taskId': typeof LayoutTasksTaskIdRoute
+  '/api/tasks/$taskId/stream': typeof ApiTasksTaskIdStreamRoute
+  '/api/internal/task-runs/$executionId/branch': typeof ApiInternalTaskRunsExecutionIdBranchRoute
+  '/api/internal/task-runs/$executionId/complete': typeof ApiInternalTaskRunsExecutionIdCompleteRoute
+  '/api/internal/task-runs/$executionId/event': typeof ApiInternalTaskRunsExecutionIdEventRoute
+  '/api/internal/task-runs/$executionId/fail': typeof ApiInternalTaskRunsExecutionIdFailRoute
+  '/api/internal/task-runs/$executionId/heartbeat': typeof ApiInternalTaskRunsExecutionIdHeartbeatRoute
+  '/api/internal/task-runs/$executionId/message': typeof ApiInternalTaskRunsExecutionIdMessageRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath;
+  fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | "/"
-    | "/settings"
-    | "/tasks/$taskId"
-    | "/api/tasks/$taskId/stream"
-    | "/api/internal/task-runs/$executionId/branch"
-    | "/api/internal/task-runs/$executionId/complete"
-    | "/api/internal/task-runs/$executionId/event"
-    | "/api/internal/task-runs/$executionId/fail"
-    | "/api/internal/task-runs/$executionId/heartbeat"
-    | "/api/internal/task-runs/$executionId/message";
-  fileRoutesByTo: FileRoutesByTo;
+    | '/'
+    | '/settings'
+    | '/tasks/$taskId'
+    | '/api/tasks/$taskId/stream'
+    | '/api/internal/task-runs/$executionId/branch'
+    | '/api/internal/task-runs/$executionId/complete'
+    | '/api/internal/task-runs/$executionId/event'
+    | '/api/internal/task-runs/$executionId/fail'
+    | '/api/internal/task-runs/$executionId/heartbeat'
+    | '/api/internal/task-runs/$executionId/message'
+  fileRoutesByTo: FileRoutesByTo
   to:
-    | "/settings"
-    | "/"
-    | "/tasks/$taskId"
-    | "/api/tasks/$taskId/stream"
-    | "/api/internal/task-runs/$executionId/branch"
-    | "/api/internal/task-runs/$executionId/complete"
-    | "/api/internal/task-runs/$executionId/event"
-    | "/api/internal/task-runs/$executionId/fail"
-    | "/api/internal/task-runs/$executionId/heartbeat"
-    | "/api/internal/task-runs/$executionId/message";
+    | '/settings'
+    | '/'
+    | '/tasks/$taskId'
+    | '/api/tasks/$taskId/stream'
+    | '/api/internal/task-runs/$executionId/branch'
+    | '/api/internal/task-runs/$executionId/complete'
+    | '/api/internal/task-runs/$executionId/event'
+    | '/api/internal/task-runs/$executionId/fail'
+    | '/api/internal/task-runs/$executionId/heartbeat'
+    | '/api/internal/task-runs/$executionId/message'
   id:
-    | "__root__"
-    | "/_layout"
-    | "/_layout/settings"
-    | "/_layout/"
-    | "/_layout/tasks/$taskId"
-    | "/api/tasks/$taskId/stream"
-    | "/api/internal/task-runs/$executionId/branch"
-    | "/api/internal/task-runs/$executionId/complete"
-    | "/api/internal/task-runs/$executionId/event"
-    | "/api/internal/task-runs/$executionId/fail"
-    | "/api/internal/task-runs/$executionId/heartbeat"
-    | "/api/internal/task-runs/$executionId/message";
-  fileRoutesById: FileRoutesById;
+    | '__root__'
+    | '/_layout'
+    | '/_layout/settings'
+    | '/_layout/'
+    | '/_layout/tasks/$taskId'
+    | '/api/tasks/$taskId/stream'
+    | '/api/internal/task-runs/$executionId/branch'
+    | '/api/internal/task-runs/$executionId/complete'
+    | '/api/internal/task-runs/$executionId/event'
+    | '/api/internal/task-runs/$executionId/fail'
+    | '/api/internal/task-runs/$executionId/heartbeat'
+    | '/api/internal/task-runs/$executionId/message'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  LayoutRoute: typeof LayoutRouteWithChildren;
-  ApiTasksTaskIdStreamRoute: typeof ApiTasksTaskIdStreamRoute;
-  ApiInternalTaskRunsExecutionIdBranchRoute: typeof ApiInternalTaskRunsExecutionIdBranchRoute;
-  ApiInternalTaskRunsExecutionIdCompleteRoute: typeof ApiInternalTaskRunsExecutionIdCompleteRoute;
-  ApiInternalTaskRunsExecutionIdEventRoute: typeof ApiInternalTaskRunsExecutionIdEventRoute;
-  ApiInternalTaskRunsExecutionIdFailRoute: typeof ApiInternalTaskRunsExecutionIdFailRoute;
-  ApiInternalTaskRunsExecutionIdHeartbeatRoute: typeof ApiInternalTaskRunsExecutionIdHeartbeatRoute;
-  ApiInternalTaskRunsExecutionIdMessageRoute: typeof ApiInternalTaskRunsExecutionIdMessageRoute;
+  LayoutRoute: typeof LayoutRouteWithChildren
+  ApiTasksTaskIdStreamRoute: typeof ApiTasksTaskIdStreamRoute
+  ApiInternalTaskRunsExecutionIdBranchRoute: typeof ApiInternalTaskRunsExecutionIdBranchRoute
+  ApiInternalTaskRunsExecutionIdCompleteRoute: typeof ApiInternalTaskRunsExecutionIdCompleteRoute
+  ApiInternalTaskRunsExecutionIdEventRoute: typeof ApiInternalTaskRunsExecutionIdEventRoute
+  ApiInternalTaskRunsExecutionIdFailRoute: typeof ApiInternalTaskRunsExecutionIdFailRoute
+  ApiInternalTaskRunsExecutionIdHeartbeatRoute: typeof ApiInternalTaskRunsExecutionIdHeartbeatRoute
+  ApiInternalTaskRunsExecutionIdMessageRoute: typeof ApiInternalTaskRunsExecutionIdMessageRoute
 }
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/_layout": {
-      id: "/_layout";
-      path: "";
-      fullPath: "/";
-      preLoaderRoute: typeof LayoutRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/_layout/": {
-      id: "/_layout/";
-      path: "/";
-      fullPath: "/";
-      preLoaderRoute: typeof LayoutIndexRouteImport;
-      parentRoute: typeof LayoutRoute;
-    };
-    "/_layout/settings": {
-      id: "/_layout/settings";
-      path: "/settings";
-      fullPath: "/settings";
-      preLoaderRoute: typeof LayoutSettingsRouteImport;
-      parentRoute: typeof LayoutRoute;
-    };
-    "/_layout/tasks/$taskId": {
-      id: "/_layout/tasks/$taskId";
-      path: "/tasks/$taskId";
-      fullPath: "/tasks/$taskId";
-      preLoaderRoute: typeof LayoutTasksTaskIdRouteImport;
-      parentRoute: typeof LayoutRoute;
-    };
-    "/api/tasks/$taskId/stream": {
-      id: "/api/tasks/$taskId/stream";
-      path: "/api/tasks/$taskId/stream";
-      fullPath: "/api/tasks/$taskId/stream";
-      preLoaderRoute: typeof ApiTasksTaskIdStreamRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/internal/task-runs/$executionId/message": {
-      id: "/api/internal/task-runs/$executionId/message";
-      path: "/api/internal/task-runs/$executionId/message";
-      fullPath: "/api/internal/task-runs/$executionId/message";
-      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdMessageRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/internal/task-runs/$executionId/heartbeat": {
-      id: "/api/internal/task-runs/$executionId/heartbeat";
-      path: "/api/internal/task-runs/$executionId/heartbeat";
-      fullPath: "/api/internal/task-runs/$executionId/heartbeat";
-      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdHeartbeatRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/internal/task-runs/$executionId/fail": {
-      id: "/api/internal/task-runs/$executionId/fail";
-      path: "/api/internal/task-runs/$executionId/fail";
-      fullPath: "/api/internal/task-runs/$executionId/fail";
-      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdFailRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/internal/task-runs/$executionId/event": {
-      id: "/api/internal/task-runs/$executionId/event";
-      path: "/api/internal/task-runs/$executionId/event";
-      fullPath: "/api/internal/task-runs/$executionId/event";
-      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdEventRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/internal/task-runs/$executionId/complete": {
-      id: "/api/internal/task-runs/$executionId/complete";
-      path: "/api/internal/task-runs/$executionId/complete";
-      fullPath: "/api/internal/task-runs/$executionId/complete";
-      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdCompleteRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/internal/task-runs/$executionId/branch": {
-      id: "/api/internal/task-runs/$executionId/branch";
-      path: "/api/internal/task-runs/$executionId/branch";
-      fullPath: "/api/internal/task-runs/$executionId/branch";
-      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdBranchRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+    '/_layout': {
+      id: '/_layout'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof LayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_layout/': {
+      id: '/_layout/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof LayoutIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/settings': {
+      id: '/_layout/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof LayoutSettingsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/tasks/$taskId': {
+      id: '/_layout/tasks/$taskId'
+      path: '/tasks/$taskId'
+      fullPath: '/tasks/$taskId'
+      preLoaderRoute: typeof LayoutTasksTaskIdRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/api/tasks/$taskId/stream': {
+      id: '/api/tasks/$taskId/stream'
+      path: '/api/tasks/$taskId/stream'
+      fullPath: '/api/tasks/$taskId/stream'
+      preLoaderRoute: typeof ApiTasksTaskIdStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/task-runs/$executionId/message': {
+      id: '/api/internal/task-runs/$executionId/message'
+      path: '/api/internal/task-runs/$executionId/message'
+      fullPath: '/api/internal/task-runs/$executionId/message'
+      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdMessageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/task-runs/$executionId/heartbeat': {
+      id: '/api/internal/task-runs/$executionId/heartbeat'
+      path: '/api/internal/task-runs/$executionId/heartbeat'
+      fullPath: '/api/internal/task-runs/$executionId/heartbeat'
+      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdHeartbeatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/task-runs/$executionId/fail': {
+      id: '/api/internal/task-runs/$executionId/fail'
+      path: '/api/internal/task-runs/$executionId/fail'
+      fullPath: '/api/internal/task-runs/$executionId/fail'
+      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdFailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/task-runs/$executionId/event': {
+      id: '/api/internal/task-runs/$executionId/event'
+      path: '/api/internal/task-runs/$executionId/event'
+      fullPath: '/api/internal/task-runs/$executionId/event'
+      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdEventRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/task-runs/$executionId/complete': {
+      id: '/api/internal/task-runs/$executionId/complete'
+      path: '/api/internal/task-runs/$executionId/complete'
+      fullPath: '/api/internal/task-runs/$executionId/complete'
+      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdCompleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/task-runs/$executionId/branch': {
+      id: '/api/internal/task-runs/$executionId/branch'
+      path: '/api/internal/task-runs/$executionId/branch'
+      fullPath: '/api/internal/task-runs/$executionId/branch'
+      preLoaderRoute: typeof ApiInternalTaskRunsExecutionIdBranchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface LayoutRouteChildren {
-  LayoutSettingsRoute: typeof LayoutSettingsRoute;
-  LayoutIndexRoute: typeof LayoutIndexRoute;
-  LayoutTasksTaskIdRoute: typeof LayoutTasksTaskIdRoute;
+  LayoutSettingsRoute: typeof LayoutSettingsRoute
+  LayoutIndexRoute: typeof LayoutIndexRoute
+  LayoutTasksTaskIdRoute: typeof LayoutTasksTaskIdRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
   LayoutTasksTaskIdRoute: LayoutTasksTaskIdRoute,
-};
+}
 
-const LayoutRouteWithChildren = LayoutRoute._addFileChildren(LayoutRouteChildren);
+const LayoutRouteWithChildren =
+  LayoutRoute._addFileChildren(LayoutRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   ApiTasksTaskIdStreamRoute: ApiTasksTaskIdStreamRoute,
-  ApiInternalTaskRunsExecutionIdBranchRoute: ApiInternalTaskRunsExecutionIdBranchRoute,
-  ApiInternalTaskRunsExecutionIdCompleteRoute: ApiInternalTaskRunsExecutionIdCompleteRoute,
-  ApiInternalTaskRunsExecutionIdEventRoute: ApiInternalTaskRunsExecutionIdEventRoute,
-  ApiInternalTaskRunsExecutionIdFailRoute: ApiInternalTaskRunsExecutionIdFailRoute,
-  ApiInternalTaskRunsExecutionIdHeartbeatRoute: ApiInternalTaskRunsExecutionIdHeartbeatRoute,
-  ApiInternalTaskRunsExecutionIdMessageRoute: ApiInternalTaskRunsExecutionIdMessageRoute,
-};
+  ApiInternalTaskRunsExecutionIdBranchRoute:
+    ApiInternalTaskRunsExecutionIdBranchRoute,
+  ApiInternalTaskRunsExecutionIdCompleteRoute:
+    ApiInternalTaskRunsExecutionIdCompleteRoute,
+  ApiInternalTaskRunsExecutionIdEventRoute:
+    ApiInternalTaskRunsExecutionIdEventRoute,
+  ApiInternalTaskRunsExecutionIdFailRoute:
+    ApiInternalTaskRunsExecutionIdFailRoute,
+  ApiInternalTaskRunsExecutionIdHeartbeatRoute:
+    ApiInternalTaskRunsExecutionIdHeartbeatRoute,
+  ApiInternalTaskRunsExecutionIdMessageRoute:
+    ApiInternalTaskRunsExecutionIdMessageRoute,
+}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>();
+  ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from "./router.tsx";
-import type { createStart } from "@tanstack/react-start";
-declare module "@tanstack/react-start" {
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
   interface Register {
-    ssr: true;
-    router: Awaited<ReturnType<typeof getRouter>>;
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
   }
 }
