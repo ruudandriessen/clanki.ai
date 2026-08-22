@@ -36,7 +36,9 @@ export const tasks = sqliteTable(
 );
 
 export const aiMessages = sqliteTable("ai_messages", {
-  threadId: text("thread_id").primaryKey(),
+  threadId: text("thread_id")
+    .primaryKey()
+    .references(() => tasks.id, { onDelete: "cascade" }),
   messagesJson: text("messages_json").notNull(),
 });
 
@@ -44,7 +46,9 @@ export const aiRuns = sqliteTable(
   "ai_runs",
   {
     runId: text("run_id").primaryKey(),
-    threadId: text("thread_id").notNull(),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
     status: text("status").notNull(),
     startedAt: msTimestamp("started_at").notNull(),
     finishedAt: msTimestamp("finished_at"),
@@ -67,7 +71,9 @@ export const aiInterrupts = sqliteTable(
   {
     interruptId: text("interrupt_id").primaryKey(),
     runId: text("run_id").notNull(),
-    threadId: text("thread_id").notNull(),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
     status: text("status").notNull(),
     requestedAt: msTimestamp("requested_at").notNull(),
     resolvedAt: msTimestamp("resolved_at"),

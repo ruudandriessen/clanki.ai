@@ -23,6 +23,15 @@ describe("taskChatPersistence", () => {
 
     try {
       const threadId = "task-123";
+      const now = Date.now();
+      await db.insert(schema.tasks).values({
+        id: threadId,
+        title: "Test task",
+        status: "open",
+        createdAt: now,
+        updatedAt: now,
+      });
+
       const messages: ModelMessage[] = [
         { role: "user", content: "Hello" },
         { role: "assistant", content: "Hi there" },
