@@ -64,6 +64,31 @@ describe("sqliteStream", () => {
       client.close();
     }
   });
+
+  test("allows stream logs before the ai_runs row exists", async () => {
+    const { client, db } = await createTestDb();
+    const runId = "run-without-ai-run-row";
+
+    try {
+      const getDb = async () => db;
+      const producer = sqliteStream({ runId }, getDb);
+      await producer.append([
+        {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          delta: "early",
+          messageId: "m1",
+        },
+      ]);
+      await producer.close();
+
+      const log = await db.query.aiStreamLogs.findFirst({
+        where: (logs, { eq }) => eq(logs.runId, runId),
+      });
+      expect(log?.complete).toBe(1);
+    } finally {
+      client.close();
+    }
+  });
 });
 
 describe("reapStaleAiRuns", () => {

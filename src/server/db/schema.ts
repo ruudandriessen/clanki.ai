@@ -94,9 +94,7 @@ export const aiMetadata = sqliteTable(
 );
 
 export const aiStreamLogs = sqliteTable("ai_stream_logs", {
-  runId: text("run_id")
-    .primaryKey()
-    .references(() => aiRuns.runId, { onDelete: "cascade" }),
+  runId: text("run_id").primaryKey(),
   complete: integer("complete", { mode: "number" }).notNull().default(0),
   completedAt: msTimestamp("completed_at"),
 });

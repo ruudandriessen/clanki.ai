@@ -44,6 +44,15 @@ export async function runTaskChat(args: { request: Request; taskId: string }): P
   const abortController = new AbortController();
   args.request.signal.addEventListener("abort", () => abortController.abort(), { once: true });
   const threadMetadata = await readThreadMetadata(db, args.taskId);
+  const durability = taskChatDurability(args.request);
+
+  if (durability.resumeFrom() === null) {
+    await taskChatPersistence.stores.runs!.createOrResume({
+      runId: params.runId,
+      threadId: args.taskId,
+      startedAt: Date.now(),
+    });
+  }
 
   const stream = chat({
     adapter: createTaskChatAdapter({
@@ -74,7 +83,7 @@ export async function runTaskChat(args: { request: Request; taskId: string }): P
     }),
     {
       abortController,
-      durability: { adapter: taskChatDurability(args.request) },
+      durability: { adapter: durability },
     },
   );
 }
