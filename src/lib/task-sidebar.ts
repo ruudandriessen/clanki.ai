@@ -2,6 +2,7 @@ import type { Project } from "@/lib/project";
 import type { PullRequest, PullRequestStatus } from "@/lib/pull-request";
 import { extractOrgRepoFromUrl, getPullRequestStatus } from "@/lib/pull-request";
 import type { Task } from "@/lib/task";
+import { isTaskRunning, taskNeedsAction } from "@/lib/task";
 
 export type TaskSidebarGroup = "merged" | "needsAction" | "openNoPr" | "awaitingReview" | "running";
 
@@ -102,11 +103,11 @@ function buildTaskSidebarGroups(params: {
         : null;
     const pullRequestStatus = pullRequest ? getPullRequestStatus(pullRequest) : null;
     const groupKey = getSidebarGroupKey({
-      isRunning: task.is_running,
+      isRunning: isTaskRunning(task.execution),
       pullRequestStatus,
       reviewState: pullRequest?.review_state,
       checksConclusion: pullRequest?.checks_conclusion,
-      hasError: (task.error?.trim().length ?? 0) > 0,
+      hasError: taskNeedsAction(task.execution),
     });
     groupedTasks[groupKey].push(task);
   }

@@ -4,6 +4,7 @@ import { extractOrgRepoFromUrl, getPullRequestStatus } from "@/lib/pull-request"
 import { useProjectPullRequests } from "@/lib/use-project-pull-requests";
 import { useProjects } from "@/lib/use-projects";
 import { useTasks } from "@/lib/use-tasks";
+import { isTaskRunning, taskExecutionMessage } from "@/lib/task";
 
 export const Route = createFileRoute("/_layout/tasks/$taskId")({
   component: () => {
@@ -49,8 +50,8 @@ export const Route = createFileRoute("/_layout/tasks/$taskId")({
               }
             : null
         }
-        error={task?.error ?? null}
-        isRunning={task?.is_running ?? false}
+        error={task ? taskExecutionMessage(task.execution) : null}
+        isRunning={task ? isTaskRunning(task.execution) : false}
         runnerSessionId={task?.runner_session_id ?? null}
         runnerType={task?.runner_type ?? null}
         workspacePath={task?.workspace_path ?? null}
