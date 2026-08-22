@@ -35,12 +35,20 @@ type RunnerModelProvider = {
   name: string;
 };
 
-type RunnerDiff = {
-  additions: number;
-  after: string;
-  before: string;
-  deletions: number;
-  file: string;
+type ArchitectureDiff = {
+  addedEdgeCount: number;
+  addedFileCount: number;
+  edges: Array<{
+    fromFile: string;
+    status: "added" | "removed" | "unchanged";
+    toFile: string;
+  }>;
+  files: Array<{
+    file: string;
+    status: "added" | "removed" | "modified" | "unchanged";
+  }>;
+  removedEdgeCount: number;
+  removedFileCount: number;
 };
 
 type ListRunnerModelsResponse = {
@@ -70,7 +78,7 @@ type AppRunnerController = {
     workspaceDirectory: string;
   }>;
   deleteRunnerWorkspace: (args: DeleteRunnerWorkspaceArgs) => Promise<void>;
-  getRunnerDiff: (args: { directory: string }) => Promise<RunnerDiff[]>;
+  getRunnerArchitectureDiff: (args: { directory: string }) => Promise<ArchitectureDiff>;
   listRunnerModels: (args: { directory: string }) => Promise<ListRunnerModelsResponse>;
   openWorkspaceInEditor: (args: OpenWorkspaceInEditorArgs) => Promise<void>;
   stop: () => Promise<void>;
@@ -85,9 +93,7 @@ type DeleteWorkspaceResponse = {
   ok: boolean;
 };
 
-type GetRunnerDiffResponse = {
-  diffs: RunnerDiff[];
-};
+type GetRunnerArchitectureDiffResponse = ArchitectureDiff;
 
 export function createDesktopRunnerController({
   workspaceRoot,
@@ -131,8 +137,8 @@ export function createDesktopRunnerController({
     );
   }
 
-  async function getRunnerDiff(args: { directory: string }): Promise<RunnerDiff[]> {
-    return await requestRunnerDiff(args);
+  async function getRunnerArchitectureDiff(args: { directory: string }): Promise<ArchitectureDiff> {
+    return await requestRunnerArchitectureDiff(args);
   }
 
   async function openWorkspaceInEditor({
@@ -235,21 +241,21 @@ export function createDesktopRunnerController({
     return nextRunnerProcess;
   }
 
-  async function requestRunnerDiff(args: { directory: string }): Promise<RunnerDiff[]> {
+  async function requestRunnerArchitectureDiff(args: {
+    directory: string;
+  }): Promise<ArchitectureDiff> {
     const runner = await ensureRunner();
-    const payload = await getRunnerJson<GetRunnerDiffResponse>(
-      `${runner.baseUrl}/assistant/session/diff?${new URLSearchParams({
+    return await getRunnerJson<GetRunnerArchitectureDiffResponse>(
+      `${runner.baseUrl}/assistant/session/architecture-diff?${new URLSearchParams({
         directory: args.directory,
       }).toString()}`,
     );
-
-    return payload.diffs;
   }
 
   return {
     createRunnerSession,
     deleteRunnerWorkspace,
-    getRunnerDiff,
+    getRunnerArchitectureDiff,
     listRunnerModels,
     openWorkspaceInEditor,
     stop,

@@ -3,8 +3,8 @@ import type {
   CreateAssistantSessionResponse,
   DeleteWorkspaceRequest,
   DeleteWorkspaceResponse,
-  GetAssistantSessionDiffRequest,
-  GetAssistantSessionDiffResponse,
+  GetAssistantSessionArchitectureDiffRequest,
+  GetAssistantSessionArchitectureDiffResponse,
   ListOpencodeModelsRequest,
   ListOpencodeModelsResponse,
   LocalRunnerHealthResponse,
@@ -23,23 +23,13 @@ export function createLocalRunnerClient(baseUrl: string) {
     async deleteWorkspace(body: DeleteWorkspaceRequest): Promise<DeleteWorkspaceResponse> {
       return await postJson(`${normalizedBaseUrl}/workspace/delete`, body);
     },
-    async getAssistantSessionDiff(
-      params: GetAssistantSessionDiffRequest,
-    ): Promise<GetAssistantSessionDiffResponse> {
-      const searchParams = new URLSearchParams({
-        directory: params.directory,
-      });
-
-      if (params.messageId) {
-        searchParams.set("messageId", params.messageId);
-      }
-
-      if (params.sessionId) {
-        searchParams.set("sessionId", params.sessionId);
-      }
-
+    async getAssistantSessionArchitectureDiff(
+      params: GetAssistantSessionArchitectureDiffRequest,
+    ): Promise<GetAssistantSessionArchitectureDiffResponse> {
       return await getJson(
-        `${normalizedBaseUrl}/assistant/session/diff?${searchParams.toString()}`,
+        `${normalizedBaseUrl}/assistant/session/architecture-diff?${new URLSearchParams({
+          directory: params.directory,
+        }).toString()}`,
       );
     },
     async health(): Promise<LocalRunnerHealthResponse> {

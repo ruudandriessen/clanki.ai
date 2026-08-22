@@ -1,4 +1,4 @@
-import type { FileDiff, ProviderListResponse } from "@opencode-ai/sdk";
+import type { ProviderListResponse } from "@opencode-ai/sdk";
 
 export const LOCAL_RUNNER_PROTOCOL_VERSION = "v1alpha1";
 
@@ -36,15 +36,35 @@ export type CreateAssistantSessionResponse = {
   workspaceDirectory: string;
 };
 
-export type GetAssistantSessionDiffRequest = {
-  directory: string;
-  messageId?: string;
-  sessionId?: string;
+export type ArchitectureDiffFileStatus = "added" | "removed" | "modified" | "unchanged";
+
+export type ArchitectureDiffEdgeStatus = "added" | "removed" | "unchanged";
+
+export type ArchitectureDiffFile = {
+  file: string;
+  status: ArchitectureDiffFileStatus;
 };
 
-export type GetAssistantSessionDiffResponse = {
-  diffs: FileDiff[];
+export type ArchitectureDiffEdge = {
+  fromFile: string;
+  toFile: string;
+  status: ArchitectureDiffEdgeStatus;
 };
+
+export type ArchitectureDiff = {
+  addedEdgeCount: number;
+  addedFileCount: number;
+  edges: ArchitectureDiffEdge[];
+  files: ArchitectureDiffFile[];
+  removedEdgeCount: number;
+  removedFileCount: number;
+};
+
+export type GetAssistantSessionArchitectureDiffRequest = {
+  directory: string;
+};
+
+export type GetAssistantSessionArchitectureDiffResponse = ArchitectureDiff;
 
 export type DeleteWorkspaceRequest = {
   workspaceDirectory: string;

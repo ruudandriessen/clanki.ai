@@ -1,12 +1,12 @@
 import type { Server } from "node:http";
 import { createAdaptorServer } from "@hono/node-server";
 import { Hono, type Context } from "hono";
-import { getAssistantSessionDiff } from "./assistant-session-diff";
+import { getAssistantSessionArchitectureDiff } from "./assistant-session-architecture-diff";
 import {
   LOCAL_RUNNER_PROTOCOL_VERSION,
   type CreateAssistantSessionRequest,
   type DeleteWorkspaceRequest,
-  type GetAssistantSessionDiffRequest,
+  type GetAssistantSessionArchitectureDiffRequest,
   type ListOpencodeModelsRequest,
 } from "./local-runner-protocol";
 import { listOpencodeModels } from "./opencode-models";
@@ -61,18 +61,14 @@ export function createLocalRunnerApp(): Hono {
     );
   });
 
-  app.get("/assistant/session/diff", async (c) => {
+  app.get("/assistant/session/architecture-diff", async (c) => {
     const directory = readDirectoryQuery(c);
-    const messageId = readOptionalQuery(c, "messageId");
-    const sessionId = readOptionalQuery(c, "sessionId");
 
-    return c.json({
-      diffs: await getAssistantSessionDiff({
+    return c.json(
+      getAssistantSessionArchitectureDiff({
         directory,
-        messageId,
-        sessionId,
-      } satisfies GetAssistantSessionDiffRequest),
-    });
+      } satisfies GetAssistantSessionArchitectureDiffRequest),
+    );
   });
 
   app.post("/assistant/session/create", async (c) => {

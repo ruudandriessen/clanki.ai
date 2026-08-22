@@ -1,4 +1,4 @@
-export * from "./assistant-session-diff";
+export * from "./assistant-session-architecture-diff";
 export * from "./local-runner-client";
 export * from "./local-runner-protocol";
 export * from "./local-runner-server";
