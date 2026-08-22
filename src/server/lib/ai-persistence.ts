@@ -334,7 +334,3 @@ function toInterruptRecord(row: typeof schema.aiInterrupts.$inferSelect): Interr
 
   return record;
 }
-
-export async function loadTaskThreadMessages(threadId: string): Promise<ModelMessage[]> {
-  return await taskChatPersistence.stores.messages.loadThread(threadId);
-}

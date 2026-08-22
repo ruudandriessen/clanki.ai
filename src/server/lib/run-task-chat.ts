@@ -9,9 +9,9 @@ import { withSandbox } from "@tanstack/ai-sandbox";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
-import { loadTaskThreadMessages, taskChatPersistence } from "@/server/lib/ai-persistence";
-import { firstTaskSystemPrompts } from "@/server/lib/first-task-prompt";
+import { taskChatPersistence } from "@/server/lib/ai-persistence";
 import { toOpencodeModelRef } from "@/server/lib/opencode";
+import { omitReplayedUserText } from "@/server/lib/omit-replayed-user-text";
 import { readOpencodeSessionId } from "@/server/lib/opencode-session-id";
 import { readWorkspaceBranch } from "@/server/lib/read-workspace-branch";
 import { readTaskChatModel } from "@/server/lib/task-chat-model";
@@ -38,7 +38,6 @@ export async function runTaskChat(args: { request: Request; taskId: string }): P
   }
 
   const params = await chatParamsFromRequest(args.request);
-  const storedMessages = await loadTaskThreadMessages(args.taskId);
   const { model, provider } = readTaskChatModel(params.forwardedProps);
   const abortController = new AbortController();
   args.request.signal.addEventListener("abort", () => abortController.abort(), { once: true });
@@ -56,10 +55,10 @@ export async function runTaskChat(args: { request: Request; taskId: string }): P
     runId: params.runId,
     resume: params.resume,
     abortController,
-    systemPrompts: firstTaskSystemPrompts(storedMessages.length === 0),
     modelOptions: task.runnerSessionId ? { sessionId: task.runnerSessionId } : {},
     middleware: [
       withPersistence(taskChatPersistence, { snapshotStreaming: true }),
+      omitReplayedUserText(),
       withSandbox(createTaskSandbox({ taskId: args.taskId, workspacePath })),
     ],
   });
