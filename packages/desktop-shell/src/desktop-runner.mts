@@ -2,6 +2,13 @@ import { execFile, spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
+import type {
+  ArchitectureDiff,
+  CreateAssistantSessionResponse,
+  DeleteWorkspaceResponse,
+  DesktopWorkspaceEditor,
+  ListOpencodeModelsResponse,
+} from "@clanki/protocol";
 import {
   attachProcessStderr,
   reserveLocalPort,
@@ -15,46 +22,16 @@ const DESKTOP_EDITOR_APPS = {
   cursor: "Cursor",
   vscode: "Visual Studio Code",
   zed: "Zed",
-} as const;
+} as const satisfies Record<DesktopWorkspaceEditor, string>;
 const DESKTOP_EDITOR_COMMANDS = {
   cursor: "cursor",
   vscode: "code",
   zed: "zed",
-} as const;
+} as const satisfies Record<DesktopWorkspaceEditor, string>;
 
 type CreateRunnerSessionArgs = {
   repoUrl: string;
   title: string;
-};
-
-type WorkspaceEditor = keyof typeof DESKTOP_EDITOR_APPS;
-
-type RunnerModelProvider = {
-  id: string;
-  models: Record<string, { id: string; name: string }>;
-  name: string;
-};
-
-type ArchitectureDiff = {
-  addedEdgeCount: number;
-  addedFileCount: number;
-  edges: Array<{
-    fromFile: string;
-    status: "added" | "removed" | "unchanged";
-    toFile: string;
-  }>;
-  files: Array<{
-    file: string;
-    status: "added" | "removed" | "modified" | "unchanged";
-  }>;
-  removedEdgeCount: number;
-  removedFileCount: number;
-};
-
-type ListRunnerModelsResponse = {
-  connected: string[];
-  default: Record<string, string>;
-  providers: RunnerModelProvider[];
 };
 
 type DeleteRunnerWorkspaceArgs = {
@@ -62,7 +39,7 @@ type DeleteRunnerWorkspaceArgs = {
 };
 
 type OpenWorkspaceInEditorArgs = {
-  editor: WorkspaceEditor;
+  editor: DesktopWorkspaceEditor;
   workspaceDirectory: string;
 };
 
@@ -79,21 +56,10 @@ type AppRunnerController = {
   }>;
   deleteRunnerWorkspace: (args: DeleteRunnerWorkspaceArgs) => Promise<void>;
   getRunnerArchitectureDiff: (args: { directory: string }) => Promise<ArchitectureDiff>;
-  listRunnerModels: (args: { directory: string }) => Promise<ListRunnerModelsResponse>;
+  listRunnerModels: (args: { directory: string }) => Promise<ListOpencodeModelsResponse>;
   openWorkspaceInEditor: (args: OpenWorkspaceInEditorArgs) => Promise<void>;
   stop: () => Promise<void>;
 };
-
-type CreateAssistantSessionResponse = {
-  sessionId: string;
-  workspaceDirectory: string;
-};
-
-type DeleteWorkspaceResponse = {
-  ok: boolean;
-};
-
-type GetRunnerArchitectureDiffResponse = ArchitectureDiff;
 
 export function createDesktopRunnerController({
   workspaceRoot,
@@ -128,9 +94,11 @@ export function createDesktopRunnerController({
     };
   }
 
-  async function listRunnerModels(args: { directory: string }): Promise<ListRunnerModelsResponse> {
+  async function listRunnerModels(args: {
+    directory: string;
+  }): Promise<ListOpencodeModelsResponse> {
     const runner = await ensureRunner();
-    return await getRunnerJson<ListRunnerModelsResponse>(
+    return await getRunnerJson<ListOpencodeModelsResponse>(
       `${runner.baseUrl}/opencode/models?${new URLSearchParams({
         directory: args.directory,
       }).toString()}`,
@@ -245,7 +213,7 @@ export function createDesktopRunnerController({
     directory: string;
   }): Promise<ArchitectureDiff> {
     const runner = await ensureRunner();
-    return await getRunnerJson<GetRunnerArchitectureDiffResponse>(
+    return await getRunnerJson<ArchitectureDiff>(
       `${runner.baseUrl}/assistant/session/architecture-diff?${new URLSearchParams({
         directory: args.directory,
       }).toString()}`,

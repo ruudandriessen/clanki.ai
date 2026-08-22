@@ -1,5 +1,5 @@
 import { createLocalRunnerOpencodeClient } from "./opencode-client";
-import type { ListOpencodeModelsResponse } from "./local-runner-protocol";
+import type { ListOpencodeModelsResponse } from "@clanki/protocol";
 
 export async function listOpencodeModels(args: {
   directory: string;

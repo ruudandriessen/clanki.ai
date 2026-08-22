@@ -9,7 +9,7 @@ import {
   selectChangedDependencyGraph,
   type DependencyGraph,
 } from "@clanki/cli";
-import type { ArchitectureDiff } from "./local-runner-protocol";
+import type { ArchitectureDiff } from "@clanki/protocol";
 
 const revisionGraphCache = new Map<string, DependencyGraph>();
 

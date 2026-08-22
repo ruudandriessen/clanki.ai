@@ -8,7 +8,7 @@ import {
   type DeleteWorkspaceRequest,
   type GetAssistantSessionArchitectureDiffRequest,
   type ListOpencodeModelsRequest,
-} from "./local-runner-protocol";
+} from "@clanki/protocol";
 import { listOpencodeModels } from "./opencode-models";
 import { createWorkspace, deleteWorkspace } from "./workspace";
 

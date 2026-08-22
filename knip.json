@@ -16,6 +16,9 @@
     "packages/runner": {
       "project": ["src/**/*.ts"]
     },
+    "packages/protocol": {
+      "project": ["src/**/*.ts"]
+    },
     "packages/marketing": {
       "entry": ["src/pages/**/*.{astro,ts}"],
       "project": ["src/**/*.{astro,ts}"]

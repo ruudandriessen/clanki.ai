@@ -1,4 +1,4 @@
-import type { ArchitectureDiff } from "@/lib/architecture-diff";
+import type { ArchitectureDiff } from "@clanki/protocol";
 import {
   architectureEdgeStatusClass,
   architectureFileNodeClass,

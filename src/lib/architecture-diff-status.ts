@@ -1,7 +1,4 @@
-import type {
-  ArchitectureDiffEdgeStatus,
-  ArchitectureDiffFileStatus,
-} from "@/lib/architecture-diff";
+import type { ArchitectureDiffEdgeStatus, ArchitectureDiffFileStatus } from "@clanki/protocol";
 
 export function architectureFileNodeClass(status: ArchitectureDiffFileStatus): string {
   switch (status) {
