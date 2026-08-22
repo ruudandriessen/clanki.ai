@@ -54,7 +54,7 @@ export function subscribeTaskEventStream(args: {
 
   return () => {
     eventSource.removeEventListener("message", handleMessage);
-    eventSource.removeEventListener("error", handleError);
+    eventSource.removeEventListener("error", handleTaskEventStreamError);
     eventSource.close();
   };
 }
