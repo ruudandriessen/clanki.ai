@@ -5,7 +5,12 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { taskChatPersistence } from "@/server/lib/ai-persistence";
-import { runTaskChat } from "@/server/lib/run-task-chat";
+import {
+  createTaskChatTakeoverDriver,
+  readTaskWorkspacePath,
+  runTaskChat,
+  shouldResumeTaskChat,
+} from "@/server/lib/task-chat";
 import { taskChatDurability } from "@/server/lib/task-chat-durability";
 
 export const Route = createFileRoute("/api/tasks/$taskId/chat")({
@@ -22,16 +27,25 @@ export const Route = createFileRoute("/api/tasks/$taskId/chat")({
           return Response.json({ error: "Task not found" }, { status: 404 });
         }
 
-        const url = new URL(request.url);
-        const runId = url.searchParams.get("runId");
-        const offset = url.searchParams.get("offset");
+        const durability = taskChatDurability(request);
 
-        if (runId && offset !== null) {
+        if (shouldResumeTaskChat(request)) {
+          const workspacePath = await readTaskWorkspacePath(params.taskId);
+          if (!workspacePath) {
+            return Response.json({ error: "Task workspace is not ready" }, { status: 409 });
+          }
+
           return resumeServerSentEventsResponse({
-            adapter: taskChatDurability(request),
+            adapter: durability,
+            driver: createTaskChatTakeoverDriver({
+              request,
+              taskId: params.taskId,
+              workspacePath,
+            }),
           });
         }
 
+        const url = new URL(request.url);
         url.searchParams.set("threadId", params.taskId);
         return reconstructChat(taskChatPersistence, new Request(url, request));
       },

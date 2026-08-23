@@ -10,14 +10,14 @@ import type { tasks } from "../db/schema";
 export function toTask(
   row: typeof tasks.$inferSelect,
   threadSnapshot: TaskThreadSnapshot = { hasActiveRun: false, latestChatError: null },
-  threadMetadata: ThreadMetadata = { branch: null, runnerSessionId: null },
+  threadMetadata: ThreadMetadata = { branch: null, runnerSessionId: null, workspaceError: null },
 ): Task {
   return {
     id: row.id,
     project_id: row.projectId,
     title: row.title,
     execution: resolveTaskExecutionState({
-      workspaceError: row.error,
+      workspaceError: threadMetadata.workspaceError,
       thread: threadSnapshot,
     }),
     runner_type: row.runnerType,

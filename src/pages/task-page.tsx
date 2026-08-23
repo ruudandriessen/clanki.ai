@@ -114,6 +114,7 @@ export function TaskPage({
   const {
     messages,
     sendMessage,
+    stop,
     isLoading: isChatLoading,
     error: chatError,
   } = useChat({
@@ -183,6 +184,16 @@ export function TaskPage({
     };
   }, [isBusy]);
 
+  async function handleStopRun() {
+    stop();
+    try {
+      await fetch(`/api/tasks/${taskId}/chat/cancel`, { method: "POST" });
+      await queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+    } catch (stopError) {
+      setLocalError(stopError instanceof Error ? stopError.message : "Failed to stop run");
+    }
+  }
+
   async function handleSend(contentOverride?: string) {
     const content = (contentOverride ?? input).trim();
     if (!content || isBusy || !taskId) return;
@@ -247,6 +258,7 @@ export function TaskPage({
         workspacePath={workspacePath}
         sending={isChatLoading}
         isRunning={isBusy}
+        onStop={() => void handleStopRun()}
         onError={setLocalError}
         onCreatePr={() => void handleSend(CREATE_PR_MESSAGE)}
       />

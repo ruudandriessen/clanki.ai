@@ -16,7 +16,7 @@ async function createTestDb() {
 }
 
 describe("thread metadata", () => {
-  test("writes branch and runner session to ai_metadata", async () => {
+  test("writes branch, runner session, and workspace errors to ai_metadata", async () => {
     const { client, db } = await createTestDb();
     const now = Date.now();
 
@@ -25,8 +25,6 @@ describe("thread metadata", () => {
         id: "task-1",
         title: "Task",
         status: "open",
-        branch: "legacy-branch",
-        runnerSessionId: "legacy-session",
         createdAt: now,
         updatedAt: now,
       });
@@ -34,19 +32,21 @@ describe("thread metadata", () => {
       await writeThreadMetadata(db, "task-1", {
         branch: "feature/chat",
         runnerSessionId: "session-123",
+        workspaceError: "Workspace failed",
       });
 
       const metadata = await readThreadMetadata(db, "task-1");
       expect(metadata).toEqual({
         branch: "feature/chat",
         runnerSessionId: "session-123",
+        workspaceError: "Workspace failed",
       });
     } finally {
       client.close();
     }
   });
 
-  test("falls back to legacy task columns when metadata is absent", async () => {
+  test("returns nulls when metadata is absent", async () => {
     const { client, db } = await createTestDb();
     const now = Date.now();
 
@@ -55,16 +55,15 @@ describe("thread metadata", () => {
         id: "task-1",
         title: "Task",
         status: "open",
-        branch: "legacy-branch",
-        runnerSessionId: "legacy-session",
         createdAt: now,
         updatedAt: now,
       });
 
       const metadata = await readThreadMetadata(db, "task-1");
       expect(metadata).toEqual({
-        branch: "legacy-branch",
-        runnerSessionId: "legacy-session",
+        branch: null,
+        runnerSessionId: null,
+        workspaceError: null,
       });
     } finally {
       client.close();

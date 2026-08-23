@@ -4,7 +4,10 @@ import { migrate } from "drizzle-orm/libsql/migrator";
 import { getMigrationsFolder } from "./migrations-folder";
 import * as schema from "./schema";
 import { getSqlitePath } from "./sqlite-path";
-import { reapStaleAiRuns } from "@/server/lib/reap-stale-ai-runs";
+import {
+  initializeTaskChatRunLifecycle,
+  scheduleTaskChatReaper,
+} from "@/server/lib/reap-stale-ai-runs";
 
 export type AppDb = LibSQLDatabase<typeof schema>;
 
@@ -26,7 +29,8 @@ async function createDb(sqlitePath: string): Promise<AppDb> {
   await migrate(db, { migrationsFolder: getMigrationsFolder() });
   await client.execute("PRAGMA foreign_keys = ON");
   if (!globalWithDbCache.__clankiDbStartupDone) {
-    await reapStaleAiRuns(db);
+    await initializeTaskChatRunLifecycle(db);
+    scheduleTaskChatReaper();
     globalWithDbCache.__clankiDbStartupDone = true;
   }
   return db;

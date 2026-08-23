@@ -14,6 +14,7 @@ import { Route as LayoutIndexRouteImport } from './routes/_layout.index'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout.settings'
 import { Route as LayoutTasksTaskIdRouteImport } from './routes/_layout.tasks.$taskId'
 import { Route as ApiTasksTaskIdChatRouteImport } from './routes/api/tasks/$taskId/chat'
+import { Route as ApiTasksTaskIdChatCancelRouteImport } from './routes/api/tasks/$taskId/chat.cancel'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -39,18 +40,26 @@ const ApiTasksTaskIdChatRoute = ApiTasksTaskIdChatRouteImport.update({
   path: '/api/tasks/$taskId/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTasksTaskIdChatCancelRoute =
+  ApiTasksTaskIdChatCancelRouteImport.update({
+    id: '/cancel',
+    path: '/cancel',
+    getParentRoute: () => ApiTasksTaskIdChatRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
   '/settings': typeof LayoutSettingsRoute
   '/tasks/$taskId': typeof LayoutTasksTaskIdRoute
-  '/api/tasks/$taskId/chat': typeof ApiTasksTaskIdChatRoute
+  '/api/tasks/$taskId/chat': typeof ApiTasksTaskIdChatRouteWithChildren
+  '/api/tasks/$taskId/chat/cancel': typeof ApiTasksTaskIdChatCancelRoute
 }
 export interface FileRoutesByTo {
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
   '/tasks/$taskId': typeof LayoutTasksTaskIdRoute
-  '/api/tasks/$taskId/chat': typeof ApiTasksTaskIdChatRoute
+  '/api/tasks/$taskId/chat': typeof ApiTasksTaskIdChatRouteWithChildren
+  '/api/tasks/$taskId/chat/cancel': typeof ApiTasksTaskIdChatCancelRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -58,13 +67,24 @@ export interface FileRoutesById {
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/tasks/$taskId': typeof LayoutTasksTaskIdRoute
-  '/api/tasks/$taskId/chat': typeof ApiTasksTaskIdChatRoute
+  '/api/tasks/$taskId/chat': typeof ApiTasksTaskIdChatRouteWithChildren
+  '/api/tasks/$taskId/chat/cancel': typeof ApiTasksTaskIdChatCancelRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/settings' | '/tasks/$taskId' | '/api/tasks/$taskId/chat'
+  fullPaths:
+    | '/'
+    | '/settings'
+    | '/tasks/$taskId'
+    | '/api/tasks/$taskId/chat'
+    | '/api/tasks/$taskId/chat/cancel'
   fileRoutesByTo: FileRoutesByTo
-  to: '/settings' | '/' | '/tasks/$taskId' | '/api/tasks/$taskId/chat'
+  to:
+    | '/settings'
+    | '/'
+    | '/tasks/$taskId'
+    | '/api/tasks/$taskId/chat'
+    | '/api/tasks/$taskId/chat/cancel'
   id:
     | '__root__'
     | '/_layout'
@@ -72,11 +92,12 @@ export interface FileRouteTypes {
     | '/_layout/'
     | '/_layout/tasks/$taskId'
     | '/api/tasks/$taskId/chat'
+    | '/api/tasks/$taskId/chat/cancel'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
-  ApiTasksTaskIdChatRoute: typeof ApiTasksTaskIdChatRoute
+  ApiTasksTaskIdChatRoute: typeof ApiTasksTaskIdChatRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -116,6 +137,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTasksTaskIdChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tasks/$taskId/chat/cancel': {
+      id: '/api/tasks/$taskId/chat/cancel'
+      path: '/cancel'
+      fullPath: '/api/tasks/$taskId/chat/cancel'
+      preLoaderRoute: typeof ApiTasksTaskIdChatCancelRouteImport
+      parentRoute: typeof ApiTasksTaskIdChatRoute
+    }
   }
 }
 
@@ -134,9 +162,20 @@ const LayoutRouteChildren: LayoutRouteChildren = {
 const LayoutRouteWithChildren =
   LayoutRoute._addFileChildren(LayoutRouteChildren)
 
+interface ApiTasksTaskIdChatRouteChildren {
+  ApiTasksTaskIdChatCancelRoute: typeof ApiTasksTaskIdChatCancelRoute
+}
+
+const ApiTasksTaskIdChatRouteChildren: ApiTasksTaskIdChatRouteChildren = {
+  ApiTasksTaskIdChatCancelRoute: ApiTasksTaskIdChatCancelRoute,
+}
+
+const ApiTasksTaskIdChatRouteWithChildren =
+  ApiTasksTaskIdChatRoute._addFileChildren(ApiTasksTaskIdChatRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
-  ApiTasksTaskIdChatRoute: ApiTasksTaskIdChatRoute,
+  ApiTasksTaskIdChatRoute: ApiTasksTaskIdChatRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
