@@ -13,6 +13,9 @@
     "packages/cli": {
       "project": ["**/*.ts"]
     },
+    "packages/ast-agent": {
+      "project": ["**/*.ts"]
+    },
     "packages/runner": {
       "project": ["src/**/*.ts"]
     },

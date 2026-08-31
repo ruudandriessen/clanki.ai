@@ -1,0 +1,20 @@
+{
+  "name": "@clanki/ast-agent",
+  "version": "0.0.0",
+  "private": true,
+  "bin": {
+    "clanki-ast": "./bin.ts"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "bun run bin.ts"
+  },
+  "dependencies": {
+    "@earendil-works/pi-ai": "0.84.4",
+    "@earendil-works/pi-coding-agent": "0.84.4",
+    "typescript": "^5.9.3"
+  }
+}
