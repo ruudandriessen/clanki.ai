@@ -34,7 +34,7 @@ export default defineConfig({
     },
     overrides: [
       {
-        files: ["packages/runner/**", "packages/desktop-shell/**"],
+        files: ["packages/runner/**", "packages/desktop-shell/**", "packages/ast-agent/**"],
         env: { node: true, browser: false },
       },
       {
